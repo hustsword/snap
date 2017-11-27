@@ -54,6 +54,7 @@ libversion:=$(MAJOR_VERSION).0
 
 libnameB = libsnapcblk
 projB = $(libnameB).a \
+	$(libnameB).so \
 	$(libnameB).so.$(libversion)
 
 # We need -fPIC for shared library build
