@@ -44,7 +44,7 @@
 #define CBLK_NBLOCKS			2 /* tuneup for the prefetch strategy */
 
 #define CONFIG_COMPLETION_THREADS	1 /* 1 works best */
-#define CONFIG_MAX_RETRIES		5 /* 5 is good, 0: no retries */
+#define CONFIG_MAX_RETRIES		0 /* 5 is good, 0: no retries */
 #define CONFIG_BUSY_TIMEOUT_SEC		5
 #define CONFIG_REQ_TIMEOUT_SEC		3
 #define CONFIG_REQ_DURATION_USEC	100000 /* usec */
@@ -337,7 +337,8 @@ static const char *action_name[] = {
 #define  ACTION_STATUS_COMPLETION_MASK	0x0f /* mask completion bits */
 #define  ACTION_STATUS_ERROR_MASK	0xffffffe0
 
-#define ACTION_ERROR_BITS	0x48	/* Error Bits */
+#define REQUEST_STATUS_BITS	0x48	/* Request Status Bits */
+#define NVME_STATUS_BITS	0x50	/* NVMe Status Bits */
 
 /* defaults */
 #define ACTION_WAIT_TIME	10	/* Default timeout in sec */
@@ -1135,11 +1136,18 @@ static int completion_status(struct cblk_dev *c, int timeout __attribute__((unus
 	}
 
 	if (((status & ACTION_STATUS_ERROR_MASK) != 0x0) && (count++ < 2)) {
-		__cblk_read(c, ACTION_ERROR_BITS, &errbits);
+		__cblk_read(c, REQUEST_STATUS_BITS, &errbits);
 
-		block_trace("[%s] warn: ACTION_STATUS=%08x ERROR_MASK not 0 "
-			"ACTION_ERROR_BITS=%08x\n",
+		fprintf(stderr, "[%s] warn: ACTION_STATUS=%08x ERROR_MASK not 0 "
+			"REQUEST_STATUS_BITS=%08x\n",
 			__func__, status, errbits);
+
+		__cblk_read(c, NVME_STATUS_BITS, &errbits);
+
+		fprintf(stderr, "[%s] warn: ACTION_STATUS=%08x ERROR_MASK not 0 "
+			"NVME_STATUS_BITS=%08x\n",
+			__func__, status, errbits);
+
 		/* FIXME */
 		/* dev_set_status(c, CBLK_ERROR);
 		return -4; */
@@ -1201,12 +1209,18 @@ static int check_req_timeouts(struct cblk_dev *c, struct timeval *etime,
 				errno = ETIME;
 				cblk_set_status(req, CBLK_ERROR);
 				dev_set_status(c, CBLK_ERROR);
-				__cblk_read(c, ACTION_ERROR_BITS, &errbits);
 
-				if (errbits != 0)
-					fprintf(stderr, "[%s] err: req[%2d]: "
-						"ACTION_ERROR_BITS=%08x\n",
-						__func__, i, errbits);
+				__cblk_read(c, REQUEST_STATUS_BITS, &errbits);
+
+				fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
+					"REQUEST_STATUS_BITS=%08x\n",
+					__func__, i, errbits);
+
+				__cblk_read(c, NVME_STATUS_BITS, &errbits);
+
+				fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
+					"NVME_STATUS_BITS=%08x\n",
+					__func__, i, errbits);
 
 				if (req->use_wait_sem)
 					sem_post(&req->wait_sem);
