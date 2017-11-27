@@ -282,7 +282,12 @@ BEGIN
               END IF;
             END LOOP;  -- i
           ELSE
-            nvme_complete_o        <= index(5 DOWNTO 2) & "00" & M_AXI_RDATA(1 DOWNTO 0);
+            IF M_AXI_RRESP = "11" THEN
+              nvme_complete_o <= index (5 DOWNTO 2) & "1111";
+            ELSE
+              nvme_complete_o        <= index(5 DOWNTO 2) & "00" & M_AXI_RDATA(1 DOWNTO 0);
+              slots_done(to_integer(unsigned (index(5 DOWNTO 2)))) <= '0';
+            END IF;
             axi_araddr(6 DOWNTO 0) <= "0000000";
           END IF;
         END IF;

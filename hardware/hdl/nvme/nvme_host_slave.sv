@@ -153,7 +153,8 @@ module nvme_host_slave #
   logic [`CMD_ACTION_ID_BITS-1:0] track_update_id;
   logic track_update_done;
   logic [TRACK_INFO_BITS-1:0] track_update_data;
-  logic                               track_error_clear;
+  logic                              track_error_dbg;
+  logic                              track_error_clear;
   logic                              track_error;
   logic [127:0]                      track_error_data;
 
@@ -678,7 +679,11 @@ module nvme_host_slave #
           end
         end
         READ_TRACK: begin
-          if (track_update_done) begin
+	  if (track_error_dbg) begin
+	    host_s_axi_rdata <= 'b1;
+            host_s_axi_rresp <= 2'b11;
+            host_s_axi_rvalid <= 1'b1;
+          end else if (track_update_done) begin
             host_s_axi_rdata <= track_update_data;
             host_s_axi_rresp <= 2'b00;
             host_s_axi_rvalid <= 1'b1;

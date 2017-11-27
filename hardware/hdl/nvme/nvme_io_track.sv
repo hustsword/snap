@@ -41,6 +41,7 @@ module nvme_io_track #
   output logic [TRACK_INFO_BITS-1:0]    track_update_data,
 
   // Status IF
+  output logic                          track_error_dbg,
   input logic                               track_error_clear,
   output logic                              track_error,
   output logic [127:0]                      track_error_data,
@@ -145,6 +146,9 @@ module nvme_io_track #
         end
         // Update pointer when action fifo read
         if (track_update) begin
+	  if (track_error_dbg || track_rwrite || track_read || track_read_valid) begin
+	    track_error_dbg <= 1'b1;
+	  end else begin
           // If status bit isn't set then return 0 and finish
           if (!track_status[track_update_id]) begin
             track_update_done <= 1'b1;
@@ -161,7 +165,8 @@ module nvme_io_track #
             end else begin
               track_index_array[track_update_id] <= track_index_array[track_update_id] + 1;
             end
-          end
+          end // else: !if(!track_status[track_update_id])
+	  end // else: !if(track_error || track_rwrite || track_read || track_read_valid)
         // Read next entry
         end else if (track_rwrite) begin
           // Send read for next entry
