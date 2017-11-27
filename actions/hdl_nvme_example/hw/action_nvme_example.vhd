@@ -323,7 +323,7 @@ ARCHITECTURE action_nvme_example OF action_nvme_example IS
   SIGNAL reg_0x48_nvme_rsp      : STD_LOGIC_VECTOR(15 DOWNTO 0);
   SIGNAL reg_0x4c_req_error     : STD_LOGIC_VECTOR(15 DOWNTO 0);
   SIGNAL reg_0x4c_app_error     : STD_LOGIC;
-  SIGNAL reg_0x4c_nvme_error    : STD_LOGIC_VECTOR( 2 DOWNTO 0);
+  SIGNAL reg_0x4c_nvme_error    : STD_LOGIC_VECTOR( 3 DOWNTO 0);
   SIGNAL reg_0x4c               : STD_LOGIC_VECTOR( 4 DOWNTO 0);
   SIGNAL reg_0x4c_rd_strobe     : STD_LOGIC;
 
@@ -830,6 +830,7 @@ BEGIN
         dma_wr_cmd_buffer.ready <= (OTHERS => '0');
         fsm_dma_wr              <= IDLE;
         reg_0x4c_nvme_error(1)  <= '0';
+        reg_0x4c_nvme_error(3)  <= '0';
       ELSE
 
         CASE fsm_dma_wr is
@@ -908,6 +909,9 @@ BEGIN
               reg_0x4c_nvme_error(1) <= '1';
             END IF;
             reg_0x48_nvme_rsp(ready_index)       <= '1';
+          END IF;
+          IF nvme_complete(3 DOWNTO 0) = "1111" THEN
+            reg_0x4c_nvme_error(3) <= '1';
           END IF;
         END IF;
       END IF;                         -- end reset
