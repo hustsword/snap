@@ -82,17 +82,17 @@ module nvme_io_track #
   assign rx_req_id = rx_wdata[96  + `CMD_QUEUE_ID_BITS + `CMD_ACTION_ID_BITS +: `REQ_ID_BITS];
   assign rx_status_field = rx_wdata[96+17 +: 15];
 
-  logic renable;
-  assign renable = track_read | track_rwrite;
+  // logic renable;
+  // assign renable = track_read | track_rwrite;
 
   always @(posedge axi_aclk)
   begin : MEM_A_P
-    if (renable) begin
-      track_rdata <= track_store[track_raddr];
-      if (track_rwrite) begin
-        track_store[track_raddr] <= 'd0;
-      end
+    // if (renable) begin
+    track_rdata <= track_store[track_raddr];
+    if (track_rwrite && ! (track_write && (track_raddr == track_waddr))) begin
+      track_store[track_raddr] <= 'd0;
     end
+    // end
   end
 
   always @(posedge axi_aclk)
