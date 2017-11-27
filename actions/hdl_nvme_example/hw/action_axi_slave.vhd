@@ -30,76 +30,81 @@ ENTITY action_axi_slave IS
     C_S_AXI_ADDR_WIDTH      : integer       := 6
   );
   PORT (
-    reg_0x10_i           : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
-    reg_0x14_i           : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
-    reg_0x20_o           : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    reg_0x30_o           : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    reg_0x34_o           : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    reg_0x38_o           : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    reg_0x3c_o           : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    reg_0x40_o           : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    reg_0x44_o           : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-    reg_0x4c_rd_strobe_o : OUT STD_LOGIC;
-    reg_0x4c_i           : IN  STD_LOGIC_VECTOR( 4 DOWNTO 0);
-    int_enable_o         : OUT STD_LOGIC;
-    app_start_o          : OUT STD_LOGIC;
-    app_done_i           : IN  STD_LOGIC;
-    app_ready_i          : IN  STD_LOGIC;
-    app_idle_i           : IN  STD_LOGIC;
+    reg_0x10_i            : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+    reg_0x14_i            : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+    reg_0x20_o            : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    reg_0x30_o            : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    reg_0x34_o            : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    reg_0x38_o            : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    reg_0x3c_o            : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    reg_0x40_o            : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    reg_0x44_o            : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+    reg_0x48_i            : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+    reg_0x4c_req_error_i  : IN  STD_LOGIC_VECTOR(15 DOWNTO 0);
+    reg_0x4c_app_error_i  : IN  STD_LOGIC;
+    reg_0x4c_nvme_error_i : IN  STD_LOGIC_VECTOR( 2 DOWNTO 0);
+    reg_0x4c_i            : IN  STD_LOGIC_VECTOR( 4 DOWNTO 0);
+    reg_0x4c_rd_strobe_o  : OUT STD_LOGIC;
+    reg_0x50_i            : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+    int_enable_o          : OUT STD_LOGIC;
+    app_start_o           : OUT STD_LOGIC;
+    app_done_i            : IN  STD_LOGIC;
+    app_ready_i           : IN  STD_LOGIC;
+    app_idle_i            : IN  STD_LOGIC;
 
     -- AXI Slave interface
     -- Global Clock Signal
-    S_AXI_ACLK           : IN  STD_LOGIC;
+    S_AXI_ACLK            : IN  STD_LOGIC;
     -- Global Reset Signal. This Signal is Active LOW
-    S_AXI_ARESETN        : IN  STD_LOGIC;
+    S_AXI_ARESETN         : IN  STD_LOGIC;
     -- Write address (issued by master, acceped by Slave)
-    S_AXI_AWADDR         : IN  STD_LOGIC_VECTOR(C_S_AXI_ADDR_WIDTH-1 DOWNTO 0);
+    S_AXI_AWADDR          : IN  STD_LOGIC_VECTOR(C_S_AXI_ADDR_WIDTH-1 DOWNTO 0);
     -- Write address valid. This signal indicates that the master signaling
     -- valid write address and control information.
-    S_AXI_AWVALID        : IN  STD_LOGIC;
+    S_AXI_AWVALID         : IN  STD_LOGIC;
     -- Write address ready. This signal indicates that the slave is ready
     -- to accept an address and associated control signals.
-    S_AXI_AWREADY        : OUT STD_LOGIC;
+    S_AXI_AWREADY         : OUT STD_LOGIC;
     -- Write data (issued by master, acceped by Slave)
-    S_AXI_WDATA          : IN  STD_LOGIC_VECTOR(C_S_AXI_DATA_WIDTH-1 DOWNTO 0);
+    S_AXI_WDATA           : IN  STD_LOGIC_VECTOR(C_S_AXI_DATA_WIDTH-1 DOWNTO 0);
     -- Write strobes. This signal indicates which byte lanes hold
     -- valid data. There is one write strobe bit for each eight
     -- bits of the write data bus.
-    S_AXI_WSTRB          : IN  STD_LOGIC_VECTOR((C_S_AXI_DATA_WIDTH/8)-1 DOWNTO 0);
+    S_AXI_WSTRB           : IN  STD_LOGIC_VECTOR((C_S_AXI_DATA_WIDTH/8)-1 DOWNTO 0);
     -- Write valid. This signal indicates that valid write
     -- data and strobes are available.
-    S_AXI_WVALID         : IN  STD_LOGIC;
+    S_AXI_WVALID          : IN  STD_LOGIC;
     -- Write ready. This signal indicates that the slave
     -- can accept the write data.
-    S_AXI_WREADY         : OUT STD_LOGIC;
+    S_AXI_WREADY          : OUT STD_LOGIC;
     -- Write response. This signal indicates the status
     -- of the write transaction.
-    S_AXI_BRESP          : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+    S_AXI_BRESP           : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
     -- Write response valid. This signal indicates that the channel
     -- is signaling a valid write response.
-    S_AXI_BVALID         : OUT STD_LOGIC;
+    S_AXI_BVALID          : OUT STD_LOGIC;
     -- Response ready. This signal indicates that the master
     -- can accept a write response.
-    S_AXI_BREADY         : IN  STD_LOGIC;
+    S_AXI_BREADY          : IN  STD_LOGIC;
     -- Read address (issued by master, acceped by Slave)
-    S_AXI_ARADDR         : IN  STD_LOGIC_VECTOR(C_S_AXI_ADDR_WIDTH-1 DOWNTO 0);
+    S_AXI_ARADDR          : IN  STD_LOGIC_VECTOR(C_S_AXI_ADDR_WIDTH-1 DOWNTO 0);
     -- Read address valid. This signal indicates that the channel
     -- is signaling valid read address and control information.
-    S_AXI_ARVALID        : IN  STD_LOGIC;
+    S_AXI_ARVALID         : IN  STD_LOGIC;
     -- Read address ready. This signal indicates that the slave is
     -- ready to accept an address and associated control signals.
-    S_AXI_ARREADY        : OUT STD_LOGIC;
+    S_AXI_ARREADY         : OUT STD_LOGIC;
     -- Read data (issued by slave)
-    S_AXI_RDATA          : OUT STD_LOGIC_VECTOR(C_S_AXI_DATA_WIDTH-1 DOWNTO 0);
+    S_AXI_RDATA           : OUT STD_LOGIC_VECTOR(C_S_AXI_DATA_WIDTH-1 DOWNTO 0);
     -- Read response. This signal indicates the status of the
     -- read transfer.
-    S_AXI_RRESP          : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+    S_AXI_RRESP           : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
     -- Read valid. This signal indicates that the channel is
     -- signaling the required read data.
-    S_AXI_RVALID         : OUT STD_LOGIC;
+    S_AXI_RVALID          : OUT STD_LOGIC;
     -- Read ready. This signal indicates that the master can
     -- accept the read data and response information.
-    S_AXI_RREADY         : IN  STD_LOGIC
+    S_AXI_RREADY          : IN  STD_LOGIC
   );
 END action_axi_slave;
 
@@ -465,7 +470,7 @@ BEGIN
   -- and the slave is ready to accept the read address.
   slv_reg_rden <= axi_arready AND S_AXI_ARVALID AND (NOT axi_rvalid) ;
 
-  PROCESS (slv_reg0_new, slv_reg1, slv_reg2, slv_reg3, reg_0x10_i, reg_0x14_i, slv_reg8, slv_reg12, slv_reg13, slv_reg14, slv_reg15, slv_reg16, slv_reg17, slv_reg18, slv_reg19, axi_araddr, reg_0x4c_i)
+  PROCESS (slv_reg0_new, slv_reg1, slv_reg2, slv_reg3, reg_0x10_i, reg_0x14_i, slv_reg8, slv_reg12, slv_reg13, slv_reg14, slv_reg15, slv_reg16, slv_reg17, reg_0x48_i, slv_reg19, axi_araddr, reg_0x4c_i)
     VARIABLE loc_addr :std_logic_vector(OPT_MEM_ADDR_BITS DOWNTO 0);
   BEGIN
       -- Address decoding for reading registers
@@ -498,9 +503,11 @@ BEGIN
         WHEN b"10001" =>
           reg_data_out <= slv_reg17;     -- 0x44
         WHEN b"10010" =>
-          reg_data_out <= slv_reg18;     -- 0x48
+          reg_data_out <= reg_0x48_i;    -- 0x48
         WHEN b"10011" =>
-          reg_data_out <= slv_reg19(31 DOWNTO 5) & reg_0x4c_i;     -- 0x4c
+          reg_data_out <= reg_0x4c_req_error_i & "000" & reg_0x4c_app_error_i & "0" & reg_0x4c_nvme_error_i & slv_reg19(7 DOWNTO 5) & reg_0x4c_i;     -- 0x4c
+        WHEN b"10100" =>
+          reg_data_out <= reg_0x50_i;    -- 0x50
         WHEN OTHERS =>
           reg_data_out  <= (OTHERS => '0');
       END CASE;

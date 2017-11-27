@@ -314,9 +314,17 @@ ARCHITECTURE action_nvme_example OF action_nvme_example IS
   SIGNAL nvme_wr_enqueue_req    : BOOLEAN;
   SIGNAL nvme_wr_done           : BOOLEAN;
   SIGNAL nvme_wr_done_into_fifo : BOOLEAN;
+  SIGNAL slots_done             : STD_LOGIC_VECTOR(15 DOWNTO 0);
+  SIGNAL slots_done_act         : STD_LOGIC_VECTOR(15 DOWNTO 0);
 
   SIGNAL dma_wr_count           : STD_LOGIC_VECTOR(13 DOWNTO 0);
-  SIGNAL reg_0x4c               : STD_LOGIC_VECTOR(4 DOWNTO 0);
+  SIGNAL reg_0x48_app_req       : STD_LOGIC_VECTOR(15 DOWNTO 0);
+  SIGNAL reg_0x48_nvme_req      : STD_LOGIC_VECTOR(15 DOWNTO 0);
+  SIGNAL reg_0x48_nvme_rsp      : STD_LOGIC_VECTOR(15 DOWNTO 0);
+  SIGNAL reg_0x4c_req_error     : STD_LOGIC_VECTOR(15 DOWNTO 0);
+  SIGNAL reg_0x4c_app_error     : STD_LOGIC;
+  SIGNAL reg_0x4c_nvme_error    : STD_LOGIC_VECTOR( 2 DOWNTO 0);
+  SIGNAL reg_0x4c               : STD_LOGIC_VECTOR( 4 DOWNTO 0);
   SIGNAL reg_0x4c_rd_strobe     : STD_LOGIC;
 
   FUNCTION clogb2 (bit_depth : INTEGER) RETURN INTEGER IS
@@ -362,6 +370,8 @@ BEGIN
     nvme_lba_count_i  => nvme_lba_count,
     nvme_busy_o       => nvme_busy,
     nvme_complete_o   => nvme_complete,
+    slots_done_o      => slots_done,
+    slots_done_act_o  => slots_done_act,
 
     M_AXI_ACLK        => action_clk,
     M_AXI_ARESETN     => action_rst_n,
@@ -457,47 +467,54 @@ BEGIN
   PORT MAP (
     -- config reg ; bit 0 => disable dma and
     -- just count down the length regsiter
-    int_enable_o            => int_enable,
-    reg_0x10_i              => x"1014_0001",  -- action type
-    reg_0x14_i              => x"0000_0000",  -- action version
-    reg_0x20_o              => reg_0x20,
-    reg_0x30_o              => reg_0x30,
+    reg_0x10_i               => x"1014_0001",  -- action type
+    reg_0x14_i               => x"0000_0000",  -- action version
+    reg_0x20_o               => reg_0x20,
+    reg_0x30_o               => reg_0x30,
     -- low order source address
-    reg_0x34_o              => reg_0x34,
+    reg_0x34_o               => reg_0x34,
     -- high order source  address
-    reg_0x38_o              => reg_0x38,
+    reg_0x38_o               => reg_0x38,
     -- low order destination address
-    reg_0x3c_o              => reg_0x3c,
+    reg_0x3c_o               => reg_0x3c,
     -- high order destination address
-    reg_0x40_o              => reg_0x40,
+    reg_0x40_o               => reg_0x40,
     -- number of bytes to copy
-    reg_0x44_o              => reg_0x44,
-    reg_0x4c_i              => reg_0x4c,
-    reg_0x4c_rd_strobe_o    => reg_0x4c_rd_strobe,
-    app_start_o             => app_start,
-    app_done_i              => app_done,
-    app_ready_i             => app_ready,
-    app_idle_i              => app_idle,
+    reg_0x44_o               => reg_0x44,
+    reg_0x48_i(31 DOWNTO 16) => reg_0x48_app_req,
+    reg_0x48_i(15 DOWNTO  0) => reg_0x48_nvme_req,
+    reg_0x4c_req_error_i     => reg_0x4c_req_error,
+    reg_0x4c_app_error_i     => reg_0x4c_app_error,
+    reg_0x4c_nvme_error_i    => reg_0x4c_nvme_error,
+    reg_0x4c_i               => reg_0x4c,
+    reg_0x4c_rd_strobe_o     => reg_0x4c_rd_strobe,
+    reg_0x50_i(31 DOWNTO 16) => slots_done_act,
+    reg_0x50_i(15 DOWNTO  0) => slots_done,
+    int_enable_o             => int_enable,
+    app_start_o              => app_start,
+    app_done_i               => app_done,
+    app_ready_i              => app_ready,
+    app_idle_i               => app_idle,
     -- User ports ends
-    S_AXI_ACLK              => action_clk,
-    S_AXI_ARESETN           => action_rst_n,
-    S_AXI_AWADDR            => axi_ctrl_reg_awaddr,
-    S_AXI_AWVALID           => axi_ctrl_reg_awvalid,
-    S_AXI_AWREADY           => axi_ctrl_reg_awready,
-    S_AXI_WDATA             => axi_ctrl_reg_wdata,
-    S_AXI_WSTRB             => axi_ctrl_reg_wstrb,
-    S_AXI_WVALID            => axi_ctrl_reg_wvalid,
-    S_AXI_WREADY            => axi_ctrl_reg_wready,
-    S_AXI_BRESP             => axi_ctrl_reg_bresp,
-    S_AXI_BVALID            => axi_ctrl_reg_bvalid,
-    S_AXI_BREADY            => axi_ctrl_reg_bready,
-    S_AXI_ARADDR            => axi_ctrl_reg_araddr,
-    S_AXI_ARVALID           => axi_ctrl_reg_arvalid,
-    S_AXI_ARREADY           => axi_ctrl_reg_arready,
-    S_AXI_RDATA             => axi_ctrl_reg_rdata,
-    S_AXI_RRESP             => axi_ctrl_reg_rresp,
-    S_AXI_RVALID            => axi_ctrl_reg_rvalid,
-    S_AXI_RREADY            => axi_ctrl_reg_rready
+    S_AXI_ACLK               => action_clk,
+    S_AXI_ARESETN            => action_rst_n,
+    S_AXI_AWADDR             => axi_ctrl_reg_awaddr,
+    S_AXI_AWVALID            => axi_ctrl_reg_awvalid,
+    S_AXI_AWREADY            => axi_ctrl_reg_awready,
+    S_AXI_WDATA              => axi_ctrl_reg_wdata,
+    S_AXI_WSTRB              => axi_ctrl_reg_wstrb,
+    S_AXI_WVALID             => axi_ctrl_reg_wvalid,
+    S_AXI_WREADY             => axi_ctrl_reg_wready,
+    S_AXI_BRESP              => axi_ctrl_reg_bresp,
+    S_AXI_BVALID             => axi_ctrl_reg_bvalid,
+    S_AXI_BREADY             => axi_ctrl_reg_bready,
+    S_AXI_ARADDR             => axi_ctrl_reg_araddr,
+    S_AXI_ARVALID            => axi_ctrl_reg_arvalid,
+    S_AXI_ARREADY            => axi_ctrl_reg_arready,
+    S_AXI_RDATA              => axi_ctrl_reg_rdata,
+    S_AXI_RRESP              => axi_ctrl_reg_rresp,
+    S_AXI_RVALID             => axi_ctrl_reg_rvalid,
+    S_AXI_RREADY             => axi_ctrl_reg_rready
   );
 
 
@@ -622,6 +639,7 @@ BEGIN
     VARIABLE lba_count_dec   : STD_LOGIC_VECTOR(16 DOWNTO 0);
     VARIABLE int_ptr         : INTEGER RANGE 0 TO WR_BUFFER_SIZE -1;
     VARIABLE dma_ptr         : INTEGER RANGE 0 TO WR_BUFFER_SIZE -1;
+    VARIABLE slots_done_diff : STD_LOGIC;
     
   BEGIN
     IF (rising_edge (action_clk)) THEN
@@ -637,7 +655,19 @@ BEGIN
         FOR i IN 0 TO 15 LOOP
           id_completion_fifo.id_buf(i)<= (OTHERS => '0');
         END LOOP;  -- i
+        reg_0x48_app_req       <= (OTHERS => '0');
+        reg_0x48_nvme_req      <= (OTHERS => '0');
+        reg_0x4c_req_error     <= (OTHERS => '0');
+        reg_0x4c_app_error     <= '0';
+        reg_0x4c_nvme_error(0) <= '0';
+        reg_0x4c_nvme_error(2) <= '0';
       ELSE
+        reg_0x48_nvme_req <= reg_0x48_nvme_req AND NOT reg_0x48_nvme_rsp;
+        slots_done_diff := '0';
+        FOR i IN 0 TO 15 LOOP
+          slots_done_diff :=  slots_done_diff OR (slots_done(i) AND NOT(slots_done_act(i)));
+        END LOOP;  -- i
+        reg_0x4c_nvme_error(2) <= slots_done_diff;
         -- get the id
         int_ptr := to_integer(unsigned (reg_0x30(11 DOWNTO 8)));
         IF mmio_rd_enqueue THEN
@@ -647,10 +677,20 @@ BEGIN
           -- save size as number of 4k blocks to transfer
           dma_wr_cmd_buffer.size_vector(int_ptr)   <= reg_0x44(13 + 12 downto 12);
           wr_ptr                                   <= int_ptr;
+          IF reg_0x48_app_req(int_ptr) = '1' THEN
+            reg_0x4c_req_error(int_ptr) <= '1';
+            reg_0x4c_app_error <= '1';
+          END IF;
+          reg_0x48_app_req(int_ptr) <= '1';
         END IF;
 
         IF nvme_wr_enqueue THEN
           nvme_wr_enqueue_req   <= true;
+          IF reg_0x48_app_req(0) = '1' THEN
+            reg_0x4c_req_error(0) <= '1';
+            reg_0x4c_app_error <= '1';
+          END IF;
+          reg_0x48_app_req(0) <= '1';
         END IF;
 
         IF nvme_busy = '0' THEN
@@ -664,7 +704,11 @@ BEGIN
             lba_count             := dma_wr_cmd_buffer.size_vector(wr_ptr) & "000";
             lba_count_dec         := lba_count - 1;
             nvme_lba_count        <= x"0000" & lba_count_dec(15 downto 0);
-            INCR(wr_ptr);
+            IF reg_0x48_nvme_req(wr_ptr) = '1' THEN
+              reg_0x4c_req_error(wr_ptr) <= '1';
+              reg_0x4c_nvme_error(0)     <= '1';
+            END IF;
+            reg_0x48_nvme_req(wr_ptr) <= '1';
           -- handle NVMe write triggered by completion of DMA read
           ELSIF nvme_wr_enqueue_req THEN
             nvme_wr_enqueue_req <= false;
@@ -677,6 +721,11 @@ BEGIN
             ELSE
                nvme_lba_count <= x"0000_000f";
             END IF;
+            IF reg_0x48_nvme_req(0) = '1' THEN
+              reg_0x4c_req_error(0)  <= '1';
+              reg_0x4c_nvme_error(0) <= '1';
+            END IF;
+            reg_0x48_nvme_req(0) <= '1';
           END IF;
         END IF;
         -- get the id of the dma in progess
@@ -716,11 +765,13 @@ BEGIN
         IF reg_0x4c_rd_strobe = '1' THEN
           IF nvme_wr_done_into_fifo THEN
             nvme_wr_done_into_fifo <= false;
+            reg_0x48_app_req(0) <= '0';
           ELSE
             temp5 := id_completion_fifo.id_buf(rd_ptr);
             IF temp5(4) = '1' THEN
               INCR(rd_ptr);
               id_completion_fifo.id_buf(rd_ptr) <= (OTHERS => '0');
+              reg_0x48_app_req(to_integer(unsigned (temp5(3 DOWNTO 0)))) <= '0';
             END IF;
           END IF;
         END IF;
@@ -762,6 +813,7 @@ BEGIN
 
     IF (rising_edge (action_clk)) THEN
       read_complete_int   <= false;
+      reg_0x48_nvme_rsp   <= (OTHERS => '0');
       -- reset requests when acknowledged
       IF axi_host_mem_awready = '1'  and host_mem_awvalid = '1' THEN
          host_mem_awvalid <= '0';
@@ -771,12 +823,13 @@ BEGIN
       END IF;
 
       IF action_rst_n = '0' THEN
-        process_ptr       <= 0;
-        done_ptr          <= 0;
-        host_mem_awvalid  <= '0';
-        card_mem_arvalid  <= '0';
+        process_ptr             <= 0;
+        done_ptr                <= 0;
+        host_mem_awvalid        <= '0';
+        card_mem_arvalid        <= '0';
         dma_wr_cmd_buffer.ready <= (OTHERS => '0');
-        fsm_dma_wr        <= IDLE;
+        fsm_dma_wr              <= IDLE;
+        reg_0x4c_nvme_error(1)  <= '0';
       ELSE
 
         CASE fsm_dma_wr is
@@ -842,11 +895,19 @@ BEGIN
         IF nvme_complete(1 DOWNTO 0) /= "00" THEN
           -- IF index = 0, a NVMe write has completed
           IF ready_index = 0 THEN
-            nvme_wr_done <= true;
+            nvme_wr_done         <= true;
+            IF reg_0x48_nvme_req(0) = '0' THEN
+              reg_0x4c_nvme_error(1) <= '1';
+            END IF;
+            reg_0x48_nvme_rsp(0) <= '1';
           ELSE
             -- NVMe read has completed
             -- say that the data is ready to be sent to the host
             dma_wr_cmd_buffer.ready(ready_index) <= '1';
+            IF reg_0x48_nvme_req(ready_index) = '0' THEN
+              reg_0x4c_nvme_error(1) <= '1';
+            END IF;
+            reg_0x48_nvme_rsp(ready_index)       <= '1';
           END IF;
         END IF;
       END IF;                         -- end reset

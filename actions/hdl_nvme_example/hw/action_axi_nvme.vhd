@@ -50,6 +50,8 @@ ENTITY action_axi_nvme IS
     nvme_lba_count_i : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
     nvme_busy_o      : OUT STD_LOGIC;
     nvme_complete_o  : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+    slots_done_o     : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+    slots_done_act_o : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
 
     M_AXI_ACLK       : IN  STD_LOGIC;
     M_AXI_ARESETN    : IN  STD_LOGIC;
@@ -151,6 +153,8 @@ ARCHITECTURE action_axi_nvme OF action_axi_nvme IS
   SIGNAL cmd_complete      : STD_LOGIC_VECTOR(1 DOWNTO 0);
   SIGNAL wr_count          : STD_LOGIC_VECTOR(3 DOWNTO 0);
   SIGNAL index             : STD_LOGIC_VECTOR(6 DOWNTO 0);
+  SIGNAL slots_done        : std_logic_vector(15 DOWNTO 0);
+  SIGNAL slots_done_act    : std_logic_vector(15 DOWNTO 0);
 
 
 BEGIN
@@ -260,6 +264,8 @@ BEGIN
         axi_rready       <= '0';
         axi_araddr       <= x"0000_0000";
         polling_started  := '0';
+        slots_done       <= (OTHERS => '0');
+        slots_done_act   <= (OTHERS => '0');
       ELSE
         IF polling_started = '0' AND start_polling = '1' THEN
           continue_polling <= '1';
@@ -276,8 +282,10 @@ BEGIN
         IF M_AXI_RVALID = '1' AND axi_rready = '1' THEN
           continue_polling     <= '1';
           IF axi_araddr(6 DOWNTO 0) = "0000000" THEN
+            slots_done_act <= M_AXI_RDATA(31 DOWNTO 16);
             FOR i IN 16 TO 31 LOOP
               IF  M_AXI_RDATA(i) = '1' THEN
+                 slots_done(i-16) <= '1';
                  axi_araddr(7 DOWNTO 0) <= x"00" + STD_LOGIC_VECTOR(to_unsigned(i-15,5))* "100";
               END IF;
             END LOOP;  -- i
@@ -294,5 +302,8 @@ BEGIN
       END IF;
     END IF;
   END PROCESS;
+
+  slots_done_act_o <= slots_done_act;
+  slots_done_o     <= slots_done;
 
 END action_axi_nvme;
