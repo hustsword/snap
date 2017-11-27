@@ -1210,6 +1210,12 @@ static int check_req_timeouts(struct cblk_dev *c, struct timeval *etime,
 				cblk_set_status(req, CBLK_ERROR);
 				dev_set_status(c, CBLK_ERROR);
 
+				__cblk_read(c, ACTION_STATUS, &errbits);
+
+				fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
+					"ACTION_STATUS_BITS=%08x\n",
+					__func__, i, errbits);
+
 				__cblk_read(c, REQUEST_STATUS_BITS, &errbits);
 
 				fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
