@@ -16,7 +16,7 @@
 #
 #-----------------------------------------------------------
 
-set factory_image [string toupper $::env(FACTORY_IMAGE)]
+set factory_image "FALSE"
 
 set_property BITSTREAM.GENERAL.COMPRESS {TRUE} [ current_design ]
 set_property BITSTREAM.CONFIG.EXTMASTERCCLK_EN {DIV-4} [current_design]

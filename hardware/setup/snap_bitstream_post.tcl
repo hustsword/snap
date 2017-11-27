@@ -16,7 +16,7 @@
 #
 #-----------------------------------------------------------
 
-set root_dir   $::env(SNAP_ROOT)/hardware
+set root_dir   /afs/bb/proj/fpga/framework/boekholt/snap.git/hardware
 
 write_cfgmem -format bin -loadbit "up 0x0 $root_dir/viv_project/framework.runs/impl_1/psl_fpga.bit" -file $root_dir/viv_project/framework.runs/impl_1/psl_fpga -size 128 -interface  BPIx16 -force
 
