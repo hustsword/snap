@@ -87,7 +87,8 @@
 `define ACTION_R_TRACK_15 16
 `define ACTION_R_SQ_LEVEL 17
 `define ACTION_R_SQ_SPACE 18
-`define ACTION_R_NUM_REGS 19
+`define ACTION_R_ID_TRACK 19
+`define ACTION_R_NUM_REGS 20
 
 // Admin Regs
 `define ADMIN_CONTROL     0

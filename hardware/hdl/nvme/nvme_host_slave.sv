@@ -158,6 +158,10 @@ module nvme_host_slave #
   logic                              track_error;
   logic [127:0]                      track_error_data;
 
+  logic [31:0] 		             snd_tracking_info;
+  logic [15:0] 		             rcv_tracking_info;
+
+
   // System info
   logic system_init;
   logic system_error;
@@ -258,12 +262,14 @@ module nvme_host_slave #
       end
       sq_overflow <= 1'b0;
       track_error_clear <= 1'b0;
+      snd_tracking_info <= 'd0;
       admin_status_update <= 1'b0;
     end else begin
       track_error_clear <= 1'b0;
       tx_write <= 4'h0;
       pcie_write <= 1'b0;
       write_addr_inc <= 1'b0;
+      snd_tracking_info <= snd_tracking_info & {~rcv_tracking_info , ~rcv_tracking_info};
       // Auto incrment address if signalled
       if (write_addr_inc || read_addr_inc) begin
         admin_regs[`ADMIN_BUFFER_ADDR] <= admin_regs[`ADMIN_BUFFER_ADDR] + 4;
@@ -404,6 +410,7 @@ module nvme_host_slave #
             sq_index <= host_wdata[`CMD_QUEUE_ID +: SQ_INDEX_BITS];
             if (host_wdata[`CMD_TYPE +: `CMD_TYPE_BITS]==`CMD_READ || host_wdata[`CMD_TYPE +: `CMD_TYPE_BITS]==`CMD_WRITE) begin
               write_state <= WRITE_SQ;
+              snd_tracking_info[32 + host_wdata[`CMD_ACTION_ID +: `CMD_ACTION_ID_BITS]] <= 1'b1;
             end else begin
               // Admin command -- Buffer data is already setup
               write_state <= WRITE_SQ_DOORBELL;
@@ -470,6 +477,7 @@ module nvme_host_slave #
 
             sq_count <= sq_count + 1;
             if (sq_count==3) begin
+              snd_tracking_info[sq_action_id] <= 1'b1;
               sq_count <= 'd0;
               // Increment index for the action id
               sq_index_array[sq_action_id] <= sq_index_array[sq_action_id] + 1;
@@ -663,6 +671,12 @@ module nvme_host_slave #
             // Send submission queue space
             for (int i=0; i<4; i++) begin
               host_s_axi_rdata[8*i +: 8] <= sq_space[i];
+            end
+          end else if (host_action_index==`ACTION_R_ID_TRACK) begin
+            host_s_axi_rvalid <= 1'b1;
+            // Send id tracking info
+            for (int i=0; i<4; i++) begin
+              host_s_axi_rdata <= snd_tracking_info;
             end
           end else if (host_action_index < `ACTION_R_NUM_REGS) begin
             track_update <= 1'b1;

@@ -45,7 +45,8 @@ module nvme_io_track #
   input logic                               track_error_clear,
   output logic                              track_error,
   output logic [127:0]                      track_error_data,
-  output logic[2**`CMD_ACTION_ID_BITS-1:0]  track_status
+  output logic[2**`CMD_ACTION_ID_BITS-1:0]  track_status,
+  output logic[15:0]                    rcv_tracking_info
 
 );
 
@@ -123,12 +124,14 @@ module nvme_io_track #
       for (int i=0; i<2**`CMD_ACTION_ID_BITS; i++) begin
         track_index_array[i] <= 'd0;
       end
+      rcv_tracking_info <= 'd0;
     end else begin
       track_update_done <= 1'b0;
       track_write <= 1'b0;
       track_rwrite <= 1'b0;
       track_read <= 1'b0;
       track_read_valid <= 1'b0;
+      rcv_tracking_info <= 'd0;
       // Need to clear memory after reset
       if (!track_init) begin
         track_write <= 1'b1;
@@ -210,6 +213,7 @@ module nvme_io_track #
             track_wdata[0] <= 1'b1;
             track_wdata[1] <= (rx_status_field==0) ? 1'b0 : 1'b1;
             track_waddr <= {rx_action_id, rx_req_id};
+            rcv_tracking_info[rx_action_id] <= 1'b1;
             // Check for status update
             if (rx_req_id == track_index_array[rx_action_id]) begin
               track_status[rx_action_id] <= 1'b1;
