@@ -337,8 +337,9 @@ static const char *action_name[] = {
 #define  ACTION_STATUS_COMPLETION_MASK	0x0f /* mask completion bits */
 #define  ACTION_STATUS_ERROR_MASK	0xffffffe0
 
-#define REQUEST_STATUS_BITS	0x48	/* Request Status Bits */
-#define NVME_STATUS_BITS	0x50	/* NVMe Status Bits */
+#define REQUEST_STATUS_REG	0x48	/* Request Status Register */
+#define NVME_STATUS_REG	0x50	/* NVMe Status Register */
+#define NVME_SEND_REG	0x2004c	/* NVMe Send Register */
 
 /* defaults */
 #define ACTION_WAIT_TIME	10	/* Default timeout in sec */
@@ -1136,16 +1137,22 @@ static int completion_status(struct cblk_dev *c, int timeout __attribute__((unus
 	}
 
 	if (((status & ACTION_STATUS_ERROR_MASK) != 0x0) && (count++ < 2)) {
-		__cblk_read(c, REQUEST_STATUS_BITS, &errbits);
+		__cblk_read(c, REQUEST_STATUS_REG, &errbits);
 
 		fprintf(stderr, "[%s] warn: ACTION_STATUS=%08x ERROR_MASK not 0 "
-			"REQUEST_STATUS_BITS=%08x\n",
+			"REQUEST_STATUS_REG=%08x\n",
 			__func__, status, errbits);
 
-		__cblk_read(c, NVME_STATUS_BITS, &errbits);
+		__cblk_read(c, NVME_STATUS_REG, &errbits);
 
 		fprintf(stderr, "[%s] warn: ACTION_STATUS=%08x ERROR_MASK not 0 "
-			"NVME_STATUS_BITS=%08x\n",
+			"NVME_STATUS_REG=%08x\n",
+			__func__, status, errbits);
+
+		__cblk_read(c, NVME_SEND_REG, &errbits);
+
+		fprintf(stderr, "[%s] warn: ACTION_STATUS=%08x ERROR_MASK not 0 "
+			"NVME_SEND_REG=%08x\n",
 			__func__, status, errbits);
 
 		/* FIXME */
@@ -1216,16 +1223,22 @@ static int check_req_timeouts(struct cblk_dev *c, struct timeval *etime,
 					"ACTION_STATUS_BITS=%08x\n",
 					__func__, i, errbits);
 
-				__cblk_read(c, REQUEST_STATUS_BITS, &errbits);
+				__cblk_read(c, REQUEST_STATUS_REG, &errbits);
 
 				fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
-					"REQUEST_STATUS_BITS=%08x\n",
+					"REQUEST_STATUS_REG=%08x\n",
 					__func__, i, errbits);
 
-				__cblk_read(c, NVME_STATUS_BITS, &errbits);
+				__cblk_read(c, NVME_STATUS_REG, &errbits);
 
 				fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
-					"NVME_STATUS_BITS=%08x\n",
+					"NVME_STATUS_REG=%08x\n",
+					__func__, i, errbits);
+
+				__cblk_read(c, NVME_SEND_REG, &errbits);
+
+				fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
+					"NVME_SEND_REG=%08x\n",
 					__func__, i, errbits);
 
 				if (req->use_wait_sem)
