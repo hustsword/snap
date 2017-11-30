@@ -339,7 +339,6 @@ static const char *action_name[] = {
 
 #define REQUEST_STATUS_REG	0x48	/* Request Status Register */
 #define NVME_STATUS_REG	0x50	/* NVMe Status Register */
-#define NVME_SEND_REG	0x2004c	/* NVMe Send Register */
 
 /* defaults */
 #define ACTION_WAIT_TIME	10	/* Default timeout in sec */
@@ -1149,12 +1148,6 @@ static int completion_status(struct cblk_dev *c, int timeout __attribute__((unus
 			"NVME_STATUS_REG=%08x\n",
 			__func__, status, errbits);
 
-		__cblk_read(c, NVME_SEND_REG, &errbits);
-
-		fprintf(stderr, "[%s] warn: ACTION_STATUS=%08x ERROR_MASK not 0 "
-			"NVME_SEND_REG=%08x\n",
-			__func__, status, errbits);
-
 		/* FIXME */
 		/* dev_set_status(c, CBLK_ERROR);
 		return -4; */
@@ -1233,12 +1226,6 @@ static int check_req_timeouts(struct cblk_dev *c, struct timeval *etime,
 
 				fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
 					"NVME_STATUS_REG=%08x\n",
-					__func__, i, errbits);
-
-				__cblk_read(c, NVME_SEND_REG, &errbits);
-
-				fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
-					"NVME_SEND_REG=%08x\n",
 					__func__, i, errbits);
 
 				if (req->use_wait_sem)
