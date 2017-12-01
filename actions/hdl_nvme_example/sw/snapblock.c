@@ -59,6 +59,9 @@ static int cblk_nblocks = CBLK_NBLOCKS;
 static int cblk_caching = 1;
 static int cblk_prefetch_threshold = CBLK_PREFETCH_THRESHOLD;
 
+static char dbg_devpath_m[128];
+static struct snap_card *dbg_card_m;
+
 static inline void _backtrace(const char *file, int line)
 {
 	void *callstack[128];
@@ -339,6 +342,7 @@ static const char *action_name[] = {
 
 #define REQUEST_STATUS_REG	0x48	/* Request Status Register */
 #define NVME_STATUS_REG	0x50	/* NVMe Status Register */
+#define NVME_ACTION_STATUS_REG	0x20000	/* NVMe Action Status Register */
 
 /* defaults */
 #define ACTION_WAIT_TIME	10	/* Default timeout in sec */
@@ -784,6 +788,23 @@ static int __cblk_read(struct cblk_dev *c, uint32_t addr, uint32_t *data)
 	return rc;
 }
 
+
+/* Action or Kernel Write and Read are 32 bit MMIO */
+static int __dbg_read(struct snap_card *card, uint32_t addr, uint32_t *data)
+{
+	int rc;
+
+#ifdef CONFIG_MMIO32_NOHWSYNC
+	rc = snap_mmio_read32_nohwsync(card, (uint64_t)addr, data);
+#else
+	rc = snap_mmio_read32(card, (uint64_t)addr, data);
+#endif
+	if (0 != rc)
+	  fprintf(stderr, "[%s] err: Read MMIO 32 Err %d\n", __func__, rc);
+
+	return rc;
+}
+
 static void req_setup(struct cblk_req *req,
 		uint32_t action_code,
 		uint64_t dst,
@@ -1114,7 +1135,7 @@ static int completion_status(struct cblk_dev *c, int timeout __attribute__((unus
 {
 	int rc = ETIME;
 	uint32_t status = 0x0;
-	uint32_t errbits = 0x0;
+	uint32_t dbgbits = 0x0;
 	int slot = -1;
 	struct cblk_req *req;
 	time_t usecs;
@@ -1136,17 +1157,17 @@ static int completion_status(struct cblk_dev *c, int timeout __attribute__((unus
 	}
 
 	if (((status & ACTION_STATUS_ERROR_MASK) != 0x0) && (count++ < 2)) {
-		__cblk_read(c, REQUEST_STATUS_REG, &errbits);
+		__cblk_read(c, REQUEST_STATUS_REG, &dbgbits);
 
 		fprintf(stderr, "[%s] warn: ACTION_STATUS=%08x ERROR_MASK not 0 "
 			"REQUEST_STATUS_REG=%08x\n",
-			__func__, status, errbits);
+			__func__, status, dbgbits);
 
-		__cblk_read(c, NVME_STATUS_REG, &errbits);
+		__cblk_read(c, NVME_STATUS_REG, &dbgbits);
 
 		fprintf(stderr, "[%s] warn: ACTION_STATUS=%08x ERROR_MASK not 0 "
 			"NVME_STATUS_REG=%08x\n",
-			__func__, status, errbits);
+			__func__, status, dbgbits);
 
 		/* FIXME */
 		/* dev_set_status(c, CBLK_ERROR);
@@ -1169,6 +1190,11 @@ static int completion_status(struct cblk_dev *c, int timeout __attribute__((unus
 		block_trace("    [%s] HW READ_COMPLETED %08x slot: %d LBA=%ld\n",
 			__func__, status, slot, req->lba);
 	}
+
+	__dbg_read(dbg_card_m, NVME_ACTION_STATUS_REG, &dbgbits);
+
+	block_trace("    [%s] NVME_ACTION_STATUS_REG=%08x\n",
+		__func__, dbgbits);
 
 	/* statistics: figure out hardware completion time ... */
 	gettimeofday(&req->h_etime, NULL);
@@ -1205,6 +1231,7 @@ static int check_req_timeouts(struct cblk_dev *c, struct timeval *etime,
 
 			if (req->tries >= cblk_maxretries) {
 				uint32_t errbits;
+				uint32_t dbgbits;
 
 				errno = ETIME;
 				cblk_set_status(req, CBLK_ERROR);
@@ -1216,17 +1243,23 @@ static int check_req_timeouts(struct cblk_dev *c, struct timeval *etime,
 					"ACTION_STATUS_BITS=%08x\n",
 					__func__, i, errbits);
 
-				__cblk_read(c, REQUEST_STATUS_REG, &errbits);
+				__cblk_read(c, REQUEST_STATUS_REG, &dbgbits);
 
 				fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
 					"REQUEST_STATUS_REG=%08x\n",
-					__func__, i, errbits);
+					__func__, i, dbgbits);
 
-				__cblk_read(c, NVME_STATUS_REG, &errbits);
+				__cblk_read(c, NVME_STATUS_REG, &dbgbits);
 
 				fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
 					"NVME_STATUS_REG=%08x\n",
-					__func__, i, errbits);
+					__func__, i, dbgbits);
+
+				__dbg_read(dbg_card_m, NVME_ACTION_STATUS_REG, &dbgbits);
+
+				fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
+					"NVME_ACTION_STATUS_REG=%08x\n",
+					__func__, i, dbgbits);
 
 				if (req->use_wait_sem)
 					sem_post(&req->wait_sem);
@@ -1468,6 +1501,7 @@ chunk_id_t cblk_open(const char *path,
 	unsigned long have_nvme = 0;
 	snap_action_flag_t attach_flags = 0;
 	struct cblk_dev *c = &chunk;
+	uint32_t dbgbits = 0x0;
 
 	block_trace("[%s] opening (%s)\n", __func__, path);
 
@@ -1492,12 +1526,31 @@ chunk_id_t cblk_open(const char *path,
 	}
 
 	/* path must match the following scheme: "/dev/cxl/afu%d.0m" */
+	snprintf(dbg_devpath_m, sizeof(dbg_devpath_m)-1, "/dev/cxl/afu%d.0m", 0);
+	dbg_card_m = snap_card_alloc_dev(dbg_devpath_m, SNAP_VENDOR_ID_IBM,
+				         SNAP_DEVICE_ID_SNAP);
+	if (NULL == dbg_card_m) {
+		fprintf(stderr, "err: Cannot open SNAP device %s\n", dbg_devpath_m);
+		goto out_err3;
+	}
+
+	__dbg_read(dbg_card_m, NVME_ACTION_STATUS_REG, &dbgbits);
+
+	block_trace("    [%s] directly after card alloc: NVME_ACTION_STATUS_REG=%08x\n",
+		__func__, dbgbits);
+
+	/* path must match the following scheme: "/dev/cxl/afu%d.0m" */
 	c->card = snap_card_alloc_dev(path, SNAP_VENDOR_ID_IBM,
 					 SNAP_DEVICE_ID_SNAP);
 	if (NULL == c->card) {
 		fprintf(stderr, "err: Cannot open SNAP device %s\n", path);
 		goto out_err0;
 	}
+
+	__dbg_read(dbg_card_m, NVME_ACTION_STATUS_REG, &dbgbits);
+
+	block_trace("    [%s] directly before snap_card_ioctl: NVME_ACTION_STATUS_REG=%08x\n",
+		__func__, dbgbits);
 
 	/* Check if i do have NVME on this card */
 	snap_card_ioctl(c->card, GET_NVME_ENABLED, (unsigned long)&have_nvme);
@@ -1506,6 +1559,11 @@ chunk_id_t cblk_open(const char *path,
 			path);
 		goto out_err1;
 	}
+
+	__dbg_read(dbg_card_m, NVME_ACTION_STATUS_REG, &dbgbits);
+
+	block_trace("    [%s] directly after snap_card_ioctl: NVME_ACTION_STATUS_REG=%08x\n",
+		__func__, dbgbits);
 
 	c->act = snap_attach_action(c->card, ACTION_TYPE_NVME_EXAMPLE,
 					attach_flags, timeout);
@@ -1637,6 +1695,7 @@ int cblk_close(chunk_id_t id __attribute__((unused)),
 {
 	int rc;
 	unsigned int i;
+	uint32_t dbgbits = 0x0;
 	struct cblk_dev *c = &chunk;
 	struct timeval etime;
 
@@ -1677,6 +1736,13 @@ int cblk_close(chunk_id_t id __attribute__((unused)),
 	snap_detach_action(c->act);
 	snap_card_free(c->card);
 	__free(c->buf);
+
+	__dbg_read(dbg_card_m, NVME_ACTION_STATUS_REG, &dbgbits);
+
+	block_trace("[%s] NVME_ACTION_STATUS_REG=%08x\n",
+		__func__, dbgbits);
+	snap_card_free(dbg_card_m);
+	dbg_card_m = NULL;
 
 	c->act = NULL;
 	c->card = NULL;
