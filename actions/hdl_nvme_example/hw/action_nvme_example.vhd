@@ -295,6 +295,7 @@ ARCHITECTURE action_nvme_example OF action_nvme_example IS
   SIGNAL nvme_lba_count         : STD_LOGIC_VECTOR (31 DOWNTO 0) := X"0000_0007";
   SIGNAL nvme_busy              : STD_LOGIC;
   SIGNAL nvme_complete          : STD_LOGIC_VECTOR(7 DOWNTO 0);
+  SIGNAL nvme_0x4c              : STD_LOGIC_VECTOR(31 DOWNTO 0);
   SIGNAL nvme_rd_complete       : STD_LOGIC_VECTOR(1 DOWNTO 0);
   SIGNAL mmio_rd_enqueue        : BOOLEAN;
   SIGNAL mmio_wr_enqueue        : BOOLEAN;
@@ -370,6 +371,7 @@ BEGIN
     nvme_lba_count_i  => nvme_lba_count,
     nvme_busy_o       => nvme_busy,
     nvme_complete_o   => nvme_complete,
+    nvme_0x4c_o       => nvme_0x4c,
     slots_done_o      => slots_done,
     slots_done_act_o  => slots_done_act,
 
@@ -490,6 +492,7 @@ BEGIN
     reg_0x4c_rd_strobe_o     => reg_0x4c_rd_strobe,
     reg_0x50_i(31 DOWNTO 16) => slots_done_act,
     reg_0x50_i(15 DOWNTO  0) => slots_done,
+    reg_0x54_i               => nvme_0x4c,
     int_enable_o             => int_enable,
     app_start_o              => app_start,
     app_done_i               => app_done,

@@ -46,6 +46,7 @@ ENTITY action_axi_slave IS
     reg_0x4c_i            : IN  STD_LOGIC_VECTOR( 4 DOWNTO 0);
     reg_0x4c_rd_strobe_o  : OUT STD_LOGIC;
     reg_0x50_i            : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+    reg_0x54_i            : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
     int_enable_o          : OUT STD_LOGIC;
     app_start_o           : OUT STD_LOGIC;
     app_done_i            : IN  STD_LOGIC;
@@ -508,6 +509,8 @@ BEGIN
           reg_data_out <= reg_0x4c_req_error_i & "000" & reg_0x4c_app_error_i & reg_0x4c_nvme_error_i & slv_reg19(7 DOWNTO 5) & reg_0x4c_i;     -- 0x4c
         WHEN b"10100" =>
           reg_data_out <= reg_0x50_i;    -- 0x50
+        WHEN b"10101" =>
+          reg_data_out <= reg_0x54_i;    -- 0x54
         WHEN OTHERS =>
           reg_data_out  <= (OTHERS => '0');
       END CASE;

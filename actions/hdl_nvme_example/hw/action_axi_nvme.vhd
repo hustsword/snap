@@ -50,6 +50,7 @@ ENTITY action_axi_nvme IS
     nvme_lba_count_i : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
     nvme_busy_o      : OUT STD_LOGIC;
     nvme_complete_o  : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+    nvme_0x4c_o      : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
     slots_done_o     : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
     slots_done_act_o : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
 
@@ -153,8 +154,9 @@ ARCHITECTURE action_axi_nvme OF action_axi_nvme IS
   SIGNAL cmd_complete      : STD_LOGIC_VECTOR(1 DOWNTO 0);
   SIGNAL wr_count          : STD_LOGIC_VECTOR(3 DOWNTO 0);
   SIGNAL index             : STD_LOGIC_VECTOR(6 DOWNTO 0);
-  SIGNAL slots_done        : std_logic_vector(15 DOWNTO 0);
-  SIGNAL slots_done_act    : std_logic_vector(15 DOWNTO 0);
+  SIGNAL slots_done        : STD_LOGIC_VECTOR(15 DOWNTO 0);
+  SIGNAL slots_done_act    : STD_LOGIC_VECTOR(15 DOWNTO 0);
+  SIGNAL sq_full           : STD_LOGIC_VECTOR(1 DOWNTO 0);
 
 
 BEGIN
@@ -262,10 +264,13 @@ BEGIN
       IF (M_AXI_ARESETN = '0' ) THEN
         axi_arvalid      <= '0';
         axi_rready       <= '0';
-        axi_araddr       <= x"0000_0000";
+        axi_araddr       <= (OTHERS => '0');
         polling_started  := '0';
+        nvme_0x4c_o      <= (OTHERS => '0');
+        nvme_complete_o  <= (OTHERS => '0');
         slots_done       <= (OTHERS => '0');
         slots_done_act   <= (OTHERS => '0');
+        sq_full          <= (OTHERS => '0');
       ELSE
         IF polling_started = '0' AND start_polling = '1' THEN
           continue_polling <= '1';
@@ -281,8 +286,15 @@ BEGIN
         index <= axi_araddr(6 DOWNTO 0) - x"4";
         IF M_AXI_RVALID = '1' AND axi_rready = '1' THEN
           continue_polling     <= '1';
-          IF axi_araddr(6 DOWNTO 0) = "0000000" THEN
+          IF axi_araddr(7 DOWNTO 0) = x"4c" THEN
+            nvme_0x4c_o <= M_AXI_RDATA;
+            axi_araddr(6 DOWNTO 0) <= (OTHERS => '0');
+          ELSIF axi_araddr(6 DOWNTO 0) = "0000000" THEN
             slots_done_act <= M_AXI_RDATA(31 DOWNTO 16);
+            IF M_AXI_RDATA(1 DOWNTO 0) /= "00" THEN
+              sq_full <= M_AXI_RDATA(1 DOWNTO 0);
+            END IF;
+            axi_araddr(7 DOWNTO 0) <= x"4c";
             FOR i IN 16 TO 31 LOOP
               IF  M_AXI_RDATA(i) = '1' THEN
                  slots_done(i-16) <= '1';
@@ -290,13 +302,16 @@ BEGIN
               END IF;
             END LOOP;  -- i
           ELSE
-            IF M_AXI_RRESP = "11" THEN
-              nvme_complete_o <= index (5 DOWNTO 2) & "1111";
+            nvme_complete_o(7 DOWNTO 4) <= index(5 DOWNTO 2);
+            IF M_AXI_RRESP /= "00" THEN
+              nvme_complete_o(3 DOWNTO 0) <= M_AXI_RRESP & sq_full;
+            ELSIF sq_full /= "00" THEN
+              nvme_complete_o(3 DOWNTO 0) <= "10" & sq_full;
             ELSE
-              nvme_complete_o        <= index(5 DOWNTO 2) & "00" & M_AXI_RDATA(1 DOWNTO 0);
+              nvme_complete_o(3 DOWNTO 0) <= "00" & M_AXI_RDATA(1 DOWNTO 0);
               slots_done(to_integer(unsigned (index(5 DOWNTO 2)))) <= '0';
             END IF;
-            axi_araddr(6 DOWNTO 0) <= "0000000";
+            axi_araddr(7 DOWNTO 0) <= x"4c";
           END IF;
         END IF;
       END IF;
