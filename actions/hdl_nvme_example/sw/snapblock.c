@@ -1172,6 +1172,7 @@ static int completion_status(struct cblk_dev *c, int timeout __attribute__((unus
 		/* FIXME */
 		/* dev_set_status(c, CBLK_ERROR);
 		return -4; */
+		exit(-1);
 	}
 
 	if ((status & ACTION_STATUS_COMPLETED) != ACTION_STATUS_COMPLETED) {
