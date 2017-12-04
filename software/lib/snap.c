@@ -271,7 +271,8 @@ static int hw_snap_mmio_read32(struct snap_card *card,
 		offset += card->action_base; /* FIXME use action_*32 instead */
 
 		rc = cxl_mmio_read32(card->afu_h, offset, data);
-		reg_trace("  %s(%p, %llx, %lx) %d\n", __func__, card,
+		if ((offset != 0xf04c) || *data) /* SBT: Debug code */
+		  reg_trace("  %s(%p, %llx, %lx) %d\n", __func__, card,
 			(long long)offset, (long)*data, rc);
 	} else {
 		reg_trace("  %s Error\n", __func__);
