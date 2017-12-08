@@ -17,6 +17,7 @@
 #-----------------------------------------------------------
 
 set factory_image [string toupper $::env(FACTORY_IMAGE)]
+set fpgacard     $::env(FPGACARD)
 
 set_property BITSTREAM.GENERAL.COMPRESS {TRUE} [ current_design ]
 set_property BITSTREAM.CONFIG.EXTMASTERCCLK_EN {DIV-4} [current_design]
@@ -28,3 +29,8 @@ set_property BITSTREAM.CONFIG.BPI_PAGE_SIZE 8 [current_design]
 if { $factory_image == "TRUE" } {
   set_property BITSTREAM.CONFIG.TIMER_CFG 0XFFFFFFFF [current_design]
 }
+
+if { $fpgacard == "S121B" } {
+	set_property BITSTREAM.CONFIG.NEXT_CONFIG_ADDR 0x1000000 [current_design]
+}
+
