@@ -343,6 +343,12 @@ static const char *action_name[] = {
 #define REQUEST_STATUS_REG	0x48	/* Request Status Register */
 #define NVME_STATUS_REG	0x50	/* NVMe Status Register */
 #define NVME_ACTION_STATUS_REG	0x20000	/* NVMe Action Status Register */
+#define NVME_ACTION_COMMAND_REG	0x20014	/* NVMe Action Command Register */
+#define NVME_ADMIN_CONTROL_REG	0x20080	/* NVMe Admin Control Register */
+#define NVME_ADMIN_STATUS_REG	0x20084	/* NVMe Admin Status Register */
+#define NVME_ADMIN_BUFFER_REG	0x20088	/* NVMe Admin Buffer Address Register */
+#define NVME_ADMIN_SQIDX_REG    0x20094 /* NVMe Admin Submission Queue Index Register */
+#define NVME_HOST_BUF_DAT_REG   0x20100 /* NVMe Host Buffer Data Register */
 
 /* defaults */
 #define ACTION_WAIT_TIME	10	/* Default timeout in sec */
@@ -790,6 +796,19 @@ static int __cblk_read(struct cblk_dev *c, uint32_t addr, uint32_t *data)
 
 
 /* Action or Kernel Write and Read are 32 bit MMIO */
+static int __dbg_write(struct snap_card *card, uint32_t addr, uint32_t data)
+{
+	int rc;
+
+	rc = snap_mmio_write32(card, (uint64_t)addr, data);
+	if (0 != rc)
+		fprintf(stderr, "err: Write MMIO 32 Err %d\n", rc);
+
+	return rc;
+}
+
+
+/* Action or Kernel Write and Read are 32 bit MMIO */
 static int __dbg_read(struct snap_card *card, uint32_t addr, uint32_t *data)
 {
 	int rc;
@@ -825,14 +844,22 @@ static void req_setup(struct cblk_req *req,
 static void req_start(struct cblk_req *req, struct cblk_dev *c)
 {
 	uint8_t action_code = req->action & 0x00ff;
-	int slot = req->slot;
 
 	req->tries++;
+	/*
 	block_trace("    [%s] HW %s memcpy_%x(slot=%u dest=0x%llx, "
 		"src=0x%llx n=%lld bytes) LBA=%ld attempts=%d\n",
 		__func__, action_name[action_code % ACTION_CONFIG_MAX],
-		req->action, slot, (long long)req->dst, (long long)req->src,
+		req->action, req->slot, (long long)req->dst, (long long)req->src,
 		(long long)req->size, req->lba, req->tries);
+	*/
+
+	if (action_code == 0x3) {
+	  block_trace(" SBT_DEBUG: [%s] wr (%s slot=%x) dst=0x%llx, src=0x%llx\n",__func__, action_name[action_code % ACTION_CONFIG_MAX], req->slot, (long long)req->dst, (long long)req->src);
+	} else if (action_code == 0x4) {
+	  block_trace(" SBT_DEBUG: [%s] rd (%s slot=%x) src=0x%llx, dst=0x%llx\n",__func__, action_name[action_code % ACTION_CONFIG_MAX], req->slot, (long long)req->src, (long long)req->dst);
+	} else
+	  block_trace(" SBT_DEBUG: [%s] ERROR: action_code = 0x%02x\n",__func__, action_code);
 
 	pthread_mutex_lock(&c->dev_lock);
 	gettimeofday(&req->stime, NULL);
@@ -844,7 +871,7 @@ static void req_start(struct cblk_req *req, struct cblk_dev *c)
 	__cblk_write(c, ACTION_SRC_LOW,   (uint32_t)(req->src & 0xffffffff));
 	__cblk_write(c, ACTION_SRC_HIGH,  (uint32_t)(req->src >> 32));
 	__cblk_write(c, ACTION_CNT,       req->size);
-
+	  
 	/* Wait for Action to go back to Idle */
 	snap_action_start(c->act);
 
@@ -1128,6 +1155,144 @@ static void put_req(struct cblk_dev *c, struct cblk_req *req)
 	pthread_mutex_unlock(&c->dev_lock);
 }
 
+static void dump_log(struct cblk_dev *c)
+{
+  int rc;
+  uint32_t read_data = 0x0;
+  uint32_t idx, buffer_addr;
+  uint32_t buffer[16] = {0x2,0,0,0,0,0,0x50000000,0,0,0,1,2,0,0,0,0};
+
+  /* enable auto increment addressing and clear error status */
+  rc = __dbg_write(dbg_card_m, NVME_ADMIN_CONTROL_REG, 0x7);
+  if (rc != 0) {
+    fprintf(stderr, "err: MMIO32 write 0x7 to ADMIN_CONTROL_REG %d\n", rc);
+    dev_set_status(c, CBLK_ERROR);
+    return;
+  }
+
+  /* get Admin status */
+  rc = __dbg_read(dbg_card_m, NVME_ADMIN_STATUS_REG, &read_data);
+  if (rc != 0) {
+    fprintf(stderr, "err: MMIO32 read ADMIN_STATUS_REG %d\n", rc);
+    dev_set_status(c, CBLK_ERROR);
+    return;
+  }
+  block_trace("    [%s] After clearing status: NVME_ADMIN_STATUS_REG=%08x\n", __func__, read_data);
+
+  /* get current admin submission queue index */
+  rc = __dbg_read(dbg_card_m, NVME_ADMIN_SQIDX_REG, &buffer_addr);
+  if (rc != 0) {
+    fprintf(stderr, "err: MMIO32 read ADMIN_SQIDX_REG %d\n", rc);
+    dev_set_status(c, CBLK_ERROR);
+    return;
+  }
+  buffer_addr *= 0x40;
+
+  /* set buffer address */
+  rc = __dbg_write(dbg_card_m, NVME_ADMIN_BUFFER_REG, buffer_addr);
+  if (rc != 0) {
+    fprintf(stderr, "err: MMIO32 write 0x%x to ADMIN_BUFFER_REG %d\n", buffer_addr, rc);
+    dev_set_status(c, CBLK_ERROR);
+    return;
+  }
+
+  /* write buffer */
+  for ( idx = 0; idx < 16; idx++ ) {
+    rc = __dbg_write(dbg_card_m, NVME_HOST_BUF_DAT_REG, buffer[idx]);
+    if (rc != 0) {
+      fprintf(stderr, "err: MMIO32 write 0x%x to HOST_BUFFER_DATA_REG %d\n", buffer[idx], rc);
+      dev_set_status(c, CBLK_ERROR);
+      return;
+    }
+  }
+
+  /* issue admin command to SSD0 Admin Queue */
+  rc = __dbg_write(dbg_card_m, NVME_ACTION_COMMAND_REG, 0x2);
+  if (rc != 0) {
+    fprintf(stderr, "err: MMIO32 write 0x2 to ACTION_COMMAND_REG %d\n", rc);
+    dev_set_status(c, CBLK_ERROR);
+    return;
+  }
+
+  /* get Admin status */
+  rc = __dbg_read(dbg_card_m, NVME_ADMIN_STATUS_REG, &read_data);
+  if (rc != 0) {
+    fprintf(stderr, "err: MMIO32 read ADMIN_STATUS_REG %d\n", rc);
+    dev_set_status(c, CBLK_ERROR);
+    return;
+  }
+  block_trace("    [%s] NVME_ADMIN_STATUS_REG=%08x\n", __func__, read_data);
+
+  /* set buffer address to Admin RX Data start*/
+  rc = __dbg_write(dbg_card_m, NVME_ADMIN_BUFFER_REG, 0x1bc0);
+  if (rc != 0) {
+    fprintf(stderr, "err: MMIO32 write 0x1bc0 to ADMIN_BUFFER_REG %d\n", rc);
+    dev_set_status(c, CBLK_ERROR);
+    return;
+  }
+
+  /* enable auto increment addressing and clear error status */
+  rc = __dbg_write(dbg_card_m, NVME_ADMIN_CONTROL_REG, 0x7);
+  if (rc != 0) {
+    fprintf(stderr, "err: MMIO32 write 0x7 to ADMIN_CONTROL_REG %d\n", rc);
+    dev_set_status(c, CBLK_ERROR);
+    return;
+  }
+
+  idx = 0;
+  block_trace("    [%s] Dumping Admin RX Data\n", __func__);
+  while (idx < 0x40) {
+    rc = __dbg_read(dbg_card_m, NVME_HOST_BUF_DAT_REG, &read_data);
+    if (rc != 0) {
+      fprintf(stderr, "err: MMIO32 reading word %d via HOST_BUFFER_DATA_REG %d\n", idx, rc);
+      dev_set_status(c, CBLK_ERROR);
+      return;
+    }
+    block_trace("    [%s] Buffer data word %03d : %08x\n", __func__, idx, read_data);
+    idx++;
+  }
+}
+
+static void dump_io_cq(struct cblk_dev *c)
+{
+  int rc;
+  uint32_t read_data = 0x0;
+  uint32_t cq_idx, idx;
+
+  /* enable auto increment addressing */
+  rc = __dbg_write(dbg_card_m, NVME_ADMIN_CONTROL_REG, 0x3);
+  if (rc != 0) {
+    fprintf(stderr, "err: MMIO32 write 0x3 to ADMIN_CONTROL_REG %d\n", rc);
+    dev_set_status(c, CBLK_ERROR);
+    return;
+  }
+
+  /* set buffer address to IO CQ SSD0 Data start*/
+  rc = __dbg_write(dbg_card_m, NVME_ADMIN_BUFFER_REG, 0x40);
+  if (rc != 0) {
+    fprintf(stderr, "err: MMIO32 write 0x1bc0 to ADMIN_BUFFER_REG %d\n", rc);
+    dev_set_status(c, CBLK_ERROR);
+    return;
+  }
+
+  cq_idx = 0;
+  block_trace("    [%s] Dumping IO CQ Data\n", __func__);
+  while (cq_idx<218) {
+    idx = 0;
+    while (idx < 4) {
+      rc = __dbg_read(dbg_card_m, NVME_HOST_BUF_DAT_REG, &read_data);
+      if (rc != 0) {
+        fprintf(stderr, "err: MMIO32 reading word %d of entry %d via HOST_BUFFER_DATA_REG %d\n", idx, cq_idx, rc);
+        dev_set_status(c, CBLK_ERROR);
+        return;
+      }
+      block_trace("    [%s] %03d. Entry word %03d : %08x\n", __func__, cq_idx, idx, read_data);
+      idx++;
+    }
+    cq_idx++;
+  }
+}
+
 /**
  * Check action results and kick potential waiting threads.
  */
@@ -1135,11 +1300,13 @@ static int completion_status(struct cblk_dev *c, int timeout __attribute__((unus
 {
 	int rc = ETIME;
 	uint32_t status = 0x0;
+	uint32_t admin_status = 0x0;
 	uint32_t dbgbits = 0x0;
 	int slot = -1;
 	struct cblk_req *req;
 	time_t usecs;
 	static int count = 0;
+	static int admin_count = 0;
 
 #ifdef CONFIG_WAIT_FOR_IRQ
 	rc = snap_action_completed(c->act, NULL, timeout);
@@ -1149,6 +1316,22 @@ static int completion_status(struct cblk_dev *c, int timeout __attribute__((unus
 	}
 #endif
 
+#if 0
+	rc = __cblk_read(c, ACTION_STATUS, &status);
+	if (rc != 0) {
+		fprintf(stderr, "err: MMIO32 read ACTION_STATUS %d\n", rc);
+		dev_set_status(c, CBLK_ERROR);
+		return -2;
+	}
+#endif
+
+	rc = __dbg_read(dbg_card_m, NVME_ADMIN_STATUS_REG, &admin_status);
+	if (rc != 0) {
+		fprintf(stderr, "err: MMIO32 read ADMIN_STATUS_REG %d\n", rc);
+		dev_set_status(c, CBLK_ERROR);
+		return -2;
+	}
+
 	rc = __cblk_read(c, ACTION_STATUS, &status);
 	if (rc != 0) {
 		fprintf(stderr, "err: MMIO32 read ACTION_STATUS %d\n", rc);
@@ -1157,6 +1340,10 @@ static int completion_status(struct cblk_dev *c, int timeout __attribute__((unus
 	}
 
 	if (((status & ACTION_STATUS_ERROR_MASK) != 0x0) && (count++ < 2)) {
+		fprintf(stderr, "[%s] warn: ACTION_STATUS=%08x ERROR_MASK not 0 "
+			"ADMIN_STATUS_REG=%08x\n",
+			__func__, status, admin_status);
+
 		__cblk_read(c, REQUEST_STATUS_REG, &dbgbits);
 
 		fprintf(stderr, "[%s] warn: ACTION_STATUS=%08x ERROR_MASK not 0 "
@@ -1170,9 +1357,37 @@ static int completion_status(struct cblk_dev *c, int timeout __attribute__((unus
 			__func__, status, dbgbits);
 
 		/* FIXME */
+		dev_set_status(c, CBLK_ERROR);
+		return -4;
+	}
+
+	if (((admin_status & 0x2) != 0x0) && (admin_count == 0)) {
+		admin_count = 1;
+
+		fprintf(stderr, "[%s] warn: ADMIN_STATUS_REG=%08x\n",
+			__func__, admin_status);
+
+		fprintf(stderr, "[%s] warn: ACTION_STATUS=%08x\n",
+			__func__, status);
+
+		__cblk_read(c, REQUEST_STATUS_REG, &dbgbits);
+
+		fprintf(stderr, "[%s] warn: ADMIN_STATUS_REG=%08x "
+			"REQUEST_STATUS_REG=%08x\n",
+			__func__, admin_status, dbgbits);
+
+		__cblk_read(c, NVME_STATUS_REG, &dbgbits);
+
+		fprintf(stderr, "[%s] warn: ACTION_STATUS=%08x "
+			"NVME_STATUS_REG=%08x\n",
+			__func__, status, dbgbits);
+
+		dump_io_cq(c);
+		dump_log(c);
+
+		/* FIXME */
 		/* dev_set_status(c, CBLK_ERROR);
 		return -4; */
-		exit(-1);
 	}
 
 	if ((status & ACTION_STATUS_COMPLETED) != ACTION_STATUS_COMPLETED) {
@@ -1192,10 +1407,17 @@ static int completion_status(struct cblk_dev *c, int timeout __attribute__((unus
 			__func__, status, slot, req->lba);
 	}
 
-	__dbg_read(dbg_card_m, NVME_ACTION_STATUS_REG, &dbgbits);
-
-	block_trace("    [%s] NVME_ACTION_STATUS_REG=%08x\n",
+	__cblk_read(c, REQUEST_STATUS_REG, &dbgbits);
+	if (dbgbits != 0x0) {
+	  block_trace("    [%s] REQUEST_STATUS_REG=%08x\n",
 		__func__, dbgbits);
+	}
+
+	__dbg_read(dbg_card_m, NVME_ACTION_STATUS_REG, &dbgbits);
+	if (dbgbits != 0x0) {
+	  block_trace("    [%s] NVME_ACTION_STATUS_REG=%08x\n",
+		__func__, dbgbits);
+	}
 
 	/* statistics: figure out hardware completion time ... */
 	gettimeofday(&req->h_etime, NULL);
