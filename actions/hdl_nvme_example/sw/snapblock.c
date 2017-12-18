@@ -341,7 +341,8 @@ static const char *action_name[] = {
 #define  ACTION_STATUS_ERROR_MASK	0xffffffe0
 
 #define REQUEST_STATUS_REG	0x48	/* Request Status Register */
-#define NVME_STATUS_REG	0x50	/* NVMe Status Register */
+#define NVME_STATUS_REG	        0x50	/* NVMe Status Register */
+#define LBA_REQ_REG	        0x80	/* NVMe Status Register */
 #define NVME_ACTION_STATUS_REG	0x20000	/* NVMe Action Status Register */
 #define NVME_ACTION_COMMAND_REG	0x20014	/* NVMe Action Command Register */
 #define NVME_ADMIN_CONTROL_REG	0x20080	/* NVMe Admin Control Register */
@@ -1357,8 +1358,8 @@ static int completion_status(struct cblk_dev *c, int timeout __attribute__((unus
 			__func__, status, dbgbits);
 
 		/* FIXME */
-		dev_set_status(c, CBLK_ERROR);
-		return -4;
+		//dev_set_status(c, CBLK_ERROR);
+		//return -4;
 	}
 
 	if (((admin_status & 0x2) != 0x0) && (admin_count == 0)) {
@@ -1433,7 +1434,7 @@ static int completion_status(struct cblk_dev *c, int timeout __attribute__((unus
 static int check_req_timeouts(struct cblk_dev *c, struct timeval *etime,
 			long int timeout_sec)
 {
-	unsigned int i;
+        unsigned int i, j;
 	long int diff_sec = 0;
 	int err = 0;
 
@@ -1461,28 +1462,31 @@ static int check_req_timeouts(struct cblk_dev *c, struct timeval *etime,
 				dev_set_status(c, CBLK_ERROR);
 
 				__cblk_read(c, ACTION_STATUS, &errbits);
-
 				fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
 					"ACTION_STATUS_BITS=%08x\n",
 					__func__, i, errbits);
 
 				__cblk_read(c, REQUEST_STATUS_REG, &dbgbits);
-
 				fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
 					"REQUEST_STATUS_REG=%08x\n",
 					__func__, i, dbgbits);
 
 				__cblk_read(c, NVME_STATUS_REG, &dbgbits);
-
 				fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
 					"NVME_STATUS_REG=%08x\n",
 					__func__, i, dbgbits);
 
 				__dbg_read(dbg_card_m, NVME_ACTION_STATUS_REG, &dbgbits);
-
 				fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
 					"NVME_ACTION_STATUS_REG=%08x\n",
 					__func__, i, dbgbits);
+
+				for(j=0; j<16; j++) {
+				  __cblk_read(c,LBA_REQ_REG+4*j,&dbgbits);
+				  fprintf(stderr, "[%s] err: Too many retries req[%2d]: "
+					"LBA_REQ_REG[%02d]=0x%08x LBA=%d\n",
+					  __func__, i, j, dbgbits, dbgbits/8);
+				}
 
 				if (req->use_wait_sem)
 					sem_post(&req->wait_sem);
