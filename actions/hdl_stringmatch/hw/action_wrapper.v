@@ -50,8 +50,7 @@ module action_wrapper #(
     parameter INPUT_PACKET_STAT_WIDTH        = 48,
     parameter INPUT_BATCH_WIDTH              = 512,
     parameter INPUT_BATCH_PER_PACKET         = 1,
-    parameter NUM_OF_PU                      = 8,
-    parameter CONFIG_CNT_WIDTH               = 3, // CONFIG_CNT_WIDTH = log2NUM_OF_PU;
+    //parameter CONFIG_CNT_WIDTH               = 3, // CONFIG_CNT_WIDTH = log2NUM_OF_PU;
     parameter OUTPUT_STAT_WIDTH              = 80,
     //parameter PATTERN_WIDTH                  = 448, 
     parameter PATTERN_ID_WIDTH               = 32,
@@ -61,9 +60,10 @@ module action_wrapper #(
     parameter MAX_TOKEN_LEN                  = 8,//16,
     parameter MAX_CHAR_NUM                   = 8,//32,
     parameter TOKEN_LEN_WIDTH                = 4, // TOKEN_LEN_WIDTH = log2MAX_TOKEN_LEN + 1
-    parameter NUM_STRING_MATCH_PIPELINE      = 8,
+    parameter NUM_OF_PU                      = 32,
+    parameter NUM_STRING_MATCH_PIPELINE      = 32,
     parameter NUM_PIPELINE_IN_A_GROUP        = 1,
-    parameter NUM_OF_PIPELINE_GROUP          = 8
+    parameter NUM_OF_PIPELINE_GROUP          = 32
 )
 (
     input  ap_clk                    ,
@@ -219,7 +219,7 @@ module action_wrapper #(
            .INPUT_BATCH_WIDTH             (INPUT_BATCH_WIDTH             ),
            .INPUT_BATCH_PER_PACKET        (INPUT_BATCH_PER_PACKET        ),
            .NUM_OF_PU                     (NUM_OF_PU                     ),
-           .CONFIG_CNT_WIDTH              (CONFIG_CNT_WIDTH              ), // CONFIG_CNT_WIDTH = log2NUM_OF_PU;
+           //.CONFIG_CNT_WIDTH              (CONFIG_CNT_WIDTH              ), // CONFIG_CNT_WIDTH = log2NUM_OF_PU;
            .OUTPUT_STAT_WIDTH             (OUTPUT_STAT_WIDTH             ),
            //.PATTERN_WIDTH                 (PATTERN_WIDTH                 ),
            .PATTERN_ID_WIDTH              (PATTERN_ID_WIDTH              ),
