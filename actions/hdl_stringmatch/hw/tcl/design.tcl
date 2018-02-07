@@ -24,3 +24,7 @@ foreach usr_ip [list \
   }
 }
 
+# Set the action_string_match.v file to systemverilog mode for $clog2()
+# support
+set_property file_type SystemVerilog [get_files action_string_match.v]
+
