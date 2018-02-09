@@ -59,11 +59,15 @@ module action_wrapper #(
     parameter MAX_STATE_NUM                  = 8,//16,
     parameter MAX_TOKEN_LEN                  = 8,//16,
     parameter MAX_CHAR_NUM                   = 8,//32,
-    parameter TOKEN_LEN_WIDTH                = 4, // TOKEN_LEN_WIDTH = log2MAX_TOKEN_LEN + 1
-    parameter NUM_OF_PU                      = 32,
-    parameter NUM_STRING_MATCH_PIPELINE      = 32,
+    parameter PATTERN_NUM_FL                 = 2,
+    parameter PATTERN_NUM_SL                 = 4,
+    parameter NUM_OF_PU                      = 8,
+    parameter NUM_BUFFER_SL                  = 2,
+    parameter NUM_BUFFER_TL                  = 4,
+    parameter NUM_BUFFER_4THL                = 16,
+    parameter NUM_STRING_MATCH_PIPELINE      = 128,
     parameter NUM_PIPELINE_IN_A_GROUP        = 1,
-    parameter NUM_OF_PIPELINE_GROUP          = 32
+    parameter NUM_OF_PIPELINE_GROUP          = 128
 )
 (
     input  ap_clk                    ,
@@ -218,6 +222,8 @@ module action_wrapper #(
            .INPUT_PACKET_STAT_WIDTH       (INPUT_PACKET_STAT_WIDTH       ),
            .INPUT_BATCH_WIDTH             (INPUT_BATCH_WIDTH             ),
            .INPUT_BATCH_PER_PACKET        (INPUT_BATCH_PER_PACKET        ),
+           .PATTERN_NUM_FL                (PATTERN_NUM_FL                ),
+           .PATTERN_NUM_SL                (PATTERN_NUM_SL                ),
            .NUM_OF_PU                     (NUM_OF_PU                     ),
            //.CONFIG_CNT_WIDTH              (CONFIG_CNT_WIDTH              ), // CONFIG_CNT_WIDTH = log2NUM_OF_PU;
            .OUTPUT_STAT_WIDTH             (OUTPUT_STAT_WIDTH             ),
@@ -228,7 +234,9 @@ module action_wrapper #(
            .MAX_STATE_NUM                 (MAX_STATE_NUM                 ),
            .MAX_TOKEN_LEN                 (MAX_TOKEN_LEN                 ),
            .MAX_CHAR_NUM                  (MAX_CHAR_NUM                  ),
-           .TOKEN_LEN_WIDTH               (TOKEN_LEN_WIDTH               ), // TOKEN_LEN_WIDTH = log2MAX_TOKEN_LEN + 1
+           .NUM_BUFFER_SL                 (NUM_BUFFER_SL                 ),
+           .NUM_BUFFER_TL                 (NUM_BUFFER_TL                 ),
+           .NUM_BUFFER_4THL               (NUM_BUFFER_4THL               ),
            .NUM_STRING_MATCH_PIPELINE     (NUM_STRING_MATCH_PIPELINE     ),
            .NUM_PIPELINE_IN_A_GROUP       (NUM_PIPELINE_IN_A_GROUP       ),
            .NUM_OF_PIPELINE_GROUP         (NUM_OF_PIPELINE_GROUP         )
