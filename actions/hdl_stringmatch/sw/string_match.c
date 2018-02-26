@@ -157,7 +157,7 @@ static void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
     // The TAG ID
     pkt_id = PACKET_ID;
 
-    VERBOSE1 ("PKT[%d] %s len %d\n", pkt_id, in_pkt, pkt_len);
+    VERBOSE2 ("PKT[%d] %s len %d\n", pkt_id, in_pkt, pkt_len);
 
     // The frame header
     for (int i = 0; i < 4; i++) {
@@ -237,8 +237,8 @@ static void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
                        &config_len,
                        0);
 
-    VERBOSE1 ("Config length (bits)  %d\n", config_len * 8);
-    VERBOSE1 ("Config length (bytes) %d\n", config_len);
+    VERBOSE2 ("Config length (bits)  %d\n", config_len * 8);
+    VERBOSE2 ("Config length (bytes) %d\n", config_len);
 
     for (int i = 0; i < 4; i++) {
         patt_base_addr[bytes_used] = 0x5A;
@@ -644,7 +644,7 @@ static void* sm_compile_file (const char* file_path, size_t* size)
     return patt_src_base;
 }
 
-static void* sm_scan_file (const char* file_path, size_t* size)
+static void* sm_scan_file (const char* file_path, size_t* size, size_t* size_for_sw)
 {
     FILE* fp;
     char* line = NULL;
@@ -652,8 +652,8 @@ static void* sm_scan_file (const char* file_path, size_t* size)
     ssize_t read;
 
     // The max size that should be alloc
-    // Assume we have at most 1024 lines in a packet file
-    int max_alloc_size = 1024 * (64 + 2048);
+    // Assume we have at most 102400 lines in a packet file
+    int max_alloc_size = 10240 * (64 + 2048);
 
     void* pkt_src_base = alloc_mem (64, max_alloc_size);
     void* pkt_src = pkt_src_base;
@@ -672,9 +672,10 @@ static void* sm_scan_file (const char* file_path, size_t* size)
         read--;
         VERBOSE3 ("PACKET line read with length %zu :\n", read);
         VERBOSE3 ("%s\n", line);
+        (*size_for_sw) += read;
         pkt_src = fill_one_packet (line, read, pkt_src);
         // regex ref model
-        regex_ref_push_packet(line, PACKET_ID);
+        regex_ref_push_packet(line);
         VERBOSE3 ("PACKET Source Address 0X%016lX\n", (uint64_t)pkt_src);
     }
 
@@ -765,6 +766,9 @@ int main (int argc, char* argv[])
     size_t num_matched_pkt = 0;
     size_t pkt_size = 0;
     size_t patt_size = 0;
+    size_t pkt_size_for_sw = 0;
+    uint64_t start_time;
+    uint64_t elapsed_time;
 
     while (1) {
         int option_index = 0;
@@ -860,7 +864,16 @@ int main (int argc, char* argv[])
     // Compile the regular expression
     patt_src_base = sm_compile_file ("./pattern.txt", &patt_size);
 
-    pkt_src_base = sm_scan_file ("./packet.txt", &pkt_size);
+    pkt_src_base = sm_scan_file ("./packet.txt", &pkt_size, &pkt_size_for_sw);
+
+    start_time = get_usec();
+
+    regex_ref_run_match();
+
+    elapsed_time = get_usec() - start_time;
+
+    VERBOSE0 ("Software run finished with size %d.\n", (int) pkt_size_for_sw);
+    print_time(elapsed_time, pkt_size_for_sw);
 
     VERBOSE0 ("Start to get action.\n");
 

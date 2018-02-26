@@ -63,11 +63,11 @@ module action_wrapper #(
     parameter PATTERN_NUM_SL                 = 4,
     parameter NUM_OF_PU                      = 8,
     parameter NUM_BUFFER_SL                  = 2,
-    parameter NUM_BUFFER_TL                  = 4,
-    parameter NUM_BUFFER_4THL                = 16,
-    parameter NUM_STRING_MATCH_PIPELINE      = 128,
+    parameter NUM_BUFFER_TL                  = 2,
+    parameter NUM_BUFFER_4THL                = 2,
+    parameter NUM_STRING_MATCH_PIPELINE      = 8,
     parameter NUM_PIPELINE_IN_A_GROUP        = 1,
-    parameter NUM_OF_PIPELINE_GROUP          = 128
+    parameter NUM_OF_PIPELINE_GROUP          = 8 
 )
 (
     input  ap_clk                    ,

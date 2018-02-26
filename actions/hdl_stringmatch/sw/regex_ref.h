@@ -18,7 +18,8 @@ typedef struct {
 extern "C" {
 #endif
 void    regex_ref_push_pattern (const char* in_patt);
-void    regex_ref_push_packet (const char* in_pkt, uint32_t in_pkt_id);
+void    regex_ref_push_packet (const char* in_pkt);
+void    regex_ref_run_match ();
 sm_stat regex_ref_get_result (uint32_t in_pkt_id);
 int     regex_ref_get_num_matched_pkt();
 #ifdef __cplusplus
