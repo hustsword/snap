@@ -29,21 +29,32 @@ public:
         patterns.push_back (in_patt);
     }
 
-    void push_packet (string & in_pkt, uint32_t in_pkt_id)
+    void run_match ()
     {
         if (patterns.size() == 0) {
             cout << "WARNING! No patterns in regex_ref" << endl;
         }
 
-        for (uint32_t i = 0; i < patterns.size(); i++) {
-            // PATTERN ID starts from 1
-            if (gen_result (in_pkt, in_pkt_id, patterns[i], i+1)) {
-                break;
+        if (packets.size() == 0) {
+            cout << "WARNING! No packets in regex_ref" << endl;
+        }
+
+        for (uint32_t i = 0; i < packets.size(); i++) {
+            for (uint32_t j = 0; j < patterns.size(); j++) {
+                // PATTERN ID and PACKET ID start from 1
+                if (gen_result (packets[i], i + 1, patterns[j], j + 1)) {
+                    break;
+                }
             }
         }
     }
 
-    sm_stat get_result(uint32_t in_pkt_id)
+    void push_packet (string & in_pkt)
+    {
+        packets.push_back (in_pkt);
+    }
+
+    sm_stat get_result (uint32_t in_pkt_id)
     {
         return stats[in_pkt_id];
     }
@@ -55,6 +66,7 @@ public:
 
 private:
     vector<string> patterns;
+    vector<string> packets;
 
     // <key = PKT ID, value = sm_stat>
     map<uint32_t, sm_stat> stats;
@@ -82,7 +94,7 @@ private:
         }
 
         if ((offset != 0) && (in_pkt != "")) {
-            if (stats.find(in_pkt_id) == stats.end()) {
+            if (stats.find (in_pkt_id) == stats.end()) {
                 stats[in_pkt_id].pattern_id = 0;
                 stats[in_pkt_id].packet_id = 0;
                 stats[in_pkt_id].offset = 0;
@@ -110,22 +122,27 @@ private:
 
 RegexRef regex_ref;
 
-void regex_ref_push_pattern(const char* in_patt)
+void regex_ref_push_pattern (const char* in_patt)
 {
-    string patt(in_patt);
+    string patt (in_patt);
     // Need to push in the patt id order
-    regex_ref.push_pattern(patt);
+    regex_ref.push_pattern (patt);
 }
 
-void regex_ref_push_packet(const char* in_pkt, uint32_t in_pkt_id)
+void regex_ref_push_packet (const char* in_pkt)
 {
-    string pkt(in_pkt);
-    regex_ref.push_packet(pkt, in_pkt_id);
+    string pkt (in_pkt);
+    regex_ref.push_packet (pkt);
 }
 
-sm_stat regex_ref_get_result(uint32_t in_pkt_id)
+void regex_ref_run_match()
 {
-    return regex_ref.get_result(in_pkt_id);
+    regex_ref.run_match ();
+}
+
+sm_stat regex_ref_get_result (uint32_t in_pkt_id)
+{
+    return regex_ref.get_result (in_pkt_id);
 }
 
 int regex_ref_get_num_matched_pkt()
