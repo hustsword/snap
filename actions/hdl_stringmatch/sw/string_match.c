@@ -92,22 +92,22 @@ static void remove_newline(char* str)
     }
 }
 
-//static void print_time (uint64_t elapsed, uint64_t size)
-//{
-//    int t;
-//    float fsize = (float)size / (1024 * 1024);
-//    float ft;
-//
-//    if (elapsed > 10000) {
-//        t = (int)elapsed / 1000;
-//        ft = (1000 / (float)t) * fsize;
-//        VERBOSE1 (" end after %d msec (%0.3f MB/sec)\n" , t, ft);
-//    } else {
-//        t = (int)elapsed;
-//        ft = (1000000 / (float)t) * fsize;
-//        VERBOSE1 (" end after %d usec (%0.3f MB/sec)\n", t, ft);
-//    }
-//}
+static void print_time (uint64_t elapsed, uint64_t size)
+{
+    int t;
+    float fsize = (float)size / (1024 * 1024);
+    float ft;
+
+    if (elapsed > 10000) {
+        t = (int)elapsed / 1000;
+        ft = (1000 / (float)t) * fsize;
+        VERBOSE0 (" end after %d msec (%0.3f MB/sec)\n" , t, ft);
+    } else {
+        t = (int)elapsed;
+        ft = (1000000 / (float)t) * fsize;
+        VERBOSE0 (" end after %d usec (%0.3f MB/sec)\n", t, ft);
+    }
+}
 
 static void* alloc_mem (int align, int size)
 {
@@ -366,6 +366,8 @@ static void action_sm (struct snap_card* h,
                        size_t stat_size)
 {
     uint32_t reg_data;
+    uint64_t start_time;
+    uint64_t elapsed_time;
 
     VERBOSE0 (" ------ String Match Start -------- \n");
     VERBOSE0 (" PATTERN SOURCE ADDR: %p -- SIZE: %d\n", patt_src_base, (int)patt_size);
@@ -437,6 +439,7 @@ static void action_sm (struct snap_card* h,
         VERBOSE3("Polling Status reg with 0X%X\n", reg_data);
     } while (1);
 
+    start_time = get_usec();
     // Start working control[2:1] = 11
     action_write (h, ACTION_CONTROL_L, 0x00000006);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
@@ -468,6 +471,10 @@ static void action_sm (struct snap_card* h,
 
         VERBOSE3("Polling Status reg with 0X%X\n", reg_data);
     } while (1);
+
+    elapsed_time = get_usec() - start_time;
+
+    print_time(elapsed_time, pkt_size);
 
     // Stop working
     action_write (h, ACTION_CONTROL_L, 0x00000000);
