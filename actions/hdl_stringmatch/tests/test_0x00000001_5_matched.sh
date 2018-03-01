@@ -1,4 +1,5 @@
 #!/bin/bash
+. ./env.sh
 echo $SNAP_ROOT
 echo $ACTION_ROOT
 $SNAP_ROOT/software/tools/snap_maint -vv
