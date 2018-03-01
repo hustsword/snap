@@ -709,6 +709,7 @@ static int compare_results(size_t num_matched_pkt, void* stat_dest_base)
         VERBOSE0("ERROR! Num matched packets mismatch\n");
         VERBOSE0("EXPECTED: %d\n", regex_ref_get_num_matched_pkt());
         VERBOSE0("ACTUAL: %d\n", (int)num_matched_pkt);
+        rc = 1;
     }
 
     VERBOSE1("---- Results (A: actual, E: expected) ----\n");
@@ -728,16 +729,19 @@ static int compare_results(size_t num_matched_pkt, void* stat_dest_base)
 
         sm_stat ref_stat = regex_ref_get_result(pkt_id);
 
-        VERBOSE1("%9d\t%8d\t%9d\t%9d\t%8d\t%9d", pkt_id, patt_id, offset,
-                ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
+        //VERBOSE1("%9d\t%8d\t%9d\t%9d\t%8d\t%9d", pkt_id, patt_id, offset,
+        //        ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
 
         if ((ref_stat.packet_id != pkt_id) ||
                 (ref_stat.pattern_id != patt_id) ||
                 (ref_stat.offset != offset)) {
+            VERBOSE1("%9d\t%8d\t%9d\t%9d\t%8d\t%9d", pkt_id, patt_id, offset,
+                    ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
+
             VERBOSE1(" MISMATCH!\n");
             rc = 1;
         } else {
-            VERBOSE1("\n");
+            //VERBOSE1("\n");
         }
 
         patt_id = 0;
@@ -885,9 +889,10 @@ int main (int argc, char* argv[])
 
     VERBOSE0 ("Finish get action.\n");
 
-    // Alloc state output buffer, at least 4KB
-    int stat_size = ((OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt()) > 4096
-        ? ((OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt()) : 4096;
+    // Alloc state output buffer, aligned to 4K
+    int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt(); 
+    int stat_size = (real_stat_size % 4096 == 0) ? real_stat_size : real_stat_size + (4096 - (real_stat_size % 4096));
+
     stat_dest_base = alloc_mem (64, stat_size);
     memset (stat_dest_base, 0, stat_size);
 
@@ -911,6 +916,8 @@ int main (int argc, char* argv[])
     rc = compare_results(num_matched_pkt, stat_dest_base);
     if (rc) {
         VERBOSE0 ("Miscompare detected between hardware and software ref model.\n");
+    } else {
+        VERBOSE0 ("\nTest PASSED!\n\n");
     }
 
     snap_detach_action (act);

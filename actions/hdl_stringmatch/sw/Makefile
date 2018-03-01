@@ -38,7 +38,8 @@ $(error Please make sure that $$SNAP_ROOT is set up correctly.)
 endif
 endif
 
-CPPFLAGS+= -g
+#CPPFLAGS+= -g
+CPPFLAGS+= -O3
 CXX=g++
 
 all: config all_build
