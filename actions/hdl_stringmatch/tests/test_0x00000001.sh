@@ -1,6 +1,6 @@
 #!/bin/bash
 . ./env.sh
-~/projects/nsa121b/capi-util-ecap-update/capi-reset.sh
+#~/projects/nsa121b/capi-util-ecap-update/capi-reset.sh
 echo $SNAP_ROOT
 echo $ACTION_ROOT
 $SNAP_ROOT/software/tools/snap_maint -vv
