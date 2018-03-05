@@ -357,6 +357,21 @@ static int action_wait_idle (struct snap_card* h, int timeout, uint64_t* elapsed
     return rc;
 }
 
+static void print_control_status(struct snap_card*h)
+{
+    uint32_t reg_data;
+    VERBOSE1 (" READ Control and Status Registers: \n");
+    reg_data = action_read(h, ACTION_STATUS_L);
+    VERBOSE1 ("       STATUS_L = 0x%x\n", reg_data );
+    reg_data = action_read(h, ACTION_STATUS_H);
+    VERBOSE1 ("       STATUS_H = 0x%x\n", reg_data );
+    reg_data = action_read(h, ACTION_CONTROL_L);
+    VERBOSE1 ("       CONTROL_L = 0x%x\n", reg_data );
+    reg_data = action_read(h, ACTION_CONTROL_H);
+    VERBOSE1 ("       CONTROL_H = 0x%x\n", reg_data );
+}
+    
+
 static void action_sm (struct snap_card* h,
                        void* patt_src_base,
                        void* pkt_src_base,
@@ -376,6 +391,7 @@ static void action_sm (struct snap_card* h,
     VERBOSE2 (" STAT    DEST   ADDR: %p -- SIZE(max): %d\n", stat_dest_base, (int)stat_size);
 
     VERBOSE2 (" Start register config! \n");
+    print_control_status(h);
 
     action_write (h, ACTION_PATT_INIT_ADDR_L,
                   (uint32_t) (((uint64_t) patt_src_base) & 0xffffffff));
@@ -422,6 +438,7 @@ static void action_sm (struct snap_card* h,
     action_write (h, ACTION_CONTROL_H, 0x00000000);
     VERBOSE2 (" Write ACTION_CONTROL for pattern copying! \n");
 
+    print_control_status(h);
     do {
         reg_data = action_read(h, ACTION_STATUS_L);
 
