@@ -653,7 +653,7 @@ static void* sm_scan_file (const char* file_path, size_t* size, size_t* size_for
 
     // The max size that should be alloc
     // Assume we have at most 102400 lines in a packet file
-    int max_alloc_size = 10240 * (64 + 2048);
+    int max_alloc_size = 102400 * (64 + 2048);
 
     void* pkt_src_base = alloc_mem (64, max_alloc_size);
     void* pkt_src = pkt_src_base;
@@ -892,6 +892,11 @@ int main (int argc, char* argv[])
     // Alloc state output buffer, aligned to 4K
     int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt(); 
     int stat_size = (real_stat_size % 4096 == 0) ? real_stat_size : real_stat_size + (4096 - (real_stat_size % 4096));
+
+    // At least 4K for output buffer.
+    if (stat_size == 0) {
+        stat_size = 4096;
+    }
 
     stat_dest_base = alloc_mem (64, stat_size);
     memset (stat_dest_base, 0, stat_size);
