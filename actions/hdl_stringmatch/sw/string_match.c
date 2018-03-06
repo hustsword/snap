@@ -39,6 +39,7 @@
 #define DEFAULT_MEMCPY_BLOCK    4096
 #define DEFAULT_MEMCPY_ITER 1
 #define ACTION_WAIT_TIME    10   /* Default in sec */
+#define MAX_NUM_PKT 102400
 
 #define MEGAB       (1024*1024ull)
 #define GIGAB       (1024 * MEGAB)
@@ -70,7 +71,7 @@
 
 static uint32_t PATTERN_ID = 0;
 static uint32_t PACKET_ID = 0;
-static const char* version = GIT_VERSION;
+static const char *version = GIT_VERSION;
 static  int verbose_level = 0;
 
 static uint64_t get_usec (void)
@@ -81,10 +82,11 @@ static uint64_t get_usec (void)
     return t.tv_sec * 1000000 + t.tv_usec;
 }
 
-static void remove_newline(char* str)
+static void remove_newline(char *str)
 {
     char *pos;
-    if ((pos=strchr(str, '\n')) != NULL) {
+
+    if ((pos = strchr(str, '\n')) != NULL) {
         *pos = '\0';
     } else {
         VERBOSE0("Input too long for remove_newline ... ");
@@ -109,14 +111,14 @@ static void print_time (uint64_t elapsed, uint64_t size)
     }
 }
 
-static void* alloc_mem (int align, int size)
+static void *alloc_mem (int align, int size)
 {
-    void* a;
+    void *a;
     int size2 = size + align;
 
     VERBOSE2 ("%s Enter Align: %d Size: %d\n", __func__, align, size);
 
-    if (posix_memalign ((void**)&a, 4096, size2) != 0) {
+    if (posix_memalign ((void **)&a, 4096, size2) != 0) {
         perror ("FAILED: posix_memalign()");
         return NULL;
     }
@@ -125,7 +127,7 @@ static void* alloc_mem (int align, int size)
     return a;
 }
 
-static void free_mem (void* a)
+static void free_mem (void *a)
 {
     VERBOSE2 ("Free Mem %p\n", a);
 
@@ -146,9 +148,9 @@ static void free_mem (void* a)
 //    }
 //}
 
-static void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
+static void *fill_one_packet (const char *in_pkt, int size, void *in_pkt_addr)
 {
-    unsigned char* pkt_base_addr = in_pkt_addr;
+    unsigned char *pkt_base_addr = in_pkt_addr;
     int pkt_id;
     uint32_t bytes_used = 0;
     uint16_t pkt_len = size;
@@ -208,9 +210,9 @@ static void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
 
 }
 
-static void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
+static void *fill_one_pattern (const char *in_patt, void *in_patt_addr)
 {
-    unsigned char* patt_base_addr = in_patt_addr;
+    unsigned char *patt_base_addr = in_patt_addr;
     int config_len = 0;
     unsigned char config_bytes[PATTERN_WIDTH_BYTES];
     int x;
@@ -290,7 +292,7 @@ static void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
 
 
 /* Action or Kernel Write and Read are 32 bit MMIO */
-static void action_write (struct snap_card* h, uint32_t addr, uint32_t data)
+static void action_write (struct snap_card *h, uint32_t addr, uint32_t data)
 {
     int rc;
 
@@ -303,15 +305,18 @@ static void action_write (struct snap_card* h, uint32_t addr, uint32_t data)
     return;
 }
 
-static uint32_t action_read(struct snap_card* h, uint32_t addr)
+static uint32_t action_read(struct snap_card *h, uint32_t addr)
 {
-	int rc;
-	uint32_t data;
+    int rc;
+    uint32_t data;
 
-	rc = snap_mmio_read32(h, (uint64_t)addr, &data);
-	if (0 != rc)
-		VERBOSE0("Read MMIO 32 Err\n");
-	return data;
+    rc = snap_mmio_read32(h, (uint64_t)addr, &data);
+
+    if (0 != rc) {
+        VERBOSE0("Read MMIO 32 Err\n");
+    }
+
+    return data;
 }
 
 /*  Calculate msec to FPGA ticks.
@@ -332,18 +337,18 @@ static uint32_t action_read(struct snap_card* h, uint32_t addr)
 /*
  *  Start Action and wait for Idle.
  */
-static int action_wait_idle (struct snap_card* h, int timeout, uint64_t* elapsed)
+static int action_wait_idle (struct snap_card *h, int timeout, uint64_t *elapsed)
 {
     int rc = ETIME;
     uint64_t t_start;   /* time in usec */
     uint64_t td = 0;    /* Diff time in usec */
 
     /* FIXME Use struct snap_action and not struct snap_card */
-    snap_action_start ((void*)h);
+    snap_action_start ((void *)h);
 
     /* Wait for Action to go back to Idle */
     t_start = get_usec();
-    rc = snap_action_completed ((void*)h, NULL, timeout);
+    rc = snap_action_completed ((void *)h, NULL, timeout);
     td = get_usec() - t_start;
 
     if (rc) {
@@ -356,73 +361,103 @@ static int action_wait_idle (struct snap_card* h, int timeout, uint64_t* elapsed
     return rc;
 }
 
-static void action_sm (struct snap_card* h,
-                       void* patt_src_base,
-                       void* pkt_src_base,
-                       void* stat_dest_base,
-                       size_t* num_matched_pkt,
+static void print_control_status(struct snap_card *h)
+{
+    if (verbose_level > 2) {
+        uint32_t reg_data;
+        VERBOSE3 (" READ Control and Status Registers: \n");
+        reg_data = action_read(h, ACTION_STATUS_L);
+        VERBOSE3 ("       STATUS_L = 0x%x\n", reg_data );
+        reg_data = action_read(h, ACTION_STATUS_H);
+        VERBOSE3 ("       STATUS_H = 0x%x\n", reg_data );
+        reg_data = action_read(h, ACTION_CONTROL_L);
+        VERBOSE3 ("       CONTROL_L = 0x%x\n", reg_data );
+        reg_data = action_read(h, ACTION_CONTROL_H);
+        VERBOSE3 ("       CONTROL_H = 0x%x\n", reg_data );
+    }
+}
+
+static void soft_reset(struct snap_card *h)
+{
+    // Status[4] to reset
+    action_write (h, ACTION_CONTROL_L, 0x00000010);
+    action_write (h, ACTION_CONTROL_H, 0x00000000);
+    VERBOSE2 (" Write ACTION_CONTROL for soft reset! \n");
+    action_write (h, ACTION_CONTROL_L, 0x00000000);
+    action_write (h, ACTION_CONTROL_H, 0x00000000);
+}
+
+static void action_sm (struct snap_card *h,
+                       void *patt_src_base,
+                       void *pkt_src_base,
+                       void *stat_dest_base,
+                       size_t *num_matched_pkt,
                        size_t patt_size,
                        size_t pkt_size,
                        size_t stat_size)
 {
     uint32_t reg_data;
-    uint64_t start_time;
-    uint64_t elapsed_time;
+    //uint64_t start_time;
+    //uint64_t elapsed_time;
 
-    VERBOSE0 (" ------ String Match Start -------- \n");
-    VERBOSE0 (" PATTERN SOURCE ADDR: %p -- SIZE: %d\n", patt_src_base, (int)patt_size);
-    VERBOSE0 (" PACKET  SOURCE ADDR: %p -- SIZE: %d\n", pkt_src_base, (int)pkt_size);
-    VERBOSE0 (" STAT    DEST   ADDR: %p -- SIZE(max): %d\n", stat_dest_base, (int)stat_size);
+    VERBOSE2 (" ------ String Match Start -------- \n");
+    VERBOSE2 (" PATTERN SOURCE ADDR: %p -- SIZE: %d\n", patt_src_base, (int)patt_size);
+    VERBOSE2 (" PACKET  SOURCE ADDR: %p -- SIZE: %d\n", pkt_src_base, (int)pkt_size);
+    VERBOSE2 (" STAT    DEST   ADDR: %p -- SIZE(max): %d\n", stat_dest_base, (int)stat_size);
 
-    VERBOSE0 (" Start register config! \n");
+    VERBOSE2 (" Start register config! \n");
+    print_control_status(h);
 
     action_write (h, ACTION_PATT_INIT_ADDR_L,
                   (uint32_t) (((uint64_t) patt_src_base) & 0xffffffff));
     action_write (h, ACTION_PATT_INIT_ADDR_H,
                   (uint32_t) ((((uint64_t) patt_src_base) >> 32) & 0xffffffff));
-    VERBOSE1 (" Write ACTION_PATT_INIT_ADDR done! \n");
+    VERBOSE2 (" Write ACTION_PATT_INIT_ADDR done! \n");
 
     action_write (h, ACTION_PKT_INIT_ADDR_L,
                   (uint32_t) (((uint64_t) pkt_src_base) & 0xffffffff));
     action_write (h, ACTION_PKT_INIT_ADDR_H,
                   (uint32_t) ((((uint64_t) pkt_src_base) >> 32) & 0xffffffff));
-    VERBOSE1 (" Write ACTION_PKT_INIT_ADDR done! \n");
+    VERBOSE2 (" Write ACTION_PKT_INIT_ADDR done! \n");
 
     action_write (h, ACTION_PATT_CARD_DDR_ADDR_L, 0);
     action_write (h, ACTION_PATT_CARD_DDR_ADDR_H, 0);
-    VERBOSE1 (" Write ACTION_PATT_CARD_DDR_ADDR done! \n");
+    VERBOSE2 (" Write ACTION_PATT_CARD_DDR_ADDR done! \n");
 
     action_write (h, ACTION_STAT_INIT_ADDR_L,
                   (uint32_t) (((uint64_t) stat_dest_base) & 0xffffffff));
     action_write (h, ACTION_STAT_INIT_ADDR_H,
                   (uint32_t) ((((uint64_t) stat_dest_base) >> 32) & 0xffffffff));
-    VERBOSE1 (" Write ACTION_STAT_INIT_ADDR done! \n");
+    VERBOSE2 (" Write ACTION_STAT_INIT_ADDR done! \n");
 
     action_write (h, ACTION_PATT_TOTAL_NUM_L,
                   (uint32_t) (((uint64_t) patt_size) & 0xffffffff));
     action_write (h, ACTION_PATT_TOTAL_NUM_H,
                   (uint32_t) ((((uint64_t) patt_size) >> 32) & 0xffffffff));
-    VERBOSE1 (" Write ACTION_PATT_TOTAL_NUM done! \n");
+    VERBOSE2 (" Write ACTION_PATT_TOTAL_NUM done! \n");
 
     action_write (h, ACTION_PKT_TOTAL_NUM_L,
                   (uint32_t) (((uint64_t) pkt_size) & 0xffffffff));
     action_write (h, ACTION_PKT_TOTAL_NUM_H,
                   (uint32_t) ((((uint64_t) pkt_size) >> 32) & 0xffffffff));
-    VERBOSE1 (" Write ACTION_PKT_TOTAL_NUM done! \n");
+    VERBOSE2 (" Write ACTION_PKT_TOTAL_NUM done! \n");
 
     action_write (h, ACTION_STAT_TOTAL_SIZE_L,
                   (uint32_t) (((uint64_t) stat_size) & 0xffffffff));
     action_write (h, ACTION_STAT_TOTAL_SIZE_H,
                   (uint32_t) ((((uint64_t) stat_size) >> 32) & 0xffffffff));
-    VERBOSE1 (" Write ACTION_STAT_TOTAL_SIZE done! \n");
+    VERBOSE2 (" Write ACTION_STAT_TOTAL_SIZE done! \n");
 
     // Start copying the pattern from host memory to card
     action_write (h, ACTION_CONTROL_L, 0x00000001);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
-    VERBOSE1 (" Write ACTION_CONTROL for pattern copying! \n");
+    VERBOSE2 (" Write ACTION_CONTROL for pattern copying! \n");
+
+    print_control_status(h);
 
     do {
         reg_data = action_read(h, ACTION_STATUS_L);
+        VERBOSE3("Pattern Phase: polling Status reg with 0X%X\n", reg_data);
 
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
@@ -435,18 +470,17 @@ static void action_sm (struct snap_card* h,
             VERBOSE1 ("Pattern copy done!\n");
             break;
         }
-
-        VERBOSE3("Polling Status reg with 0X%X\n", reg_data);
     } while (1);
 
-    start_time = get_usec();
+    //start_time = get_usec();
     // Start working control[2:1] = 11
     action_write (h, ACTION_CONTROL_L, 0x00000006);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
-    VERBOSE1 (" Write ACTION_CONTROL for working! \n");
+    VERBOSE2 (" Write ACTION_CONTROL for working! \n");
 
     do {
         reg_data = action_read(h, ACTION_STATUS_L);
+        VERBOSE3("Packet Phase: polling Status reg with 0X%X\n", reg_data);
 
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
@@ -463,28 +497,26 @@ static void action_sm (struct snap_card* h,
         if ((reg_data & 0x00000006) == 6) {
             VERBOSE1 ("Work done!\n");
 
-            reg_data = action_read(h, ACTION_STATUS_H);
-            VERBOSE1 ("%d bytes of valid stat data transfered!\n", reg_data);
+            //reg_data = action_read(h, ACTION_STATUS_H);
+            //VERBOSE1 ("%d bytes of valid stat data transfered!\n", reg_data);
 
             break;
         }
-
-        VERBOSE3("Polling Status reg with 0X%X\n", reg_data);
     } while (1);
 
-    elapsed_time = get_usec() - start_time;
+    //elapsed_time = get_usec() - start_time;
 
-    print_time(elapsed_time, pkt_size);
+    //print_time(elapsed_time, pkt_size);
 
     // Stop working
     action_write (h, ACTION_CONTROL_L, 0x00000000);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
-    VERBOSE1 (" Write ACTION_CONTROL for stop working! \n");
+    VERBOSE2 (" Write ACTION_CONTROL for stop working! \n");
 
-    // Flush rest data 
+    // Flush rest data
     action_write (h, ACTION_CONTROL_L, 0x00000008);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
-    VERBOSE1 (" Write ACTION_CONTROL for stat flushing! \n");
+    VERBOSE2 (" Write ACTION_CONTROL for stat flushing! \n");
 
     do {
         reg_data = action_read(h, ACTION_STATUS_L);
@@ -497,7 +529,7 @@ static void action_sm (struct snap_card* h,
 
         // Status[3]
         if ((reg_data & 0x00000008) == 8) {
-            VERBOSE1 ("Stat flush done!\n");
+            VERBOSE2 ("Stat flush done!\n");
             reg_data = action_read(h, ACTION_STATUS_H);
             VERBOSE1 ("Number of matched packets: %d\n", reg_data);
             *num_matched_pkt = reg_data;
@@ -507,30 +539,20 @@ static void action_sm (struct snap_card* h,
         VERBOSE3("Polling Status reg with 0X%X\n", reg_data);
     } while (1);
 
-    // Stop flushing 
+    // Stop flushing
     action_write (h, ACTION_CONTROL_L, 0x00000000);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
-    VERBOSE1 (" Write ACTION_CONTROL for stop working! \n");
-
-    // Wait for transaction to be done.
-    usleep(100000);
-
-    int count = 0;
-    do {
-        VERBOSE3 (" Draining %i! \n", count);
-        reg_data = action_read(h, ACTION_STATUS_L);
-        count++;
-    } while (count < 50);
+    VERBOSE2 (" Write ACTION_CONTROL for stop working! \n");
 
     return;
 }
 
-static int sm_scan (struct snap_card* dnc,
+static int sm_scan (struct snap_card *dnc,
                     int timeout,
-                    void* patt_src_base,
-                    void* pkt_src_base,
-                    void* stat_dest_base,
-                    size_t* num_matched_pkt,
+                    void *patt_src_base,
+                    void *pkt_src_base,
+                    void *stat_dest_base,
+                    size_t *num_matched_pkt,
                     size_t patt_size,
                     size_t pkt_size,
                     size_t stat_size)
@@ -541,10 +563,10 @@ static int sm_scan (struct snap_card* dnc,
     rc = 0;
 
     action_sm (dnc, patt_src_base, pkt_src_base, stat_dest_base, num_matched_pkt,
-            patt_size, pkt_size, stat_size);
-    VERBOSE1 ("Wait for idle\n");
+               patt_size, pkt_size, stat_size);
+    VERBOSE3 ("Wait for idle\n");
     rc = action_wait_idle (dnc, timeout, &td);
-    VERBOSE1 ("Card in idle\n");
+    VERBOSE3 ("Card in idle\n");
 
     if (0 != rc) {
         return rc;
@@ -553,10 +575,10 @@ static int sm_scan (struct snap_card* dnc,
     return rc;
 }
 
-static struct snap_action* get_action (struct snap_card* handle,
+static struct snap_action *get_action (struct snap_card *handle,
                                        snap_action_flag_t flags, int timeout)
 {
-    struct snap_action* act;
+    struct snap_action *act;
 
     act = snap_attach_action (handle, ACTION_TYPE_STRING_MATCH,
                               flags, timeout);
@@ -569,7 +591,7 @@ static struct snap_action* get_action (struct snap_card* handle,
     return act;
 }
 
-static void usage (const char* prog)
+static void usage (const char *prog)
 {
     VERBOSE0 ("SNAP String Match (Regular Expression Match) Tool.\n"
               "    Use Option -p and -q for pattern and packet\n"
@@ -588,10 +610,10 @@ static void usage (const char* prog)
               , prog);
 }
 
-static void* sm_compile_file (const char* file_path, size_t* size)
+static void *sm_compile_file (const char *file_path, size_t *size)
 {
-    FILE* fp;
-    char* line = NULL;
+    FILE *fp;
+    char *line = NULL;
     size_t len = 0;
     ssize_t read;
 
@@ -602,8 +624,8 @@ static void* sm_compile_file (const char* file_path, size_t* size)
                                  ((PATTERN_WIDTH_BYTES - 4) % 64) == 0 ? 0 :
                                  (64 - ((PATTERN_WIDTH_BYTES - 4) % 64)));
 
-    void* patt_src_base = alloc_mem (64, max_alloc_size);
-    void* patt_src = patt_src_base;
+    void *patt_src_base = alloc_mem (64, max_alloc_size);
+    void *patt_src = patt_src_base;
 
     VERBOSE1 ("PATTERN Source Address Start at 0X%016lX\n", (uint64_t)patt_src);
 
@@ -644,19 +666,19 @@ static void* sm_compile_file (const char* file_path, size_t* size)
     return patt_src_base;
 }
 
-static void* sm_scan_file (const char* file_path, size_t* size, size_t* size_for_sw)
+static void *sm_scan_file (const char *file_path, size_t *size, size_t *size_for_sw)
 {
-    FILE* fp;
-    char* line = NULL;
+    FILE *fp;
+    char *line = NULL;
     size_t len = 0;
     ssize_t read;
 
     // The max size that should be alloc
     // Assume we have at most 102400 lines in a packet file
-    int max_alloc_size = 102400 * (64 + 2048);
+    int max_alloc_size = MAX_NUM_PKT * (64 + 2048);
 
-    void* pkt_src_base = alloc_mem (64, max_alloc_size);
-    void* pkt_src = pkt_src_base;
+    void *pkt_src_base = alloc_mem (64, max_alloc_size);
+    void *pkt_src = pkt_src_base;
 
     VERBOSE1 ("PACKET Source Address Start at 0X%016lX\n", (uint64_t)pkt_src);
 
@@ -698,13 +720,14 @@ static void* sm_scan_file (const char* file_path, size_t* size, size_t* size_for
     return pkt_src_base;
 }
 
-static int compare_results(size_t num_matched_pkt, void* stat_dest_base)
+static int compare_results(size_t num_matched_pkt, void *stat_dest_base)
 {
     int i = 0, j = 0;
     uint16_t offset = 0;
     uint32_t pkt_id = 0;
     uint32_t patt_id = 0;
     int rc = 0;
+
     if ((int)num_matched_pkt != regex_ref_get_num_matched_pkt()) {
         VERBOSE0("ERROR! Num matched packets mismatch\n");
         VERBOSE0("EXPECTED: %d\n", regex_ref_get_num_matched_pkt());
@@ -714,17 +737,18 @@ static int compare_results(size_t num_matched_pkt, void* stat_dest_base)
 
     VERBOSE1("---- Results (A: actual, E: expected) ----\n");
     VERBOSE1("PKT(A)   \tPATT(A) \tOFFSET(A) \tPKT(E)   \tPATT(E) \tOFFSET(E)\n");
+
     for (i = 0; i < (int)num_matched_pkt; i++) {
         for (j = 0; j < 4; j++) {
-            patt_id |= (((uint8_t*)stat_dest_base)[i*10+j] << j*8);
+            patt_id |= (((uint8_t *)stat_dest_base)[i * 10 + j] << j * 8);
         }
 
         for (j = 4; j < 8; j++) {
-            pkt_id |= (((uint8_t*)stat_dest_base)[i*10+j] << (j%4)*8);
+            pkt_id |= (((uint8_t *)stat_dest_base)[i * 10 + j] << (j % 4) * 8);
         }
 
         for (j = 8; j < 10; j++) {
-            offset |= (((uint8_t*)stat_dest_base)[i*10+j] << (j%2)*8);
+            offset |= (((uint8_t *)stat_dest_base)[i * 10 + j] << (j % 2) * 8);
         }
 
         sm_stat ref_stat = regex_ref_get_result(pkt_id);
@@ -736,7 +760,7 @@ static int compare_results(size_t num_matched_pkt, void* stat_dest_base)
                 (ref_stat.pattern_id != patt_id) ||
                 (ref_stat.offset != offset)) {
             VERBOSE1("%9d\t%8d\t%9d\t%9d\t%8d\t%9d", pkt_id, patt_id, offset,
-                    ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
+                     ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
 
             VERBOSE1(" MISMATCH!\n");
             rc = 1;
@@ -752,21 +776,21 @@ static int compare_results(size_t num_matched_pkt, void* stat_dest_base)
     return rc;
 }
 
-int main (int argc, char* argv[])
+int main (int argc, char *argv[])
 {
     char device[64];
-    struct snap_card* dn;   /* lib snap handle */
+    struct snap_card *dn;   /* lib snap handle */
     int card_no = 0;
     int cmd;
     int rc = 1;
     uint64_t cir;
     int timeout = ACTION_WAIT_TIME;
     snap_action_flag_t attach_flags = 0;
-    struct snap_action* act = NULL;
+    struct snap_action *act = NULL;
     unsigned long ioctl_data;
-    void* patt_src_base = NULL;
-    void* pkt_src_base = NULL;
-    void* stat_dest_base = NULL;
+    void *patt_src_base = NULL;
+    void *pkt_src_base = NULL;
+    void *stat_dest_base = NULL;
     size_t num_matched_pkt = 0;
     size_t pkt_size = 0;
     size_t patt_size = 0;
@@ -809,11 +833,11 @@ int main (int argc, char* argv[])
             exit (EXIT_SUCCESS);;
 
         case 'C':   /* card */
-            card_no = strtol (optarg, (char**)NULL, 0);
+            card_no = strtol (optarg, (char **)NULL, 0);
             break;
 
         case 't':
-            timeout = strtol (optarg, (char**)NULL, 0); /* in sec */
+            timeout = strtol (optarg, (char **)NULL, 0); /* in sec */
             break;
 
         case 'I':      /* irq */
@@ -868,19 +892,17 @@ int main (int argc, char* argv[])
     // Compile the regular expression
     patt_src_base = sm_compile_file ("./pattern.txt", &patt_size);
 
+    // Compile the packets
     pkt_src_base = sm_scan_file ("./packet.txt", &pkt_size, &pkt_size_for_sw);
 
+    // The software run.
     start_time = get_usec();
-
     regex_ref_run_match();
-
     elapsed_time = get_usec() - start_time;
-
     VERBOSE0 ("Software run finished with size %d.\n", (int) pkt_size_for_sw);
     print_time(elapsed_time, pkt_size_for_sw);
 
     VERBOSE0 ("Start to get action.\n");
-
     act = get_action (dn, attach_flags, 5 * timeout);
 
     if (NULL == act) {
@@ -890,7 +912,7 @@ int main (int argc, char* argv[])
     VERBOSE0 ("Finish get action.\n");
 
     // Alloc state output buffer, aligned to 4K
-    int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt(); 
+    int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt();
     int stat_size = (real_stat_size % 4096 == 0) ? real_stat_size : real_stat_size + (4096 - (real_stat_size % 4096));
 
     // At least 4K for output buffer.
@@ -901,7 +923,11 @@ int main (int argc, char* argv[])
     stat_dest_base = alloc_mem (64, stat_size);
     memset (stat_dest_base, 0, stat_size);
 
+    // Reset the hardware
+    soft_reset(dn);
+
     VERBOSE0 ("Start sm_scan.\n");
+    start_time = get_usec();
     rc = sm_scan (dn, timeout,
                   patt_src_base,
                   pkt_src_base,
@@ -910,8 +936,20 @@ int main (int argc, char* argv[])
                   patt_size,
                   pkt_size,
                   stat_size);
+    elapsed_time = get_usec() - start_time;
+    // pkt_size_for_sw is the real size without hardware specific 64B header
+    print_time(elapsed_time, pkt_size_for_sw);
 
-    VERBOSE1 ("Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
+    VERBOSE0 ("Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
+
+    // Wait for transaction to be done.
+    int count = 0;
+
+    do {
+        VERBOSE3 (" Draining %i! \n", count);
+        action_read(dn, ACTION_STATUS_L);
+        count++;
+    } while (count < 50);
 
     // Sleep for 10us before read out the reasult
     if (verbose_level > 1) {
@@ -919,6 +957,7 @@ int main (int argc, char* argv[])
     }
 
     rc = compare_results(num_matched_pkt, stat_dest_base);
+
     if (rc) {
         VERBOSE0 ("Miscompare detected between hardware and software ref model.\n");
     } else {
@@ -939,3 +978,4 @@ __exit1:
     VERBOSE1 ("End of Test rc: %d\n", rc);
     return rc;
 }
+
