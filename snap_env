@@ -208,8 +208,16 @@ while [ -z "$SETUP_DONE" ]; do
     AR='${SNAP_ROOT}/actions/hdl_nvdla'
   elif [ -n "$HDL_STRINGMATCH" ]; then
     AR='${SNAP_ROOT}/actions/hdl_stringmatch'
+    RESP=`grep USER_DEFINED_DESIGN $snap_env_sh`
+    if [ -z "$RESP" ]; then
+       echo "export USER_DEFINED_DESIGN=TRUE" >> $snap_env_sh
+    fi
+    RESP=`grep STRING_MATCH_VERILOG $snap_env_sh`
+    if [ -z "$RESP" ]; then
+      echo "export STRING_MATCH_VERILOG=" >> $snap_env_sh
+    fi
     if [ -z "$STRING_MATCH_VERILOG" ]; then
-        SETUP_EMPTY="$SETUP_EMPTY\n STRING_MATCH_VERILOG"
+        SETUP_EMPTY="$SETUP_EMPTY\n  STRING_MATCH_VERILOG"
     fi
   elif [ -n "$HDL_HELLOWORLD" ]; then
     AR='${SNAP_ROOT}/actions/hdl_helloworld'
