@@ -7,4 +7,3 @@ $SNAP_ROOT/software/tools/snap_maint -vv
 cp $ACTION_ROOT/tests/packet.txt packet.txt
 cp $ACTION_ROOT/tests/pattern.txt pattern.txt
 $ACTION_ROOT/sw/string_match -v -t 10
-
