@@ -171,7 +171,7 @@ static void *fill_one_packet (const char *in_pkt, int size, void *in_pkt_addr)
     pkt_base_addr[bytes_used] = (pkt_len & 0xFF);
     bytes_used ++;
     pkt_base_addr[bytes_used] = 0;
-    pkt_base_addr[bytes_used] |= ((pkt_len >> 8) & 0x7);
+    pkt_base_addr[bytes_used] |= ((pkt_len >> 8) & 0xF);
     bytes_used ++;
 
     // Skip the reserved bytes
