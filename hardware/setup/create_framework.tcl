@@ -35,12 +35,12 @@ set log_dir     $::env(LOGS_DIR)
 set log_file    $log_dir/create_framework.log
 
 ### If the design is a HDL (RTL) design and has many other user defined tcl files,
-# Please set "USER_DEFINED_DESIGN=TRUE" and provide USER_DEFINED_TCLPATH
-# create_framework.tcl will source "design.tcl" and "post.tcl" under this PATH.
-set user_defined_design $::env(USER_DEFINED_DESIGN)
-if { $user_defined_design == "TRUE"} {
-  puts "                        INFO: User Defined Design"
-  set USER_DEFINED_TCLPATH $::env(USER_DEFINED_TCLPATH)
+# create_framework.tcl will source "design.tcl" and "post.tcl" under $ACTION_ROOT/hw/tcl PATH.
+if { [info exists ::env(USER_DEFINED_DESIGN)] == 1 } {
+  set user_defined_design [string toupper $::env(USER_DEFINED_DESIGN)]
+  set user_defined_design $::env(USER_DEFINED_DESIGN)
+} else {
+  set user_defined_design "FALSE"
 }
 
 if { [info exists ::env(HLS_SUPPORT)] == 1 } {
@@ -161,13 +161,15 @@ if { $use_prflow == "TRUE" } {
   }
 
   if { $user_defined_design == "TRUE" } {
-    # Too many user files may degrade the Vivado Performance. 
+    # Too many user files may degrade the Vivado Performance.
     # Using brute-force "add_files" to search the entire design directory and analyze the
-    # hierarchy costs a long time. 
+    # hierarchy costs a long time.
     # Sourcing "design.tcl" provides a explicit way to import design files.
-    source $USER_DEFINED_TCLPATH/design.tcl >> $log_file
+    puts "                            (By sourcing \$ACTION_ROOT/hw/tcl/design.tcl)"
+    source $action_dir/tcl/design.tcl >> $log_file
   } else {
     #original method
+    #puts "                            (By scanning $action_dir)"
     add_files -scan_for_includes $action_dir/ >> $log_file
   }
 }
@@ -393,10 +395,10 @@ if { $ila_debug == "TRUE" } {
   add_files -fileset constrs_1 -norecurse  $::env(ILA_SETUP_FILE)
 }
 
-# This is optional. 
-# If User provides *post* tcl file in USER_DEFINED_TCLPATH, 
+# This is optional.
+# If User provides *post* tcl file under hw/tcl directory
 if { $user_defined_design == "TRUE" } {
-  foreach tcl_file [glob -nocomplain -dir $USER_DEFINED_TCLPATH *post*.tcl] {
+  foreach tcl_file [glob -nocomplain -dir $action_dir/tcl *post*.tcl] {
     puts "                        sourcing user tcl: $tcl_file"
     source $tcl_file >> $log_file
   }
