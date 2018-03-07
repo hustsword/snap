@@ -899,8 +899,10 @@ int main (int argc, char *argv[])
     start_time = get_usec();
     regex_ref_run_match();
     elapsed_time = get_usec() - start_time;
+    VERBOSE0 ("======== SOFTWARE RUN ========\n");
     VERBOSE0 ("Software run finished with size %d.\n", (int) pkt_size_for_sw);
     print_time(elapsed_time, pkt_size_for_sw);
+    VERBOSE0 ("======== SOFTWARE DONE========\n");
 
     VERBOSE0 ("Start to get action.\n");
     act = get_action (dn, attach_flags, 5 * timeout);
@@ -926,7 +928,7 @@ int main (int argc, char *argv[])
     // Reset the hardware
     soft_reset(dn);
 
-    VERBOSE0 ("Start sm_scan.\n");
+    VERBOSE0 ("======== HARDWARE RUN ========\n");
     start_time = get_usec();
     rc = sm_scan (dn, timeout,
                   patt_src_base,
@@ -941,6 +943,7 @@ int main (int argc, char *argv[])
     print_time(elapsed_time, pkt_size_for_sw);
 
     VERBOSE0 ("Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
+    VERBOSE0 ("======== HARDWARE DONE========\n");
 
     // Wait for transaction to be done.
     int count = 0;
