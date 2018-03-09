@@ -103,7 +103,8 @@ if { $simulator != "nosim" } {
 
 
 # Synthesis
-set_property STEPS.SYNTH_DESIGN.ARGS.FANOUT_LIMIT              400     [get_runs synth_1]
+#set_property STEPS.SYNTH_DESIGN.ARGS.FANOUT_LIMIT              400     [get_runs synth_1]
+set_property STEPS.SYNTH_DESIGN.ARGS.FANOUT_LIMIT              12     [get_runs synth_1]
 set_property STEPS.SYNTH_DESIGN.ARGS.FSM_EXTRACTION            one_hot [get_runs synth_1]
 set_property STEPS.SYNTH_DESIGN.ARGS.RESOURCE_SHARING          off     [get_runs synth_1]
 set_property STEPS.SYNTH_DESIGN.ARGS.SHREG_MIN_SIZE            5       [get_runs synth_1]
@@ -114,7 +115,8 @@ set_property STEPS.SYNTH_DESIGN.ARGS.FLATTEN_HIERARCHY         none    [get_runs
 set_property STEPS.OPT_DESIGN.ARGS.DIRECTIVE Explore [get_runs impl_1]
 set_property STEPS.PLACE_DESIGN.ARGS.DIRECTIVE Explore [get_runs impl_1]
 set_property STEPS.PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
-set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE Explore [get_runs impl_1]
+#set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE Explore [get_runs impl_1]
+set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveFanoutOpt [get_runs impl_1]
 set_property STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE Explore [get_runs impl_1]
 set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
 set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE Explore [get_runs impl_1]
@@ -318,7 +320,8 @@ if { $use_prflow == "TRUE" } {
   # Create PR Configuration
   create_pr_configuration -name config_1 -partitions [list a0/action_w:user_action]
   # PR Synthesis
-  set_property STEPS.SYNTH_DESIGN.ARGS.FANOUT_LIMIT              400     [get_runs user_action_synth_1]
+  #set_property STEPS.SYNTH_DESIGN.ARGS.FANOUT_LIMIT              400     [get_runs user_action_synth_1]
+  set_property STEPS.SYNTH_DESIGN.ARGS.FANOUT_LIMIT              12     [get_runs user_action_synth_1]
   set_property STEPS.SYNTH_DESIGN.ARGS.FSM_EXTRACTION            one_hot [get_runs user_action_synth_1]
   set_property STEPS.SYNTH_DESIGN.ARGS.RESOURCE_SHARING          off     [get_runs user_action_synth_1]
   set_property STEPS.SYNTH_DESIGN.ARGS.SHREG_MIN_SIZE            5       [get_runs user_action_synth_1]
