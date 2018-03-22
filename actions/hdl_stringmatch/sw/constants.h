@@ -42,6 +42,8 @@
 #define ACTION_PATT_TOTAL_NUM_H        0x6C
 #define ACTION_STAT_TOTAL_SIZE_L       0x70
 #define ACTION_STAT_TOTAL_SIZE_H       0x74
+#define ACTION_DEBUG0_L                0x80
+#define ACTION_DEBUG0_H                0x84
 
 #define INPUT_PACKET_STAT_WIDTH         48
 #define INPUT_BATCH_WIDTH               1024
