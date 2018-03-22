@@ -39,7 +39,7 @@
 #define DEFAULT_MEMCPY_BLOCK    4096
 #define DEFAULT_MEMCPY_ITER 1
 #define ACTION_WAIT_TIME    10   /* Default in sec */
-#define MAX_NUM_PKT 102400
+#define MAX_NUM_PKT 502400
 
 #define MEGAB       (1024*1024ull)
 #define GIGAB       (1024 * MEGAB)
@@ -111,12 +111,12 @@ static void print_time (uint64_t elapsed, uint64_t size)
     }
 }
 
-static void *alloc_mem (int align, int size)
+static void *alloc_mem (int align, size_t size)
 {
     void *a;
-    int size2 = size + align;
+    size_t size2 = size + align;
 
-    VERBOSE2 ("%s Enter Align: %d Size: %d\n", __func__, align, size);
+    VERBOSE2 ("%s Enter Align: %d Size: %zu\n", __func__, align, size);
 
     if (posix_memalign ((void **)&a, 4096, size2) != 0) {
         perror ("FAILED: posix_memalign()");
@@ -476,11 +476,11 @@ static void action_sm (struct snap_card *h,
     // Start working control[2:1] = 11
     action_write (h, ACTION_CONTROL_L, 0x00000006);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
-    VERBOSE2 (" Write ACTION_CONTROL for working! \n");
+    VERBOSE1 (" Write ACTION_CONTROL for working! \n");
 
     do {
         reg_data = action_read(h, ACTION_STATUS_L);
-        VERBOSE3("Packet Phase: polling Status reg with 0X%X\n", reg_data);
+        VERBOSE1("Packet Phase: polling Status reg with 0X%X\n", reg_data);
 
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
@@ -502,11 +502,30 @@ static void action_sm (struct snap_card *h,
 
             break;
         }
+
+        //// TODO: for test
+        //if ((reg_data & 0x00000080) == 0x80) {
+        //    VERBOSE1 ("Run out!\n");
+
+        //    //reg_data = action_read(h, ACTION_STATUS_H);
+        //    //VERBOSE1 ("%d bytes of valid stat data transfered!\n", reg_data);
+
+        //    break;
+        //}
+
+        //reg_data = action_read(h, ACTION_DEBUG0_L);
+        //VERBOSE1("Packet Phase: debug0_l reg 0X%X\n", reg_data);
+        //reg_data = action_read(h, ACTION_DEBUG0_H);
+        //VERBOSE1("Packet Phase: debug0_h reg 0X%X\n", reg_data);
+
     } while (1);
 
     //elapsed_time = get_usec() - start_time;
 
     //print_time(elapsed_time, pkt_size);
+
+    //// TODO: for test
+    //usleep(1000000);
 
     // Stop working
     action_write (h, ACTION_CONTROL_L, 0x00000000);
@@ -619,7 +638,7 @@ static void *sm_compile_file (const char *file_path, size_t *size)
 
     // The max size that should be alloc
     // Assume we have at most 1024 lines in a pattern file
-    int max_alloc_size = 1024 * (64 +
+    size_t max_alloc_size = 1024 * (64 +
                                  (PATTERN_WIDTH_BYTES - 4) +
                                  ((PATTERN_WIDTH_BYTES - 4) % 64) == 0 ? 0 :
                                  (64 - ((PATTERN_WIDTH_BYTES - 4) % 64)));
@@ -651,7 +670,7 @@ static void *sm_compile_file (const char *file_path, size_t *size)
 
     VERBOSE1 ("---------- Pattern Buffer: %p\n", patt_src_base);
 
-    if (verbose_level > 1) {
+    if (verbose_level > 2) {
         __hexdump (stdout, patt_src_base, (patt_src - patt_src_base));
     }
 
@@ -674,8 +693,7 @@ static void *sm_scan_file (const char *file_path, size_t *size, size_t *size_for
     ssize_t read;
 
     // The max size that should be alloc
-    // Assume we have at most 102400 lines in a packet file
-    int max_alloc_size = MAX_NUM_PKT * (64 + 2048);
+    size_t max_alloc_size = MAX_NUM_PKT * (64 + 2048);
 
     void *pkt_src_base = alloc_mem (64, max_alloc_size);
     void *pkt_src = pkt_src_base;
@@ -705,7 +723,7 @@ static void *sm_scan_file (const char *file_path, size_t *size, size_t *size_for
 
     VERBOSE1 ("---------- Packet Buffer: %p\n", pkt_src_base);
 
-    if (verbose_level > 1) {
+    if (verbose_level > 2) {
         __hexdump (stdout, pkt_src_base, (pkt_src - pkt_src_base));
     }
 
@@ -797,6 +815,7 @@ int main (int argc, char *argv[])
     size_t pkt_size_for_sw = 0;
     uint64_t start_time;
     uint64_t elapsed_time;
+    uint32_t reg_data;
 
     while (1) {
         int option_index = 0;
@@ -889,17 +908,21 @@ int main (int argc, char *argv[])
     VERBOSE0 ("Start of Card Handle: %p Context: %d\n", dn,
               (int) (cir & 0x1ff));
 
+    VERBOSE0 ("======== COMPILE PATTERN FILE ========\n");
     // Compile the regular expression
     patt_src_base = sm_compile_file ("./pattern.txt", &patt_size);
+    VERBOSE0 ("======== COMPILE PATTERN FILE DONE ========\n");
 
+    VERBOSE0 ("======== COMPILE PACKET FILE ========\n");
     // Compile the packets
     pkt_src_base = sm_scan_file ("./packet.txt", &pkt_size, &pkt_size_for_sw);
+    VERBOSE0 ("======== COMPILE PACKET FILE DONE ========\n");
 
+    VERBOSE0 ("======== SOFTWARE RUN ========\n");
     // The software run.
     start_time = get_usec();
     regex_ref_run_match();
     elapsed_time = get_usec() - start_time;
-    VERBOSE0 ("======== SOFTWARE RUN ========\n");
     VERBOSE0 ("Software run finished with size %d.\n", (int) pkt_size_for_sw);
     print_time(elapsed_time, pkt_size_for_sw);
     VERBOSE0 ("======== SOFTWARE DONE========\n");
@@ -947,15 +970,17 @@ int main (int argc, char *argv[])
 
     // Wait for transaction to be done.
     int count = 0;
-
     do {
         VERBOSE3 (" Draining %i! \n", count);
         action_read(dn, ACTION_STATUS_L);
         count++;
-    } while (count < 50);
+    } while (count < 1000);
 
-    // Sleep for 10us before read out the reasult
-    if (verbose_level > 1) {
+    reg_data = action_read(dn, ACTION_STATUS_H);
+    VERBOSE0 ("After draining, number of matched packets: %d\n", reg_data);
+    num_matched_pkt = reg_data;
+
+    if (verbose_level > 2) {
         __hexdump (stdout, stat_dest_base, (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt());
     }
 

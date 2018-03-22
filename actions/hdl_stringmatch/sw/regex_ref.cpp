@@ -56,6 +56,12 @@ public:
 
     sm_stat get_result (uint32_t in_pkt_id)
     {
+        if (stats.find(in_pkt_id) == stats.end()) {
+            stats[in_pkt_id].packet_id = 0;
+            stats[in_pkt_id].pattern_id = 0;
+            stats[in_pkt_id].offset = 0;
+        }
+
         return stats[in_pkt_id];
     }
 

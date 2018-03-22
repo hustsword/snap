@@ -51,7 +51,7 @@ fregex.o: utils/fregex.cpp
 	$(CXX) -c $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) -DNODEBUG $< -o $@
 
 regex_config.o: utils/regex_config.cpp
-	$(CXX) -c $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) $< -o $@
+	$(CXX) -c $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) -DNODEBUG $< -o $@
 
 regex_ref.o: regex_ref.cpp
 	$(CXX) -c $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) $< -o $@
