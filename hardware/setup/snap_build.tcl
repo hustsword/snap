@@ -54,7 +54,9 @@ open_project ../viv_project/framework.xpr >> $log_file
 set step      synth_design
 set logfile   $log_dir/${step}.log
 set directive [get_property STEPS.SYNTH_DESIGN.ARGS.DIRECTIVE [get_runs synth_1]]
-set command   "synth_design -mode default -directive $directive"
+#set command   "synth_design -mode default -directive $directive"
+#set command   "synth_design -mode default -keep_equivalent_registers -directive $directive"
+set command   "synth_design -mode default -keep_equivalent_registers -directive $directive -fanout_limit 12"
 puts [format "%-*s %-*s %-*s %-*s"  $widthCol1 "" $widthCol2 "start synthesis" $widthCol3 "with directive: $directive" $widthCol4 "[clock format [clock seconds] -format {%T %a %b %d %Y}]"]
 
 if { [catch "$command > $logfile" errMsg] } {
@@ -138,16 +140,18 @@ if { [catch "$command > $logfile" errMsg] } {
   write_checkpoint   -force ./Checkpoints/${step}.dcp          >> $logfile
 }
 
-
 ##
 ## physical optimizing design
 set step      phys_opt_design
 set logfile   $log_dir/${step}.log
 if { $vivadoVer == "2017.4" } {
-  set directive Explore
+  set directive AggressiveExplore
+  #set directive Explore
+  #set directive AggressiveFanoutOpt
 } else {
   set directive [get_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE [get_runs impl_1]]
 }
+#set command   "phys_opt_design  -fanout_opt -bram_register_opt -directive $directive"
 set command   "phys_opt_design  -directive $directive"
 puts [format "%-*s %-*s %-*s %-*s"  $widthCol1 "" $widthCol2 "start phys_opt_design" $widthCol3 "with directive: $directive" $widthCol4 "[clock format [clock seconds] -format {%T %a %b %d %Y}]"]
 
