@@ -127,6 +127,9 @@ choice
         config HDL_EXAMPLE
             bool "HDL Example"
 
+        config HDL_EXAMPLE_VLOG
+            bool "HDL Example in Verilog"
+
         config HDL_NVME_EXAMPLE
             bool "HDL NVMe Example"
             depends on N250S

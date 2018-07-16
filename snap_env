@@ -186,6 +186,8 @@ while [ -z "$SETUP_DONE" ]; do
   unset AR
   if [ -n "$HDL_EXAMPLE" ]; then
     AR='${SNAP_ROOT}/actions/hdl_example'
+  elif [ -n "$HDL_EXAMPLE_VLOG" ]; then
+    AR='${SNAP_ROOT}/actions/hdl_example_vlog'
   elif [ -n "$HDL_NVDLA" ]; then
     AR='${SNAP_ROOT}/actions/hdl_nvdla'
     if [ -z "$NVDLA_ROOT" ]; then
