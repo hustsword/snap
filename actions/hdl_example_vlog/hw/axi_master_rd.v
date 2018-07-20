@@ -53,7 +53,7 @@ module axi_master_rd #(
                        //---- status report ----          
                        output    [005:0]              status        ,
                        output    [003:0]              error         
-                  );
+                       );
                   
 
 //---- declarations ----

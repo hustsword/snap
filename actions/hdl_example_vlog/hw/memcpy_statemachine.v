@@ -4,13 +4,13 @@ module memcpy_statemachine(
                            input                 clk          ,
                            input                 rst_n        , 
                            input                 memcpy_start ,
-                           input      [07:0]     memcpy_len   ,
+                           input      [63:0]     memcpy_len   ,
                            input      [63:0]     memcpy_addr  ,
                            output reg            burst_start  ,
-                           output reg [7:0]      burst_len    ,
+                           output reg [07:0]     burst_len    ,
                            output reg [63:0]     burst_addr   ,
                            output                burst_on     ,
-                           output                burst_done   ,
+                           input                 burst_done   ,
                            output reg            memcpy_done
                            );
 
@@ -48,7 +48,7 @@ module memcpy_statemachine(
                    else 
                      nstate = IDLE;
      INIT      :
-                   if (memcpy_len == 8'd0)
+                   if (memcpy_len == 64'd0)
                      nstate = IDLE;
                    else
                      nstate = N4KB;
@@ -59,7 +59,7 @@ module memcpy_statemachine(
      START     :
                      nstate = INPROC;
      INPROC    : 
-                   if (cnt == current_len - 8'd1)
+                   if (burst_done)
                      nstate = DONE;
                    else 
                      nstate = INPROC;
@@ -141,7 +141,7 @@ module memcpy_statemachine(
      begin
        burst_start <= 1'b0;
        burst_addr  <= 64'd0;
-       burst_num   <= 8'd0;
+       burst_len   <= 8'd0;
      end
    else
      case (cstate)
@@ -149,13 +149,16 @@ module memcpy_statemachine(
          begin
            burst_start <= 1'b1;
            burst_addr  <= current_addr;
-           burst_num   <= current_len;
+           burst_len   <= current_len;
          end
        default  :
          begin
            burst_start <= 1'b0;
          end
      endcase
+
+//---- burst in progress ----
+ assign burst_on = (cstate == INPROC);
 
 //---- whole memory read or write is completed ----
  always@(posedge clk or negedge rst_n) 

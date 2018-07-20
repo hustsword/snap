@@ -227,9 +227,9 @@ module snap_action_shim #(
  wire[000:0] result_flush_done;
  wire[000:0] result_space_depleted;
  wire[005:0] wstat,rstat;
+ wire[003:0] werr,rerr;
  wire[011:0] axi_snap_status = {wstat,rstat};
  wire[011:0] axi_ddr_status;
- wire[003:0] wstat,rstat;
  wire[007:0] axi_snap_error = {werr, rerr};
  wire[007:0] axi_ddr_error;
  wire[023:0] axi_master_status = {axi_ddr_status,axi_snap_status};
@@ -361,8 +361,8 @@ assign m_axi_ddr_bid_wire = m_axi_ddr_bid;
                                 .m_axi_bvalid  (m_axi_snap_bvalid  ),
                                 .lcl_ibusy     (lcl_snap_ibusy     ), 
                                 .lcl_istart    (lcl_snap_istart    ), 
-                                .lcl_iaddr     (lcl_snap_addr      ),//64b
-                                .lcl_inum      (lcl_snap_num       ),//8b
+                                .lcl_iaddr     (lcl_snap_iaddr     ),//64b
+                                .lcl_inum      (lcl_snap_inum      ),//8b
                                 .lcl_irdy      (lcl_snap_irdy      ), 
                                 .lcl_den       (lcl_snap_den       ), 
                                 .lcl_din       (lcl_snap_din       ),//512b
@@ -409,8 +409,8 @@ assign m_axi_ddr_bid_wire = m_axi_ddr_bid;
                                 .m_axi_rvalid  (m_axi_snap_rvalid  ),
                                 .lcl_obusy     (lcl_snap_obusy     ),
                                 .lcl_ostart    (lcl_snap_ostart    ), 
-                                .lcl_addr      (lcl_snap_addr      ),//64b
-                                .lcl_num       (lcl_snap_num       ),//8b
+                                .lcl_addr      (lcl_snap_oaddr     ),//64b
+                                .lcl_num       (lcl_snap_onum      ),//8b
                                 .lcl_ordy      (lcl_snap_ordy      ),
                                 .lcl_rden      (lcl_snap_rden      ),
                                 .lcl_dv        (lcl_snap_dv        ),
@@ -451,7 +451,7 @@ assign m_axi_ddr_bid_wire = m_axi_ddr_bid;
                                    .lcl_dv         (lcl_snap_dv           ),
                                    .lcl_dout       (lcl_snap_dout         ),
                                    .lcl_odone      (lcl_snap_odone        )
-                                  };
+                                  );
 
  
 endmodule

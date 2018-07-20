@@ -11,7 +11,7 @@ module memcpy_engine #(
                        //---- memory copy parameters----          
                        input      [ADDR_WIDTH - 1:0]   memcpy_src_addr,
                        input      [ADDR_WIDTH - 1:0]   memcpy_tgt_addr,
-                       input      [007:0]              memcpy_len     , // in terms of bytes
+                       input      [063:0]              memcpy_len     , // in terms of bytes
                        input                           memcpy_start   ,
                        output                          memcpy_done    ,
                                                                
@@ -23,7 +23,7 @@ module memcpy_engine #(
                        input                           lcl_irdy       ,
                        output reg                      lcl_den        ,
                        output reg [DATA_WIDTH - 1:0]   lcl_din        ,
-                       output                          lcl_idone      ,
+                       output reg                      lcl_idone      ,
 
                        //---- read channel ----
                        input                           lcl_obusy      ,
@@ -35,31 +35,30 @@ module memcpy_engine #(
                        input                           lcl_dv         ,
                        input      [DATA_WIDTH - 1:0]   lcl_dout       ,
                        input                           lcl_odone      
-                       };
+                       );
 
  
 //--------------------------------------------
  wire wr_on, rd_on;
  reg [7:0] wr_cnt;
- parameter RD_IDLE   = 7'h01, 
-           RD_INIT   = 7'h02,
-           RD_N4KB   = 7'h04,
-           RD_CLEN   = 7'h08,
-           RD_START  = 7'h10,
-           RD_INPROC = 7'h20,
-           RD_DONE   = 7'h40;
+ reg wr_end;
 //--------------------------------------------
 
 
 //---- data loopback ----
+// read data request when 
+// 1) write & read burst in progress
+// 2) read interface ready
+// 3) write interface ready
  always@(posedge clk or negedge rst_n) 
    if (~rst_n)
      lcl_rden <= 1'b0;
    else if (wr_on | rd_on)
      begin
-       if (lcl_odone)
+       if ((lcl_odone) |                                 // condition 1: current read burst done
+           ((wr_cnt == lcl_inum - 8'd1) & lcl_rden))     // condition 2: current write burst done
          lcl_rden <= 1'b0;
-       else if (wr_cnt != lcl_iaddr - 8'd1)
+       else 
          lcl_rden <= lcl_ordy & lcl_irdy;
      end
    else
@@ -77,7 +76,8 @@ module memcpy_engine #(
        lcl_din <= lcl_dout;
      end
 
- always@(posedge clk or negedge rst_n)   // control the read data number during write state
+//---- control the read data number during write state ----
+ always@(posedge clk or negedge rst_n)  
    if (~rst_n)
      wr_cnt <= 8'd0;
    else if (wr_on)
@@ -87,6 +87,19 @@ module memcpy_engine #(
      end
    else
      wr_cnt <= 8'd0;
+
+//---- current burst write done signal ----
+ always@(posedge clk or negedge rst_n)   
+   if (~rst_n)
+     begin
+       wr_end <= 1'b0;
+       lcl_idone <= 1'b0;
+     end
+   else 
+     begin
+       wr_end <= ((wr_cnt == lcl_inum - 8'd1) & lcl_rden);
+       lcl_idone <= wr_end;
+     end
 
 //---- memory read burst control ----
  memcpy_statemachine mrd_st(
@@ -99,7 +112,7 @@ module memcpy_engine #(
                             .burst_len    (lcl_onum      ),
                             .burst_addr   (lcl_oaddr     ),
                             .burst_on     (rd_on         ),
-                            .burst_done   (),
+                            .burst_done   (lcl_odone     ),
                             .memcpy_done  (memcpy_rd_done)
                            );
 
