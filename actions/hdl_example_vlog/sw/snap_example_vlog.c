@@ -211,6 +211,7 @@ static int action_wait_idle (struct snap_card* h, int timeout, uint64_t* elapsed
 
 static void action_sm (struct snap_card* h,
                        void* patt_src_base,
+                       void* patt_tgt_base,
                        void* pkt_src_base,
                        void* stat_dest_base,
                        size_t* num_matched_pkt,
@@ -223,6 +224,7 @@ static void action_sm (struct snap_card* h,
 
     VERBOSE0 (" ------ String Match Start -------- \n");
     VERBOSE0 (" PATTERN SOURCE ADDR: %p -- SIZE: %d\n", patt_src_base, (int)patt_size);
+    VERBOSE0 (" PATTERN SOURCE ADDR: %p -- SIZE: %d\n", patt_tgt_base, (int)patt_size);
     VERBOSE0 (" PACKET  SOURCE ADDR: %p -- SIZE: %d\n", pkt_src_base, (int)pkt_size);
     VERBOSE0 (" STAT    DEST   ADDR: %p -- SIZE(max): %d\n", stat_dest_base, (int)stat_size);
 
@@ -234,15 +236,17 @@ static void action_sm (struct snap_card* h,
                   (uint32_t) ((((uint64_t) patt_src_base) >> 32) & 0xffffffff));
     VERBOSE1 (" Write ACTION_PATT_INIT_ADDR done! \n");
 
+    action_write (h, ACTION_PATT_CARD_DDR_ADDR_L,
+                  (uint32_t) (((uint64_t) patt_tgt_base) & 0xffffffff));
+    action_write (h, ACTION_PATT_CARD_DDR_ADDR_H,
+                  (uint32_t) ((((uint64_t) patt_tgt_base) >> 32) & 0xffffffff));
+    VERBOSE1 (" Write ACTION_PATT_CARD_DDR_ADDR done! \n");
+
     action_write (h, ACTION_PKT_INIT_ADDR_L,
                   (uint32_t) (((uint64_t) pkt_src_base) & 0xffffffff));
     action_write (h, ACTION_PKT_INIT_ADDR_H,
                   (uint32_t) ((((uint64_t) pkt_src_base) >> 32) & 0xffffffff));
     VERBOSE1 (" Write ACTION_PKT_INIT_ADDR done! \n");
-
-    action_write (h, ACTION_PATT_CARD_DDR_ADDR_L, 0);
-    action_write (h, ACTION_PATT_CARD_DDR_ADDR_H, 0);
-    VERBOSE1 (" Write ACTION_PATT_CARD_DDR_ADDR done! \n");
 
     action_write (h, ACTION_STAT_INIT_ADDR_L,
                   (uint32_t) (((uint64_t) stat_dest_base) & 0xffffffff));
@@ -272,6 +276,7 @@ static void action_sm (struct snap_card* h,
     action_write (h, ACTION_CONTROL_L, 0x00000001);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
     VERBOSE1 (" Write ACTION_CONTROL for pattern copying! \n");
+    action_write (h, ACTION_CONTROL_L, 0x00000000);
 
     cnt = 0;
     do {
@@ -382,6 +387,7 @@ static void action_sm (struct snap_card* h,
 static int sm_scan (struct snap_card* dnc,
                     int timeout,
                     void* patt_src_base,
+                    void* patt_tgt_base,
                     void* pkt_src_base,
                     void* stat_dest_base,
                     size_t* num_matched_pkt,
@@ -394,7 +400,7 @@ static int sm_scan (struct snap_card* dnc,
 
     rc = 0;
 
-    action_sm (dnc, patt_src_base, pkt_src_base, stat_dest_base, num_matched_pkt,
+    action_sm (dnc, patt_src_base, patt_tgt_base, pkt_src_base, stat_dest_base, num_matched_pkt,
             patt_size, pkt_size, stat_size);
     VERBOSE1 ("Wait for idle\n");
     rc = action_wait_idle (dnc, timeout, &td);
@@ -455,8 +461,10 @@ int main (int argc, char* argv[])
     struct snap_action* act = NULL;
     unsigned long ioctl_data;
     size_t num_matched_pkt = 0;
+    int patt_size = 4096;
     void* pkt_src_base = alloc_mem(64, 8);
-    void* patt_src_base = alloc_mem(64, 8);
+    void* patt_src_base = alloc_mem(64, patt_size);
+    void* patt_tgt_base = alloc_mem(64, patt_size);
     void* stat_dest_base = alloc_mem(64, 8);
 
     while (1) {
@@ -562,11 +570,12 @@ int main (int argc, char* argv[])
 
     VERBOSE0 ("Start sm_scan.\n");
     rc = sm_scan (dn, timeout,
-                  pkt_src_base,
                   patt_src_base, 
+                  patt_tgt_base,
+                  pkt_src_base,
                   stat_dest_base,
                   &num_matched_pkt,
-                  0,
+                  patt_size,
                   0,
                   0);
 
@@ -579,6 +588,7 @@ __exit1:
 
     free_mem(pkt_src_base);
     free_mem(patt_src_base);
+    free_mem(patt_tgt_base);
     free_mem(stat_dest_base);
 
     VERBOSE1 ("End of Test rc: %d\n", rc);

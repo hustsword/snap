@@ -103,32 +103,32 @@ module memcpy_engine #(
 
 //---- memory read burst control ----
  memcpy_statemachine mrd_st(
-                            .clk          (clk           ),
-                            .rst_n        (rst_n         ), 
-                            .memcpy_start (memcpy_start  ),
-                            .memcpy_len   (memcpy_len    ),
-                            .memcpy_addr  (memcpy_addr   ),
-                            .burst_start  (lcl_ostart    ),
-                            .burst_len    (lcl_onum      ),
-                            .burst_addr   (lcl_oaddr     ),
-                            .burst_on     (rd_on         ),
-                            .burst_done   (lcl_odone     ),
-                            .memcpy_done  (memcpy_rd_done)
+                            .clk          (clk            ),
+                            .rst_n        (rst_n          ), 
+                            .memcpy_start (memcpy_start   ),
+                            .memcpy_len   (memcpy_len     ),
+                            .memcpy_addr  (memcpy_src_addr),
+                            .burst_start  (lcl_ostart     ),
+                            .burst_len    (lcl_onum       ),
+                            .burst_addr   (lcl_oaddr      ),
+                            .burst_on     (rd_on          ),
+                            .burst_done   (lcl_odone      ),
+                            .memcpy_done  (memcpy_rd_done )
                            );
 
 //---- memory writing burst control ----
  memcpy_statemachine mwr_st(
-                            .clk          (clk           ),
-                            .rst_n        (rst_n         ), 
-                            .memcpy_start (memcpy_start  ),
-                            .memcpy_len   (memcpy_len    ),
-                            .memcpy_addr  (memcpy_addr   ),
-                            .burst_start  (lcl_istart    ),
-                            .burst_len    (lcl_inum      ),
-                            .burst_addr   (lcl_iaddr     ),
-                            .burst_on     (wr_on         ),
-                            .burst_done   (lcl_idone     ),
-                            .memcpy_done  (memcpy_wr_done)
+                            .clk          (clk            ),
+                            .rst_n        (rst_n          ), 
+                            .memcpy_start (memcpy_start   ),
+                            .memcpy_len   (memcpy_len     ),
+                            .memcpy_addr  (memcpy_tgt_addr),
+                            .burst_start  (lcl_istart     ),
+                            .burst_len    (lcl_inum       ),
+                            .burst_addr   (lcl_iaddr      ),
+                            .burst_on     (wr_on          ),
+                            .burst_done   (lcl_idone      ),
+                            .memcpy_done  (memcpy_wr_done )
                            );
 
 //---- entire memory copy is done ----

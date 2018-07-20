@@ -130,9 +130,9 @@ module memcpy_statemachine(
      case (cstate)
        CLEN : 
           if (next_boundary[63:12]~^end_boundary[63:12])
-            last_burst <= 1'b0;
-          else
             last_burst <= 1'b1;
+          else
+            last_burst <= 1'b0;
      endcase
 
 //---- burst start configuration ----
