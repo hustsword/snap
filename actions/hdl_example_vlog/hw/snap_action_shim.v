@@ -100,6 +100,7 @@ module snap_action_shim #(
                         input              m_axi_snap_rlast         ,
                         input              m_axi_snap_rvalid        ,
 
+                        /*
                         //---- AXI bus interfaced with DDR ----               
                           // AXI write address channel      
                         output    [C_M_AXI_CARD_MEM0_ID_WIDTH - 1:0] m_axi_ddr_awid           ,  
@@ -148,6 +149,7 @@ module snap_action_shim #(
                         input     [0001:0] m_axi_ddr_rresp          ,
                         input              m_axi_ddr_rlast          ,
                         input              m_axi_ddr_rvalid         ,
+                        */
 
                         //---- AXI Lite bus interfaced with SNAP core ----               
                           // AXI write address channel
@@ -185,18 +187,18 @@ module snap_action_shim #(
 
  wire[000:0] lcl_snap_ibusy;
  wire[000:0] lcl_snap_obusy;
- reg [000:0] lcl_snap_istart;
- reg [000:0] lcl_snap_ostart;
- reg [063:0] lcl_snap_iaddr;
- reg [063:0] lcl_snap_oaddr;
- reg [007:0] lcl_snap_inum;
- reg [007:0] lcl_snap_onum;
+ wire[000:0] lcl_snap_istart;
+ wire[000:0] lcl_snap_ostart;
+ wire[063:0] lcl_snap_iaddr;
+ wire[063:0] lcl_snap_oaddr;
+ wire[007:0] lcl_snap_inum;
+ wire[007:0] lcl_snap_onum;
  wire[000:0] lcl_snap_irdy;
- reg [000:0] lcl_snap_den;
- reg [511:0] lcl_snap_din;
+ wire[000:0] lcl_snap_den;
+ wire[511:0] lcl_snap_din;
  wire[000:0] lcl_snap_idone;
  wire[000:0] lcl_snap_ordy;
- reg [000:0] lcl_snap_rden;
+ wire[000:0] lcl_snap_rden;
  wire[000:0] lcl_snap_dv;
  wire[511:0] lcl_snap_dout;
  wire[000:0] lcl_snap_odone;
@@ -260,7 +262,7 @@ module snap_action_shim #(
  
 wire [C_M_AXI_HOST_MEM_ID_WIDTH - 1:0] m_axi_ddr_bid_wire;
 
-assign m_axi_ddr_bid_wire = m_axi_ddr_bid;
+//assign m_axi_ddr_bid_wire = m_axi_ddr_bid;
 
 
 //---- registers hub for AXI Lite interface ----
@@ -409,8 +411,8 @@ assign m_axi_ddr_bid_wire = m_axi_ddr_bid;
                                 .m_axi_rvalid  (m_axi_snap_rvalid  ),
                                 .lcl_obusy     (lcl_snap_obusy     ),
                                 .lcl_ostart    (lcl_snap_ostart    ), 
-                                .lcl_addr      (lcl_snap_oaddr     ),//64b
-                                .lcl_num       (lcl_snap_onum      ),//8b
+                                .lcl_oaddr     (lcl_snap_oaddr     ),//64b
+                                .lcl_onum      (lcl_snap_onum      ),//8b
                                 .lcl_ordy      (lcl_snap_ordy      ),
                                 .lcl_rden      (lcl_snap_rden      ),
                                 .lcl_dv        (lcl_snap_dv        ),

@@ -73,6 +73,7 @@ module action_wrapper #(
     output [CONTEXT_BITS-1 : 0] interrupt_ctx             ,
     input  interrupt_ack             ,
     //                                                                                                 
+    /*                                                                                                 
     // AXI SDRAM Interface                                                                             
     output [C_M_AXI_CARD_MEM0_ADDR_WIDTH-1 : 0 ] m_axi_card_mem0_araddr    ,     
     output [1 : 0 ] m_axi_card_mem0_arburst   ,                                  
@@ -118,7 +119,7 @@ module action_wrapper #(
     output [(C_M_AXI_CARD_MEM0_DATA_WIDTH/8)-1 : 0 ] m_axi_card_mem0_wstrb     , 
     output [C_M_AXI_CARD_MEM0_WUSER_WIDTH-1 : 0 ] m_axi_card_mem0_wuser     ,    
     output m_axi_card_mem0_wvalid    ,                                                        
- 
+ */
     //
     // AXI Control Register Interface
     input  [C_S_AXI_CTRL_REG_ADDR_WIDTH-1 : 0 ] s_axi_ctrl_reg_araddr     ,
@@ -286,6 +287,7 @@ module action_wrapper #(
         .m_axi_snap_rlast      (m_axi_host_mem_rlast),
         .m_axi_snap_rvalid     (m_axi_host_mem_rvalid),
     
+    /*
         //---- AXI bus interfaced with DDR ----               
         // AXI write address channel      
         .m_axi_ddr_awid        (m_axi_card_mem0_awid),  
@@ -334,6 +336,7 @@ module action_wrapper #(
         .m_axi_ddr_rresp       (m_axi_card_mem0_rresp),
         .m_axi_ddr_rlast       (m_axi_card_mem0_rlast),
         .m_axi_ddr_rvalid      (m_axi_card_mem0_rvalid),
+        */
     
         //---- AXI Lite bus interfaced with SNAP core ----               
         // AXI write address channel

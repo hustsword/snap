@@ -103,6 +103,7 @@ module action_snap_example_vlog # (
                            input              m_axi_snap_rlast         ,
                            input              m_axi_snap_rvalid        ,
 
+/*
                            //---- AXI bus interfaced with DDR ----               
                              // AXI write address channel      
                            output    [C_M_AXI_CARD_MEM0_ID_WIDTH - 1:0] m_axi_ddr_awid           ,  
@@ -151,6 +152,7 @@ module action_snap_example_vlog # (
                            input     [0001:0] m_axi_ddr_rresp          ,
                            input              m_axi_ddr_rlast          ,
                            input              m_axi_ddr_rvalid         ,
+                           */
 
                            //---- AXI Lite bus interfaced with SNAP core ----               
                              // AXI write address channel
@@ -304,6 +306,7 @@ end
                         .m_axi_snap_rresp         (m_axi_snap_rresp         ),
                         .m_axi_snap_rlast         (m_axi_snap_rlast         ),
                         .m_axi_snap_rvalid        (m_axi_snap_rvalid        ),
+                        /*
                         .m_axi_ddr_awid           (m_axi_ddr_awid           ),  
                         .m_axi_ddr_awaddr         (m_axi_ddr_awaddr         ),  
                         .m_axi_ddr_awlen          (m_axi_ddr_awlen          ),  
@@ -346,6 +349,7 @@ end
                         .m_axi_ddr_rresp          (m_axi_ddr_rresp          ),
                         .m_axi_ddr_rlast          (m_axi_ddr_rlast          ),
                         .m_axi_ddr_rvalid         (m_axi_ddr_rvalid         ),
+                        */
                         .s_axi_snap_awready       (s_axi_snap_awready       ),   
                         .s_axi_snap_awaddr        (s_axi_snap_awaddr        ),
                         .s_axi_snap_awprot        (s_axi_snap_awprot        ),
