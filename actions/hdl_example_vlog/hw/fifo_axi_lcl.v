@@ -33,7 +33,7 @@ module fifo_axi_lcl(
  wire        full      ;
 
 
- parameter IH_LIM = 5'd28,
+ parameter IH_LIM = 5'd26,
            IL_LIM = 5'd16,
            OH_LIM = 5'd16,
            OL_LIM = 5'd4;

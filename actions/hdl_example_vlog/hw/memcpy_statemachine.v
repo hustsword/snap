@@ -6,6 +6,7 @@ module memcpy_statemachine(
                            input                 memcpy_start ,
                            input      [63:0]     memcpy_len   ,
                            input      [63:0]     memcpy_addr  ,
+                           input                 burst_busy   ,
                            output reg            burst_start  ,
                            output reg [07:0]     burst_len    ,
                            output reg [63:0]     burst_addr   ,
@@ -55,7 +56,10 @@ module memcpy_statemachine(
      N4KB      :
                      nstate = CLEN;
      CLEN      :
+                   if (~burst_busy)
                      nstate = START;
+                   else
+                     nstate = CLEN;
      START     :
                      nstate = INPROC;
      INPROC    : 
@@ -129,9 +133,11 @@ module memcpy_statemachine(
    else 
      case (cstate)
        CLEN : 
-          if (next_boundary[63:12]~^end_boundary[63:12])
+          if (&(next_boundary[63:12]~^end_boundary[63:12]))
             last_burst <= 1'b1;
           else
+            last_burst <= 1'b0;
+       DONE   : 
             last_burst <= 1'b0;
      endcase
 

@@ -61,14 +61,11 @@ module axi_master_wr #(
                   
 
 //---- declarations ----
- wire        local_valid_request;
  wire        fifo_wrbuf_rdrq;
  wire        fifo_wrbuf_olast;
  wire        fifo_wrbuf_ordy;
  wire        fifo_wrbuf_flush;
  wire        fifo_wrbuf_empty;
- wire        read_data_handshake;
- wire        read_last_handshake;
  reg         read_wrbuf_enable;
  reg [001:0] wr_error;
  wire        fifo_wrbuf_overflow,fifo_wrbuf_underflow;
