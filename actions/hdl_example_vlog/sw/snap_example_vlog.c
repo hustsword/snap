@@ -23,6 +23,7 @@
 #include <malloc.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <time.h>
 #include <getopt.h>
 #include <ctype.h>
 
@@ -209,7 +210,7 @@ static int action_wait_idle (struct snap_card* h, int timeout, uint64_t* elapsed
     return rc;
 }
 
-static void action_sm (struct snap_card* h,
+static void action_mem_copy (struct snap_card* h,
                        void* patt_src_base,
                        void* patt_tgt_base,
                        size_t patt_size)
@@ -266,14 +267,62 @@ static void action_sm (struct snap_card* h,
         cnt++;
     } while (1);//(cnt < 100);
 
+    cnt = 0;
+    do {
+        reg_data = action_read(h, ACTION_STATUS_L);
 
-    // Wait for transaction to be done.
-    usleep(100000);
+        VERBOSE3("Draining Status reg with 0X%X\n", reg_data);
+        cnt++;
+    } while (cnt < 50);
 
     return;
 }
 
-static int sm_scan (struct snap_card* dnc,
+static int mem_init (void* patt_src_base,
+                    void* patt_tgt_base,
+                    size_t patt_size)
+{
+    uint8_t* ptr_src = (uint8_t*) patt_src_base;
+    uint8_t* ptr_tgt = (uint8_t*) patt_tgt_base;
+    size_t cnt = 0;
+    srand((unsigned) time(0));
+
+    do {
+        *(ptr_src++) = rand() % 256;
+        *(ptr_tgt++) = 0;
+
+        cnt++;
+    } while (cnt < patt_size);
+
+    return 0;
+}
+
+static int mem_check (void* patt_src_base,
+                    void* patt_tgt_base,
+                    size_t patt_size)
+{
+    uint8_t* ptr_src = (uint8_t*) patt_src_base;
+    uint8_t* ptr_tgt = (uint8_t*) patt_tgt_base;
+    size_t cnt = 0;
+    int rc = 0;
+
+    do {
+        if (*(ptr_src) != *(ptr_tgt)) {
+            VERBOSE0("MISCOMPARE on addr %Zu\n", cnt);
+            VERBOSE0("SOURCE DATA %#x\n", *ptr_src);
+            VERBOSE0("TARGET DATA %#x\n", *ptr_tgt);
+            ptr_src++;
+            ptr_tgt++;
+            rc = 1;
+        }
+
+        cnt++;
+    } while (cnt < patt_size);
+
+    return rc;
+}
+
+static int mem_copy (struct snap_card* dnc,
                     int timeout,
                     void* patt_src_base,
                     void* patt_tgt_base,
@@ -284,7 +333,7 @@ static int sm_scan (struct snap_card* dnc,
 
     rc = 0;
 
-    action_sm (dnc, patt_src_base, patt_tgt_base, 
+    action_mem_copy (dnc, patt_src_base, patt_tgt_base, 
             patt_size);
     VERBOSE1 ("Wait for idle\n");
     rc = action_wait_idle (dnc, timeout, &td);
@@ -449,12 +498,22 @@ int main (int argc, char* argv[])
 
     VERBOSE0 ("Finish get action.\n");
 
-    VERBOSE0 ("Start sm_scan.\n");
-    rc = sm_scan (dn, timeout,
+    VERBOSE0 ("Init source memory.\n");
+    rc = mem_init (patt_src_base, patt_tgt_base, patt_size);
+
+    VERBOSE0 ("Start mem_copy.\n");
+    rc = mem_copy (dn, timeout,
                   patt_src_base, 
                   patt_tgt_base,
                   patt_size
                   );
+
+    VERBOSE0 ("Check mem.\n");
+    if (mem_check (patt_src_base, patt_tgt_base, patt_size)) {
+        VERBOSE0 ("Check FAILED!\n");
+    } else {
+        VERBOSE0 ("Check PASSED!\n");
+    }
 
     snap_detach_action (act);
 

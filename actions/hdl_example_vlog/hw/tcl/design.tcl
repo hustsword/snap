@@ -10,7 +10,7 @@ foreach usr_ip [list \
   foreach usr_ip_xci [exec find $usr_ip -name *.xci] {
     puts "                        importing user IP $usr_ip_xci (in string_match core)"
     add_files -norecurse $usr_ip_xci >> $log_file
-    set_property generate_synth_checkpoint false  [get_files "$usr_ip_xci"]
+    #set_property generate_synth_checkpoint false  [get_files "$usr_ip_xci"]
     export_ip_user_files -of_objects  [get_files "$usr_ip_xci"] -force >> $log_file
   }
 }
