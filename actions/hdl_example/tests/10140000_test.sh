@@ -19,10 +19,10 @@
 # Simple tests for example snap actions.
 #
 
-verbose=0
+verbose=1
 snap_card=0
 iteration=1
-FUNC="./actions/hdl_example/sw/snap_example"
+FUNC="$ACTION_ROOT/sw/snap_example"
 
 function test () # $1 = card, $2 = action, $3 = 4k or 64, $4 = min_align, $5 = dma_size
 {
@@ -211,7 +211,7 @@ done
 
 # Configure my Snap Card
 echo "Configure Card[$snap_card] ...."
-cmd=`./software/tools/snap_maint -C $snap_card`
+cmd="${ACTION_ROOT}/../../software/tools/snap_maint -C $snap_card"
 eval ${cmd}
 if [ $? -ne 0 ]; then
 	echo "cmd: ${cmd}"
@@ -220,15 +220,15 @@ if [ $? -ne 0 ]; then
 fi
 # Get Card Name
 echo -n "Detect Card[$snap_card] .... "
-CARD=`./software/tools/snap_maint -C $snap_card -m 4 | tr -d '[:space:]'`
+CARD=`${ACTION_ROOT}/../../software/tools/snap_maint -C $snap_card -m 4 | tr -d '[:space:]'`
 if [ -z $CARD ]; then
 	echo "ERROR: Invalid Card."
 	exit 1
 fi
 
 # Get Values from Card Card using mode 5 and mode 6
-MIN_ALIGN=`./software/tools/snap_maint -C $snap_card -m 5 | tr -d '[:space:]'`
-MIN_BLOCK=`./software/tools/snap_maint -C $snap_card -m 6 | tr -d '[:space:]'`
+MIN_ALIGN=`${ACTION_ROOT}/../../software/tools/snap_maint -C $snap_card -m 5 | tr -d '[:space:]'`
+MIN_BLOCK=`${ACTION_ROOT}/../../software/tools/snap_maint -C $snap_card -m 6 | tr -d '[:space:]'`
 echo -n " (Align: $MIN_ALIGN Min Block: $MIN_BLOCK) "
 
 case $CARD in

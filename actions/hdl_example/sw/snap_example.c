@@ -161,6 +161,31 @@ static uint32_t msec_2_ticks(int msec)
 /*
  *	Start Action and wait for Idle.
  */
+static int action_wait_interrupt(struct snap_card* h, int timeout, uint64_t *elapsed)
+{
+	int rc = 0;
+	uint64_t t_start;   /* time in usec */
+	uint64_t td = 0;    /* Diff time in usec */
+
+	/* FIXME Use struct snap_action and not struct snap_card */
+	snap_action_start((void*)h);
+
+	/* Wait for Action to go back to Idle */
+	t_start = get_usec();
+	rc = snap_action_wait_interrupt((void*)h, NULL, timeout);
+        VERBOSE0("%s rc: %d\n", __func__, rc);
+	//if (rc) rc = 0;   /* Good */
+	//else rc = ETIME;  /* Timeout */
+	if (0 != rc)
+		VERBOSE0("%s Timeout Error\n", __func__);
+	td = get_usec() - t_start;
+	*elapsed = td;
+	return rc;
+}
+
+/*
+ *	Start Action and wait for Idle.
+ */
 static int action_wait_idle(struct snap_card* h, int timeout, uint64_t *elapsed)
 {
 	int rc = 0;
@@ -173,6 +198,7 @@ static int action_wait_idle(struct snap_card* h, int timeout, uint64_t *elapsed)
 	/* Wait for Action to go back to Idle */
 	t_start = get_usec();
 	rc = snap_action_completed((void*)h, NULL, timeout);
+        VERBOSE0("%s rc: %d\n", __func__, rc);
 	if (rc) rc = 0;   /* Good */
 	else rc = ETIME;  /* Timeout */
 	if (0 != rc)
@@ -488,6 +514,7 @@ static void usage(const char *prog)
 		"\t-a 4: Copy from DDR Memory (FPGA Card) to Host Memory.\n"
 		"\t-a 5: Copy from DDR Memory to DDR Memory (both on FPGA Card).\n"
 		"\t-a 6: Copy from Host -> DDR -> Host.\n"
+		"\t-a 7: Count down mode with user interrupt\n"
 		, prog, START_DELAY, END_DELAY, STEP_DELAY);
 }
 
@@ -693,6 +720,34 @@ int main(int argc, char *argv[])
 				timeout);
 			if (0 != rc) break;
 		}
+		break;
+	case 7:
+		act = snap_attach_action(dn, ACTION_TYPE_EXAMPLE,
+			attach_flags, 5 * timeout);
+
+		for(delay = start_delay; delay <= end_delay;
+		    delay += step_delay) {
+			if (NULL == act) {
+				VERBOSE0("Error: Can not attach Action: %x\n",
+					ACTION_TYPE_EXAMPLE);
+				rc = 0x100;
+				goto __exit1;
+			}
+
+			action_count(dn, delay);
+                        rc = action_wait_interrupt(dn, timeout + delay/1000, &td);
+                        VERBOSE0("Interrupt signaled, do something you want!\n");
+			print_time(td, 0);
+		}
+
+		/* Detach Action and exit if rc is set */
+		if (0 != snap_detach_action(act)) {
+			VERBOSE0("Error: Can not detach Action: %x\n",
+				ACTION_TYPE_EXAMPLE);
+			rc |= 0x100;
+		}
+		if (0 != rc)
+			goto __exit1;
 		break;
 	default:
 		VERBOSE0("%d Invalid Action\n", action);
