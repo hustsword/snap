@@ -28,6 +28,7 @@ set fpga_card    $::env(FPGACARD)
 set capi_bsp_dir $root_dir/capi2-bsp/$fpga_card/build/ip
 set capi_ver     $::env(CAPI_VER)
 set action_dir   $::env(ACTION_ROOT)/hw
+set action_tcl   [exec find $action_dir -name tcl -type d]
 set nvme_used    $::env(NVME_USED)
 set bram_used    $::env(BRAM_USED)
 set sdram_used   $::env(SDRAM_USED)
@@ -37,15 +38,6 @@ set denali_used  $::env(DENALI_USED)
 set log_dir      $::env(LOGS_DIR)
 set log_file     $log_dir/create_framework.log
 set vivadoVer    [version -short]
-
-### If the design is a HDL (RTL) design and has many other user defined tcl files,
-# Please set "USER_DEFINED_DESIGN=TRUE" and provide USER_DEFINED_TCLPATH
-# create_framework.tcl will source "design.tcl" and "post.tcl" under this PATH.
-set user_defined_design $::env(USER_DEFINED_DESIGN)
-if { $user_defined_design == "TRUE"} {
-  puts "                        INFO: User Defined Design"
-  set USER_DEFINED_TCLPATH $::env(USER_DEFINED_TCLPATH)
-}
 
 if { [info exists ::env(HLS_SUPPORT)] == 1 } {
   set hls_support [string toupper $::env(HLS_SUPPORT)]
@@ -120,39 +112,36 @@ set_property used_in_simulation false [get_files $hdl_dir/core/psl_fpga.vhd]
 set_property top psl_fpga [current_fileset]
 
 # Action Files
-if { $use_prflow == "TRUE" } {
-  # Files for PR module
-  add_files -scan_for_includes $hdl_dir/core/psl_accel_types.vhd -of_objects [get_reconfig_modules user_action] >> $log_file
-  add_files -scan_for_includes $hdl_dir/core/action_types.vhd -of_objects [get_reconfig_modules user_action] >> $log_file
-  if { $hls_support == "TRUE" } {
-    add_files -scan_for_includes $hdl_dir/hls/ -of_objects [get_reconfig_modules user_action] >> $log_file
-  }
-  add_files -scan_for_includes $action_dir/ -of_objects [get_reconfig_modules user_action] >> $log_file
-  if { $simulator != "nosim" } {
-    if { $hls_support == "TRUE" } {
-      add_files -fileset sim_1 -norecurse -scan_for_includes $hdl_dir/hls/ >> $log_file
-    }
-    add_files -fileset sim_1 -norecurse -scan_for_includes $action_dir/ >> $log_file
-  }
-} else {
-  if { $hls_support == "TRUE" } {
-    add_files -scan_for_includes $hdl_dir/hls/ >> $log_file
-  }
-
-  if { $user_defined_design == "TRUE" } {
-    # Too many user files may degrade the Vivado Performance. 
-    # Using brute-force "add_files" to search the entire design directory and analyze the
-    # hierarchy costs a long time. 
-    # Sourcing "design.tcl" provides a explicit way to import design files.
-    source $USER_DEFINED_TCLPATH/design.tcl >> $log_file
-  } else {
-    #original method
-    add_files -scan_for_includes $action_dir/ >> $log_file
-  }
+if { $hls_support == "TRUE" } {
+  add_files -scan_for_includes $hdl_dir/hls/ >> $log_file
 }
 
 add_files -scan_for_includes $action_dir/ >> $log_file
 
+# Action Specific tcl
+if { [file exists $action_tcl] == 1 } {
+  set tcl_exists [exec find $action_tcl -name *.tcl]
+  if { $tcl_exists != "" } {
+    foreach tcl_file [glob -nocomplain -dir $action_tcl *.tcl] {
+      set tcl_file_name [exec basename $tcl_file]
+      puts "                        sourcing $tcl_file_name"
+      source $tcl_file >> $log_file
+    }
+  }
+}
+
+# Action Specific tcl
+if { [file exists $action_tcl] == 1 } {
+  set tcl_exists [exec find $action_tcl -name *.tcl]
+  if { $tcl_exists != "" } {
+    foreach tcl_file [glob -nocomplain -dir $action_tcl *.tcl] {
+      set tcl_file_name [exec basename $tcl_file]
+      puts "                        sourcing $tcl_file_name"
+      #source $tcl_file >> $log_file
+      source $tcl_file
+    }
+  }
+}
 
 # Sim Files
 if { $simulator != "nosim" } {
@@ -316,9 +305,6 @@ puts "                        importing XDCs"
 if { $capi_ver == "capi20" } {
   puts "                        importing specific Board support XDCs"
   add_files -fileset constrs_1 -norecurse $root_dir/setup/$fpga_card/snap_$fpga_card.xdc >> $log_file
-  foreach xdc_file [glob -nocomplain -dir $root_dir/capi2-bsp/$fpga_card/xdc * ] {
-    add_files -fileset constrs_1 -norecurse $xdc_file >> $log_file
-  }
 }
 
 # DDR XDCs
@@ -371,14 +357,6 @@ if { $ila_debug == "TRUE" } {
   add_files -fileset constrs_1 -norecurse  $::env(ILA_SETUP_FILE)
 }
 
-# This is optional. 
-# If User provides *post* tcl file in USER_DEFINED_TCLPATH, 
-if { $user_defined_design == "TRUE" } {
-  foreach tcl_file [glob -nocomplain -dir $USER_DEFINED_TCLPATH *post*.tcl] {
-    puts "                        sourcing user tcl: $tcl_file"
-    source $tcl_file >> $log_file
-  }
-}
 #
 # update the compile order
 update_compile_order >> $log_file
