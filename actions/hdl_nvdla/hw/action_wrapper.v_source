@@ -193,6 +193,56 @@ module action_wrapper #(
     wire                               dbb_s_axi_rlast;
     wire [8-1:0]                       dbb_s_axi_rid;
 
+    //**********************************************
+    // DBB CONV AXI INTERFACE
+    //**********************************************
+    /**************** Write Address Channel Signals ****************/
+    wire [C_M_AXI_HOST_MEM_ADDR_WIDTH-1:0]                      dbb_conv_s_axi_awaddr;
+    wire [3-1:0]                       dbb_conv_s_axi_awprot;
+    wire                               dbb_conv_s_axi_awvalid;
+    wire                               dbb_conv_s_axi_awready;
+    wire [3-1:0]                       dbb_conv_s_axi_awsize;
+    wire [2-1:0]                       dbb_conv_s_axi_awburst;
+    wire [4-1:0]                       dbb_conv_s_axi_awcache;
+    wire [8-1:0]                       dbb_conv_s_axi_awlen;
+    wire [1-1:0]                       dbb_conv_s_axi_awlock;
+    wire [4-1:0]                       dbb_conv_s_axi_awqos;
+    wire [4-1:0]                       dbb_conv_s_axi_awregion;
+    wire [8-1:0]                       dbb_conv_s_axi_awid;
+    /**************** Write Data Channel Signals ****************/
+    wire [C_M_AXI_HOST_MEM_DATA_WIDTH-1:0]   dbb_conv_s_axi_wdata;
+    wire [C_M_AXI_HOST_MEM_DATA_WIDTH/8-1:0] dbb_conv_s_axi_wstrb;
+    wire                               dbb_conv_s_axi_wvalid;
+    wire                               dbb_conv_s_axi_wready;
+    wire                               dbb_conv_s_axi_wlast;
+    /**************** Write Response Channel Signals ****************/
+    wire [2-1:0]                       dbb_conv_s_axi_bresp;
+    wire                               dbb_conv_s_axi_bvalid;
+    wire                               dbb_conv_s_axi_bready;
+    wire [C_M_AXI_HOST_MEM_ID_WIDTH-1:0]                       dbb_conv_s_axi_bid;
+    /**************** Read Address Channel Signals ****************/
+    wire [C_M_AXI_HOST_MEM_ADDR_WIDTH-1:0]                      dbb_conv_s_axi_araddr;
+    wire [3-1:0]                       dbb_conv_s_axi_arprot;
+    wire                               dbb_conv_s_axi_arvalid;
+    wire                               dbb_conv_s_axi_arready;
+    wire [3-1:0]                       dbb_conv_s_axi_arsize;
+    wire [2-1:0]                       dbb_conv_s_axi_arburst;
+    wire [4-1:0]                       dbb_conv_s_axi_arcache;
+    wire [1-1:0]                       dbb_conv_s_axi_arlock;
+    wire [8-1:0]                       dbb_conv_s_axi_arlen;
+    wire [4-1:0]                       dbb_conv_s_axi_arqos;
+    wire [4-1:0]                       dbb_conv_s_axi_arregion;
+    wire [8-1:0]                       dbb_conv_s_axi_arid;
+    /**************** Read Data Channel Signals ****************/
+    wire [C_M_AXI_HOST_MEM_DATA_WIDTH-1:0]   dbb_conv_s_axi_rdata;
+    wire [2-1:0]                       dbb_conv_s_axi_rresp;
+    wire                               dbb_conv_s_axi_rvalid;
+    wire                               dbb_conv_s_axi_rready;
+    wire                               dbb_conv_s_axi_rlast;
+    wire [C_M_AXI_HOST_MEM_ID_WIDTH-1:0]                       dbb_conv_s_axi_rid;
+
+
+
     #ifdef SRAM
     //**********************************************
     // SRAM AXI INTERFACE
@@ -279,8 +329,8 @@ module action_wrapper #(
         end
     end
 
-    assign m_axi_host_mem_arid      = dbb_s_axi_arid[0];
-    assign m_axi_host_mem_awid      = dbb_s_axi_awid[0];
+    //assign m_axi_host_mem_arid      = dbb_s_axi_arid[0];
+    //assign m_axi_host_mem_awid      = dbb_s_axi_awid[0];
     assign m_axi_host_mem_arlock[1] = 1'b0;
     assign m_axi_host_mem_awlock[1] = 1'b0;
 
@@ -328,9 +378,21 @@ module action_wrapper #(
     assign dbb_s_axi_arlen[7:4]     = 4'b0;
     assign dbb_s_axi_awlen[7:4]     = 4'b0;
 
-    #ifdef NVDLA_DBB_ADDR_WIDTH < 64
+    /*#ifdef NVDLA_DBB_ADDR_WIDTH < 64
     assign m_axi_host_mem_araddr[63:#NVDLA_DBB_ADDR_WIDTH]  = 32'b0;
     assign m_axi_host_mem_awaddr[63:#NVDLA_DBB_ADDR_WIDTH]  = 32'b0;
+    #endif*/
+
+    //**********************************************
+    // DBB Conv AXI INTERFACE
+    //**********************************************
+    assign dbb_conv_s_axi_awid = dbb_s_axi_awid;
+    assign dbb_conv_s_axi_arid = dbb_s_axi_arid;
+
+
+    #ifdef NVDLA_DBB_ADDR_WIDTH < 64
+    assign dbb_conv_s_axi_araddr[63:#NVDLA_DBB_ADDR_WIDTH]  = 32'b0;
+    assign dbb_conv_s_axi_awaddr[63:#NVDLA_DBB_ADDR_WIDTH]  = 32'b0;
     #endif
 
 
@@ -455,45 +517,45 @@ module action_wrapper #(
         // DUT MASTER INTERFACE
         //**********************************************
         /**************** Write Address Channel Signals ****************/
-        .m_axi_awaddr   ( m_axi_host_mem_awaddr[#NVDLA_DBB_ADDR_WIDTH-1:0]),
-        .m_axi_awprot   ( m_axi_host_mem_awprot),
-        .m_axi_awvalid  ( m_axi_host_mem_awvalid),
-        .m_axi_awready  ( m_axi_host_mem_awready),
-        .m_axi_awsize   ( m_axi_host_mem_awsize),
-        .m_axi_awburst  ( m_axi_host_mem_awburst),
-        .m_axi_awcache  ( m_axi_host_mem_awcache),
-        .m_axi_awlen    ( m_axi_host_mem_awlen),
-        .m_axi_awlock   ( m_axi_host_mem_awlock[0]),
-        .m_axi_awqos    ( m_axi_host_mem_awqos),
-        .m_axi_awregion ( m_axi_host_mem_awregion),
+        .m_axi_awaddr   ( dbb_conv_s_axi_awaddr[#NVDLA_DBB_ADDR_WIDTH-1:0]),
+        .m_axi_awprot   ( dbb_conv_s_axi_awprot),
+        .m_axi_awvalid  ( dbb_conv_s_axi_awvalid),
+        .m_axi_awready  ( dbb_conv_s_axi_awready),
+        .m_axi_awsize   ( dbb_conv_s_axi_awsize),
+        .m_axi_awburst  ( dbb_conv_s_axi_awburst),
+        .m_axi_awcache  ( dbb_conv_s_axi_awcache),
+        .m_axi_awlen    ( dbb_conv_s_axi_awlen),
+        .m_axi_awlock   ( dbb_conv_s_axi_awlock[0]),
+        .m_axi_awqos    ( dbb_conv_s_axi_awqos),
+        .m_axi_awregion ( dbb_conv_s_axi_awregion),
         /**************** Write Data Channel Signals ****************/
-        .m_axi_wdata    ( m_axi_host_mem_wdata_wire),
-        .m_axi_wstrb    ( m_axi_host_mem_wstrb),
-        .m_axi_wvalid   ( m_axi_host_mem_wvalid),
-        .m_axi_wready   ( m_axi_host_mem_wready),
-        .m_axi_wlast    ( m_axi_host_mem_wlast),
+        .m_axi_wdata    ( dbb_conv_s_axi_wdata_wire),
+        .m_axi_wstrb    ( dbb_conv_s_axi_wstrb),
+        .m_axi_wvalid   ( dbb_conv_s_axi_wvalid),
+        .m_axi_wready   ( dbb_conv_s_axi_wready),
+        .m_axi_wlast    ( dbb_conv_s_axi_wlast),
         /**************** Write Response Channel Signals ****************/
-        .m_axi_bresp    ( m_axi_host_mem_bresp),
-        .m_axi_bvalid   ( m_axi_host_mem_bvalid),
-        .m_axi_bready   ( m_axi_host_mem_bready),
+        .m_axi_bresp    ( dbb_conv_s_axi_bresp),
+        .m_axi_bvalid   ( dbb_conv_s_axi_bvalid),
+        .m_axi_bready   ( dbb_conv_s_axi_bready),
         /**************** Read Address Channel Signals ****************/
-        .m_axi_araddr   ( m_axi_host_mem_araddr[#NVDLA_DBB_ADDR_WIDTH-1:0]),
-        .m_axi_arprot   ( m_axi_host_mem_arprot),
-        .m_axi_arvalid  ( m_axi_host_mem_arvalid),
-        .m_axi_arready  ( m_axi_host_mem_arready),
-        .m_axi_arsize   ( m_axi_host_mem_arsize),
-        .m_axi_arburst  ( m_axi_host_mem_arburst),
-        .m_axi_arcache  ( m_axi_host_mem_arcache),
-        .m_axi_arlock   ( m_axi_host_mem_arlock[0]),
-        .m_axi_arlen    ( m_axi_host_mem_arlen),
-        .m_axi_arqos    ( m_axi_host_mem_arqos),
-        .m_axi_arregion ( m_axi_host_mem_arregion),
+        .m_axi_araddr   ( dbb_conv_s_axi_araddr[#NVDLA_DBB_ADDR_WIDTH-1:0]),
+        .m_axi_arprot   ( dbb_conv_s_axi_arprot),
+        .m_axi_arvalid  ( dbb_conv_s_axi_arvalid),
+        .m_axi_arready  ( dbb_conv_s_axi_arready),
+        .m_axi_arsize   ( dbb_conv_s_axi_arsize),
+        .m_axi_arburst  ( dbb_conv_s_axi_arburst),
+        .m_axi_arcache  ( dbb_conv_s_axi_arcache),
+        .m_axi_arlock   ( dbb_conv_s_axi_arlock[0]),
+        .m_axi_arlen    ( dbb_conv_s_axi_arlen),
+        .m_axi_arqos    ( dbb_conv_s_axi_arqos),
+        .m_axi_arregion ( dbb_conv_s_axi_arregion),
         /**************** Read Data Channel Signals ****************/
-        .m_axi_rdata    ( m_axi_host_mem_rdata),
-        .m_axi_rresp    ( m_axi_host_mem_rresp),
-        .m_axi_rvalid   ( m_axi_host_mem_rvalid),
-        .m_axi_rready   ( m_axi_host_mem_rready),
-        .m_axi_rlast    ( m_axi_host_mem_rlast),
+        .m_axi_rdata    ( dbb_conv_s_axi_rdata),
+        .m_axi_rresp    ( dbb_conv_s_axi_rresp),
+        .m_axi_rvalid   ( dbb_conv_s_axi_rvalid),
+        .m_axi_rready   ( dbb_conv_s_axi_rready),
+        .m_axi_rlast    ( dbb_conv_s_axi_rlast),
         /**************** System Signals ****************/
 
         //**********************************************
@@ -548,7 +610,7 @@ module action_wrapper #(
         .s_axi_aresetn  ( dla_reset_rstn)
         );
 
-    #ifdef SRAM
+    /*#ifdef SRAM
     axi_bram_ctrl_0 axi_bram_0 (
         .s_axi_aclk     (dla_csb_clk),                     // input wire s_axi_aclk
         .s_axi_aresetn  (dla_reset_rstn),                  // input wire s_axi_aresetn
@@ -588,5 +650,148 @@ module action_wrapper #(
         .s_axi_rvalid   (cvsram_s_axi_rvalid),             // output wire s_axi_rvalid
         .s_axi_rready   (cvsram_s_axi_rready)              // input wire s_axi_rready
     );
-    #endif
+    #endif */
+    wire tmp_out_rstn;
+    axi_interconnect_256 axi_interconnect_nvdla_256(
+        .INTERCONNECT_ACLK      (ap_clk),
+        .INTERCONNECT_ARESETN   (ap_rstn),
+        //****************************************************
+        //**************DBB CONV INTERFACE********************
+        .S00_AXI_ARESET_OUT_N   (tmp_out_rstn),
+        .S00_AXI_ACLK           (dla_core_clk),
+        //**********************AW Channel********************
+        .S00_AXI_AWID           (dbb_conv_s_axi_awid),
+  	.S00_AXI_AWADDR         (dbb_conv_s_axi_awaddr),
+  	.S00_AXI_AWLEN          (dbb_conv_s_axi_awlen),
+  	.S00_AXI_AWSIZE		(dbb_conv_s_axi_awsize),
+  	.S00_AXI_AWBURST        (dbb_conv_s_axi_awburst),
+  	.S00_AXI_AWLOCK		(dbb_conv_s_axi_awlock),
+  	.S00_AXI_AWCACHE	(dbb_conv_s_axi_awcache),
+  	.S00_AXI_AWPROT		(dbb_conv_s_axi_awprot),
+  	.S00_AXI_AWQOS		(dbb_conv_s_axi_awqos),
+  	.S00_AXI_AWVALID	(dbb_conv_s_axi_awvalid),
+  	.S00_AXI_AWREADY	(dbb_conv_s_axi_awready),
+        //**********************Write Data Channel************
+  	.S00_AXI_WDATA		(dbb_conv_s_axi_wdata),
+  	.S00_AXI_WSTRB		(dbb_conv_s_axi_wstrb),
+  	.S00_AXI_WLAST		(dbb_conv_s_axi_wlast),
+  	.S00_AXI_WVALID		(dbb_conv_s_axi_wvalid),
+  	.S00_AXI_WREADY		(dbb_conv_s_axi_wready),
+        //**********************Write Response Channel********
+  	.S00_AXI_BID		(dbb_conv_s_axi_bid),
+  	.S00_AXI_BRESP		(dbb_conv_s_axi_bresp),
+  	.S00_AXI_BVALID		(dbb_conv_s_axi_bvalid),
+  	.S00_AXI_BREADY		(dbb_conv_s_axi_bready),
+  	//**********************AR Channel********************
+        .S00_AXI_ARID		(dbb_conv_s_axi_arid),
+  	.S00_AXI_ARADDR		(dbb_conv_s_axi_araddr),
+  	.S00_AXI_ARLEN		(dbb_conv_s_axi_arlen),
+  	.S00_AXI_ARSIZE		(dbb_conv_s_axi_arsize),
+  	.S00_AXI_ARBURST	(dbb_conv_s_axi_arburst),
+  	.S00_AXI_ARLOCK		(dbb_conv_s_axi_arlock),
+  	.S00_AXI_ARCACHE	(dbb_conv_s_axi_arcache),
+  	.S00_AXI_ARPROT		(dbb_conv_s_axi_arprot),
+  	.S00_AXI_ARQOS		(dbb_conv_s_axi_arqos),
+  	.S00_AXI_ARVALID	(dbb_conv_s_axi_arvalid),
+  	.S00_AXI_ARREADY	(dbb_conv_s_axi_arready),
+        //**********************Read Data Channel*************
+  	.S00_AXI_RID		(dbb_conv_s_axi_rid),
+  	.S00_AXI_RDATA		(dbb_conv_s_axi_rdata),
+  	.S00_AXI_RRESP		(dbb_conv_s_axi_rresp),
+  	.S00_AXI_RLAST		(dbb_conv_s_axi_rlast),
+  	.S00_AXI_RVALID		(dbb_conv_s_axi_rvalid),
+  	.S00_AXI_RREADY		(dbb_conv_s_axi_rready),
+        //****************************************************
+        //**************SRAM INTERFACE********************
+        //**********************AW Channel********************
+  	.S01_AXI_ARESET_OUT_N	(tmp_out_rstn),
+  	.S01_AXI_ACLK		(dla_core_clk),
+  	.S01_AXI_AWID		(cvsram_s_axi_awid),
+  	.S01_AXI_AWADDR		(cvsram_s_axi_addr),
+  	.S01_AXI_AWLEN		(cvsram_s_axi_awlen),
+  	.S01_AXI_AWSIZE		(cvsram_s_axi_awsize),
+  	.S01_AXI_AWBURST	(cvsram_s_axi_awburst),
+  	.S01_AXI_AWLOCK		(cvsram_s_axi_awlock),
+  	.S01_AXI_AWCACHE	(cvsram_s_axi_awcache),
+  	.S01_AXI_AWPROT		(cvsram_s_axi_awprot),
+  	.S01_AXI_AWQOS		(4'b0000),
+  	.S01_AXI_AWVALID	(cvsram_s_axi_awvalid),
+  	.S01_AXI_AWREADY	(cvsram_s_axi_awready),
+        //**********************Write Data Channel************
+  	.S01_AXI_WDATA		(cvsram_s_axi_wdata),
+  	.S01_AXI_WSTRB		(cvsram_s_axi_wstrb),
+  	.S01_AXI_WLAST		(cvsram_s_axi_wlast),
+  	.S01_AXI_WVALID		(cvsram_s_axi_wvalid),
+  	.S01_AXI_WREADY		(cvsram_s_axi_wready),
+        //**********************Write Response Channel********
+  	.S01_AXI_BID		(cvsram_s_axi_bid),
+  	.S01_AXI_BRESP		(cvsram_s_axi_bresp),
+  	.S01_AXI_BVALID		(cvsram_s_axi_bvalid),
+  	.S01_AXI_BREADY		(cvsram_s_axi_bready),
+        //**********************AR Channel********************
+  	.S01_AXI_ARID		(cvsram_s_axi_arid),
+  	.S01_AXI_ARADDR		(cvsram_s_axi_araddr),
+  	.S01_AXI_ARLEN		(cvsram_s_axi_arlen),
+  	.S01_AXI_ARSIZE		(cvsram_s_axi_arsize),
+  	.S01_AXI_ARBURST	(cvsram_s_axi_arburst),
+  	.S01_AXI_ARLOCK		(cvsram_s_axi_arlock),
+  	.S01_AXI_ARCACHE	(cvsram_s_axi_arcache),
+  	.S01_AXI_ARPROT		(cvsram_s_axi_arprot),
+  	.S01_AXI_ARQOS		(4'b0000),
+  	.S01_AXI_ARVALID	(cvsram_s_axi_arvalid),
+  	.S01_AXI_ARREADY	(cvsram_s_axi_arready),
+        //**********************Read Data Channel*************
+  	.S01_AXI_RID		(cvsram_s_axi_rid),
+  	.S01_AXI_RDATA		(cvsram_s_axi_rdata),
+  	.S01_AXI_RRESP		(cvsram_s_axi_rresp),
+  	.S01_AXI_RLAST		(cvsram_s_axi_rlast),
+  	.S01_AXI_RVALID		(cvsram_s_axi_rvalid),
+  	.S01_AXI_RREADY		(cvsram_s_axi_rready),
+        //****************************************************
+        //**************Master INTERFACE********************
+        //**********************AW Channel********************
+  	.M00_AXI_ARESET_OUT_N	(tmp_out_rstn),
+  	.M00_AXI_ACLK		(dla_core_clk),
+  	.M00_AXI_AWID		(m_axi_host_mem_awid),
+  	.M00_AXI_AWADDR		(m_axi_host_mem_awaddr),
+  	.M00_AXI_AWLEN		(m_axi_host_mem_awlen),
+  	.M00_AXI_AWSIZE		(m_axi_host_mem_awsize),
+  	.M00_AXI_AWBURST	(m_axi_host_mem_awburst),
+  	.M00_AXI_AWLOCK		(m_axi_host_mem_awlock[0]),
+  	.M00_AXI_AWCACHE	(m_axi_host_mem_awcache),
+  	.M00_AXI_AWPROT		(m_axi_host_mem_awprot),
+  	.M00_AXI_AWQOS		(m_axi_host_mem_awqos),
+  	.M00_AXI_AWVALID	(m_axi_host_mem_awvalid),
+  	.M00_AXI_AWREADY	(m_axi_host_mem_awready),
+        //**********************Write Data Channel************
+  	.M00_AXI_WDATA		(m_axi_host_mem_wdata_wire),
+  	.M00_AXI_WSTRB		(m_axi_host_mem_wstrb),
+  	.M00_AXI_WLAST		(m_axi_host_mem_wlast),
+  	.M00_AXI_WVALID		(m_axi_host_mem_wvalid),
+  	.M00_AXI_WREADY		(m_axi_host_mem_wready),
+        //**********************Write Response Channel********
+  	.M00_AXI_BID		(m_axi_host_mem_bid),
+  	.M00_AXI_BRESP		(m_axi_host_mem_bresp),
+  	.M00_AXI_BVALID		(m_axi_host_mem_bvalid),
+  	.M00_AXI_BREADY		(m_axi_host_mem_bready),
+        //**********************AR Channel********************
+  	.M00_AXI_ARID		(m_axi_host_mem_arid),
+  	.M00_AXI_ARADDR		(m_axi_host_mem_araddr),
+  	.M00_AXI_ARLEN		(m_axi_host_mem_arlen),
+  	.M00_AXI_ARSIZE		(m_axi_host_mem_arsize),
+  	.M00_AXI_ARBURST	(m_axi_host_mem_arburst),
+  	.M00_AXI_ARLOCK		(m_axi_host_mem_arlock[0]),
+  	.M00_AXI_ARCACHE	(m_axi_host_mem_arcache),
+  	.M00_AXI_ARPROT		(m_axi_host_mem_arprot),
+  	.M00_AXI_ARQOS		(m_axi_host_mem_arqos),
+  	.M00_AXI_ARVALID	(m_axi_host_mem_arvalid),
+  	.M00_AXI_ARREADY	(m_axi_host_mem_arready),
+        //**********************Read Data Channel*************
+  	.M00_AXI_RID		(m_axi_host_mem_rid),
+  	.M00_AXI_RDATA		(m_axi_host_mem_rdata),
+  	.M00_AXI_RRESP		(m_axi_host_mem_rresp),
+  	.M00_AXI_RLAST		(m_axi_host_mem_rlast),
+  	.M00_AXI_RVALID		(m_axi_host_mem_rvalid),
+  	.M00_AXI_RREADY         (m_axi_host_mem_rready)
+);
 endmodule
