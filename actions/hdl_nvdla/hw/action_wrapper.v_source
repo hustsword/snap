@@ -149,7 +149,7 @@ module action_wrapper #(
     // DBB AXI INTERFACE
     //**********************************************
     /**************** Write Address Channel Signals ****************/
-    wire [64-1:0]                      dbb_s_axi_awaddr;
+    wire [#NVDLA_DBB_ADDR_WIDTH-1:0]                      dbb_s_axi_awaddr;
     wire [3-1:0]                       dbb_s_axi_awprot;
     wire                               dbb_s_axi_awvalid;
     wire                               dbb_s_axi_awready;
@@ -173,7 +173,7 @@ module action_wrapper #(
     wire                               dbb_s_axi_bready;
     wire [8-1:0]                       dbb_s_axi_bid;
     /**************** Read Address Channel Signals ****************/
-    wire [64-1:0]                      dbb_s_axi_araddr;
+    wire [#NVDLA_DBB_ADDR_WIDTH-1:0]                      dbb_s_axi_araddr;
     wire [3-1:0]                       dbb_s_axi_arprot;
     wire                               dbb_s_axi_arvalid;
     wire                               dbb_s_axi_arready;
@@ -239,12 +239,29 @@ module action_wrapper #(
     wire [2-1:0]                       cvsram_s_axi_rresp;
     #endif
 
-
+    #ifdef NVDLA_DBB_DATA_WIDTH < 512
     // Workaround the AXI databus issue in SNAP2.0
     wire [C_M_AXI_HOST_MEM_DATA_WIDTH-1 : 0 ] m_axi_host_mem_wdata_wire;
     reg [C_M_AXI_HOST_MEM_DATA_WIDTH-1 : 0 ] m_axi_host_mem_wdata_reg;
 
     wire [C_M_AXI_HOST_MEM_DATA_WIDTH-1 : 0 ] m_axi_host_mem_wdata_mask;
+    #endif
+
+    #ifdef NVDLA_DBB_DATA_WIDTH == 512
+    wire rid_fifo_ren;
+    wire rid_fifo_wen;
+    wire wid_fifo_ren;
+    wire wid_fifo_wen;
+
+    wire rid_fifo_full;
+    wire rid_fifo_empty;
+    wire rid_wr_rst_busy;
+    wire rid_rd_rst_busy;
+    wire wid_fifo_full;
+    wire wid_fifo_empty;
+    wire wid_wr_rst_busy;
+    wire wid_rd_rst_busy;
+    #endif 
 
     #ifdef NVDLA_DBB_DATA_WIDTH == 64
     assign m_axi_host_mem_wdata_mask = 
@@ -266,6 +283,7 @@ module action_wrapper #(
                                                             512'h00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
     #endif
 
+    #ifdef NVDLA_DBB_DATA_WIDTH < 512
     assign m_axi_host_mem_wdata = 
         m_axi_host_mem_wvalid ?
             (m_axi_host_mem_wdata_reg & ~m_axi_host_mem_wdata_mask) | (m_axi_host_mem_wdata_wire & m_axi_host_mem_wdata_mask)
@@ -278,9 +296,31 @@ module action_wrapper #(
             m_axi_host_mem_wdata_reg <= m_axi_host_mem_wdata;
         end
     end
+    #endif
 
-    assign m_axi_host_mem_arid = dbb_s_axi_arid[0];
-    assign m_axi_host_mem_awid = dbb_s_axi_awid[0];
+    reg arid_bit0_dly;
+    reg awid_bit0_dly;
+
+    always @(posedge ap_clk or negedge ap_rst_n) begin
+        if (!ap_rst_n) begin
+            arid_bit0_dly <= 1'b0;
+        end else begin
+            arid_bit0_dly <= dbb_s_axi_arid[0];
+        end
+    end
+
+    always @(posedge ap_clk or negedge ap_rst_n) begin
+        if (!ap_rst_n) begin
+            awid_bit0_dly <= 1'b0;
+        end else begin
+            awid_bit0_dly <= dbb_s_axi_awid[0];
+        end
+    end
+
+    assign m_axi_host_mem_arid      = arid_bit0_dly;
+    assign m_axi_host_mem_awid      = awid_bit0_dly;
+    assign m_axi_host_mem_arlock[1] = 1'b0;
+    assign m_axi_host_mem_awlock[1] = 1'b0;
 
     // Make wuser stick to 0
     assign m_axi_host_mem_wuser          = 0;
@@ -289,7 +329,8 @@ module action_wrapper #(
     assign dla_reset_rstn                = ap_rst_n;
     assign test_mode                     = 1'b0;
     assign global_clk_ovr_on             = 1'b0;
-    assign tmc2slcg_disable_clock_gating = 1'b0;
+    assign tmc2slcg_disable_clock_gating = 1'b1;
+    assign direct_reset_                 = 1'b0;
     assign nvdla_pwrbus_ram_c_pd         = 32'b0;
     assign nvdla_pwrbus_ram_p_pd         = 32'b0;
     assign nvdla_pwrbus_ram_o_pd         = 32'b0;
@@ -309,12 +350,14 @@ module action_wrapper #(
 
     assign dbb_s_axi_arcache        = 4'b0010;
     assign dbb_s_axi_awcache        = 4'b0010;
-    assign dbb_s_axi_arlock         = 2'b00;
+    assign dbb_s_axi_arlock         = 1'b0;
     assign dbb_s_axi_arprot         = 3'b000;
     assign dbb_s_axi_arqos          = 4'b0000;
-    assign dbb_s_axi_awlock         = 2'b00;
+    assign dbb_s_axi_awlock         = 1'b0;
     assign dbb_s_axi_awprot         = 3'b000;
     assign dbb_s_axi_awqos          = 4'b0000;
+    assign dbb_s_axi_arregion       = 4'b0000;
+    assign dbb_s_axi_awregion       = 4'b0000;
 
     // Burst size always match with data bus width
     assign dbb_s_axi_arsize         = 3'd#NVDLA_PRIMARY_MEMIF_WIDTH_LOG2;
@@ -324,8 +367,54 @@ module action_wrapper #(
     assign dbb_s_axi_awlen[7:4]     = 4'b0;
 
     #ifdef NVDLA_DBB_ADDR_WIDTH < 64
-    assign dbb_s_axi_araddr[63:32]  = 32'b0;
-    assign dbb_s_axi_awaddr[63:32]  = 32'b0;
+    assign m_axi_host_mem_araddr[63:#NVDLA_DBB_ADDR_WIDTH]  = 32'b0;
+    assign m_axi_host_mem_awaddr[63:#NVDLA_DBB_ADDR_WIDTH]  = 32'b0;
+    #endif
+
+    #ifdef NVDLA_DBB_DATA_WIDTH == 512
+    // Read address channel
+    assign m_axi_host_mem_araddr = dbb_s_axi_araddr;
+    assign m_axi_host_mem_arburst = dbb_s_axi_arburst;
+    assign m_axi_host_mem_arcache = dbb_s_axi_arcache;
+    assign m_axi_host_mem_arlen = dbb_s_axi_arlen;
+    assign m_axi_host_mem_arlock[0] = dbb_s_axi_arlock;
+    assign m_axi_host_mem_arprot = m_axi_host_mem_arprot;
+    assign m_axi_host_mem_arqos = dbb_s_axi_arqos;
+    assign dbb_s_axi_arready = m_axi_host_mem_arready && (!rid_fifo_full); 
+    assign m_axi_host_mem_arregion = dbb_s_axi_arregion;
+    assign m_axi_host_mem_arsize = dbb_s_axi_arsize;
+    assign m_axi_host_mem_arvalid = dbb_s_axi_arvalid;
+
+    // Read data channel
+    assign dbb_s_axi_rdata = m_axi_host_mem_rdata;
+    assign dbb_s_axi_rlast = m_axi_host_mem_rlast;
+    assign m_axi_host_mem_rready = dbb_s_axi_rready;
+    assign dbb_s_axi_rresp = m_axi_host_mem_rresp;
+    assign dbb_s_axi_rvalid = m_axi_host_mem_rvalid;
+ 
+    // Write address channel
+    assign m_axi_host_mem_awaddr = dbb_s_axi_awaddr;
+    assign m_axi_host_mem_awburst = dbb_s_axi_awburst;
+    assign m_axi_host_mem_awcache = dbb_s_axi_awcache;
+    assign m_axi_host_mem_awlen = dbb_s_axi_awlen;
+    assign m_axi_host_mem_awlock[0] = dbb_s_axi_awlock;
+    assign m_axi_host_mem_awprot = dbb_s_axi_awprot;
+    assign m_axi_host_mem_awqos = dbb_s_axi_awqos;
+    assign dbb_s_axi_awready = m_axi_host_mem_awready && (!wid_fifo_full);
+    assign m_axi_host_mem_awregion = dbb_s_axi_awregion;
+    assign m_axi_host_mem_awsize = dbb_s_axi_awsize;
+    assign m_axi_host_mem_awvalid = dbb_s_axi_awvalid;
+
+    // Write data channel
+    assign m_axi_host_mem_wdata = dbb_s_axi_wdata;
+    assign m_axi_host_mem_wlast = dbb_s_axi_wlast;
+    assign dbb_s_axi_wready = m_axi_host_mem_wready;
+    assign m_axi_host_mem_wstrb = dbb_s_axi_wstrb;
+    assign m_axi_host_mem_wvalid = dbb_s_axi_wvalid;
+
+    // Write Reponse Channel
+    assign m_axi_host_mem_bready = dbb_s_axi_bready;
+    assign dbb_s_axi_bvalid = m_axi_host_mem_bvalid;
     #endif
 
 
@@ -363,7 +452,7 @@ module action_wrapper #(
         // AXI-lite Interface
         ,.s_axi_aclk                    (dla_csb_clk)                   // |< i
         ,.s_axi_aresetn                 (dla_reset_rstn)                // |< i
-        ,.s_axi_awaddr                  (s_axi_ctrl_reg_araddr)         // |< i
+        ,.s_axi_awaddr                  (s_axi_ctrl_reg_awaddr)         // |< i
         ,.s_axi_awvalid                 (s_axi_ctrl_reg_awvalid)        // |< i
         ,.s_axi_awready                 (s_axi_ctrl_reg_awready)        // |> o
         ,.s_axi_wdata                   (s_axi_ctrl_reg_wdata)          // |< i
@@ -443,6 +532,40 @@ module action_wrapper #(
         ,.i_snap_action_version         (32'h00000000)                  // |> i
         );
 
+    #ifdef NVDLA_DBB_DATA_WIDTH == 512
+    assign rid_fifo_wen = dbb_s_axi_arvalid && dbb_s_axi_arready;
+    assign rid_fifo_ren = dbb_s_axi_rvalid && dbb_s_axi_rready;
+    assign wid_fifo_wen = dbb_s_axi_awvalid && dbb_s_axi_awready;
+    assign wid_fifo_ren = dbb_s_axi_bvalid && dbb_s_axi_bready;
+
+    axi_rid_fifo rid_fifo (
+        .clk            (dla_core_clk)
+        ,.srst          (!dla_reset_rstn) 
+        ,.wr_en         (rid_fifo_wen)
+        ,.din           (dbb_s_axi_arid)
+        ,.rd_en         (rid_fifo_ren)
+        ,.dout          (dbb_s_axi_rid)
+        ,.full          (rid_fifo_full)
+        ,.empty         (rid_fifo_empty)
+        ,.wr_rst_busy   (rid_wr_rst_busy)
+        ,.rd_rst_busy   (rid_rd_rst_busy)
+    );
+
+    axi_wid_fifo wid_fifo (
+        .clk            (dla_core_clk)
+        ,.srst          (!dla_reset_rstn) 
+        ,.wr_en         (wid_fifo_wen)
+        ,.din           (dbb_s_axi_awid)
+        ,.rd_en         (wid_fifo_ren)
+        ,.dout          (dbb_s_axi_bid)
+        ,.full          (wid_fifo_full)
+        ,.empty         (wid_fifo_empty)
+        ,.wr_rst_busy   (wid_wr_rst_busy)
+        ,.rd_rst_busy   (wid_rd_rst_busy)
+    );
+    #endif
+
+    #ifdef NVDLA_DBB_DATA_WIDTH < 512
     dbb_axi_dbus_converter 
     dbus_converter
     (
@@ -450,7 +573,7 @@ module action_wrapper #(
         // DUT MASTER INTERFACE
         //**********************************************
         /**************** Write Address Channel Signals ****************/
-        .m_axi_awaddr   ( m_axi_host_mem_awaddr),
+        .m_axi_awaddr   ( m_axi_host_mem_awaddr[#NVDLA_DBB_ADDR_WIDTH-1:0]),
         .m_axi_awprot   ( m_axi_host_mem_awprot),
         .m_axi_awvalid  ( m_axi_host_mem_awvalid),
         .m_axi_awready  ( m_axi_host_mem_awready),
@@ -458,7 +581,7 @@ module action_wrapper #(
         .m_axi_awburst  ( m_axi_host_mem_awburst),
         .m_axi_awcache  ( m_axi_host_mem_awcache),
         .m_axi_awlen    ( m_axi_host_mem_awlen),
-        .m_axi_awlock   ( m_axi_host_mem_awlock),
+        .m_axi_awlock   ( m_axi_host_mem_awlock[0]),
         .m_axi_awqos    ( m_axi_host_mem_awqos),
         .m_axi_awregion ( m_axi_host_mem_awregion),
         /**************** Write Data Channel Signals ****************/
@@ -472,14 +595,14 @@ module action_wrapper #(
         .m_axi_bvalid   ( m_axi_host_mem_bvalid),
         .m_axi_bready   ( m_axi_host_mem_bready),
         /**************** Read Address Channel Signals ****************/
-        .m_axi_araddr   ( m_axi_host_mem_araddr),
+        .m_axi_araddr   ( m_axi_host_mem_araddr[#NVDLA_DBB_ADDR_WIDTH-1:0]),
         .m_axi_arprot   ( m_axi_host_mem_arprot),
         .m_axi_arvalid  ( m_axi_host_mem_arvalid),
         .m_axi_arready  ( m_axi_host_mem_arready),
         .m_axi_arsize   ( m_axi_host_mem_arsize),
         .m_axi_arburst  ( m_axi_host_mem_arburst),
         .m_axi_arcache  ( m_axi_host_mem_arcache),
-        .m_axi_arlock   ( m_axi_host_mem_arlock),
+        .m_axi_arlock   ( m_axi_host_mem_arlock[0]),
         .m_axi_arlen    ( m_axi_host_mem_arlen),
         .m_axi_arqos    ( m_axi_host_mem_arqos),
         .m_axi_arregion ( m_axi_host_mem_arregion),
@@ -542,6 +665,7 @@ module action_wrapper #(
         .s_axi_aclk     ( dla_core_clk),
         .s_axi_aresetn  ( dla_reset_rstn)
         );
+    #endif
 
     #ifdef SRAM
     axi_bram_ctrl_0 axi_bram_0 (

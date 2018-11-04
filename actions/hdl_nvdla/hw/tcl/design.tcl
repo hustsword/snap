@@ -4,10 +4,22 @@ add_files -scan_for_includes $action_dir/vlibs/nv_assert_no_x.vlib -verbose
 set_property file_type {Verilog} [get_files *.vlib]
 set_property is_global_include true [get_files -of_objects [get_filesets sources_1] $action_dir/include/NV_NVDLA_global_include.vh]
 set_property is_global_include true [get_files -of_objects [get_filesets sources_1] $action_dir/include/NV_NVDLA_global_include_syn.vh]
+set_property is_global_include true [get_files -of_objects [get_filesets sources_1] $action_dir/include/NV_NVDLA_global_include_sim.vh]
 set_property is_global_include true [get_files -of_objects [get_filesets sources_1] $action_dir/defs/project.vh]
 set_property file_type {Verilog} [get_files -of_objects [get_filesets sources_1] $action_dir/include/NV_NVDLA_global_include.vh]
 set_property file_type {Verilog} [get_files -of_objects [get_filesets sources_1] $action_dir/include/NV_NVDLA_global_include_syn.vh]
+set_property file_type {Verilog} [get_files -of_objects [get_filesets sources_1] $action_dir/include/NV_NVDLA_global_include_sim.vh]
 set_property file_type {Verilog} [get_files -of_objects [get_filesets sources_1] $action_dir/defs/project.vh]
+
+set_property used_in_synthesis true [get_files -of_objects [get_filesets sources_1] $action_dir/include/NV_NVDLA_global_include.vh]
+set_property used_in_synthesis true [get_files -of_objects [get_filesets sources_1] $action_dir/include/NV_NVDLA_global_include_syn.vh]
+set_property used_in_synthesis false [get_files -of_objects [get_filesets sources_1] $action_dir/include/NV_NVDLA_global_include_sim.vh]
+
+set_property used_in_implementation false [get_files -of_objects [get_filesets sources_1] $action_dir/include/NV_NVDLA_global_include_sim.vh]
+
+set_property used_in_simulation true [get_files -of_objects [get_filesets sources_1] $action_dir/include/NV_NVDLA_global_include.vh]
+set_property used_in_simulation false [get_files -of_objects [get_filesets sources_1] $action_dir/include/NV_NVDLA_global_include_syn.vh]
+set_property used_in_simulation true [get_files -of_objects [get_filesets sources_1] $action_dir/include/NV_NVDLA_global_include_sim.vh]
 
 # Use fifo in fifo directory
 foreach fifo_file [glob -nocomplain -dir $action_dir/fifos *.v] {
@@ -16,7 +28,7 @@ foreach fifo_file [glob -nocomplain -dir $action_dir/fifos *.v] {
     foreach tmp_file [get_files $fifo_file_name] {
         set dir_name [exec dirname $tmp_file]
         if {$dir_name != "$action_dir/fifos"} {
-            puts "                        NOT from fifo directory: $fifo_file_name " >> $log_file
+            puts "                        NOT from fifo directory: $tmp_file"
             remove_files $tmp_file
         }
     }
@@ -36,4 +48,8 @@ foreach usr_ip [glob -nocomplain -dir $action_ipdir *] {
         export_ip_user_files -of_objects             [ get_files $usr_ip_xci] -no_script -sync -force -quiet >> $log_file
     }
 }
+puts "                        importing set_max_fanout XDCs"
+add_files -fileset constrs_1 -norecurse $action_dir/tcl/set_max_fanout.xdc >> $log_file
+set_property used_in_synthesis true [get_files $action_dir/tcl/set_max_fanout.xdc]
+set_property used_in_implementation true [get_files $action_dir/tcl/set_max_fanout.xdc]
 

@@ -22,6 +22,7 @@
 . $SNAP_ROOT/snap_env.sh
 
 echo "NVDLA CONFIG: ${NVDLA_CONFIG}"
+echo "FPGA CHIP:    ${FPGACHIP}"
 
 if [ -z ${NVDLA_CONFIG} ]; then
     echo "NVDLA CONFIG is empty, please specify it in snap_env.sh"
@@ -52,8 +53,12 @@ if [ -L ../fpga_ip ]; then
     unlink ../fpga_ip
 fi
 
-if [ -L ./ram_wrapper ]; then
-    unlink ./ram_wrapper
+#if [ -L ./ram_wrapper ]; then
+#    unlink ./ram_wrapper
+#fi
+
+if [ -L ./ram_fpga ]; then
+    unlink ./ram_fpga
 fi
 
 if [ ! -d ../nvdla-capi ]; then
@@ -64,7 +69,7 @@ elif [ ! -d ../nvdla-capi/outdir/$NVDLA_CONFIG ]; then
     if [ -f tree.make ]; then
         rm tree.make
     fi
-    make USE_NV_ENV=1 NV_PROJ=$NVDLA_CONFIG
+    make USE_NV_ENV=1 NV_PROJ=$NVDLA_CONFIG NV_FPGA_CHIP=$FPGACHIP
     ./tools/bin/tmake -clean -build vmod
     if [ $? -ne 0 ]; then
         echo "ERROR while making NVDLA-CAPI hardware."
@@ -79,7 +84,8 @@ ln -s $ACTION_ROOT/nvdla-capi/outdir/$NVDLA_CONFIG/vmod/nvdla               nvdl
 ln -s $ACTION_ROOT/nvdla-capi/outdir/$NVDLA_CONFIG/vmod/include             include
 ln -s $ACTION_ROOT/nvdla-capi/outdir/$NVDLA_CONFIG/vmod/vlibs               vlibs
 ln -s $ACTION_ROOT/nvdla-capi/outdir/$NVDLA_CONFIG/vmod/fifos               fifos
-ln -s $ACTION_ROOT/nvdla-capi/outdir/$NVDLA_CONFIG/vmod/fpga_ip/ram_wrapper ram_wrapper
+#ln -s $ACTION_ROOT/nvdla-capi/outdir/$NVDLA_CONFIG/vmod/fpga_ip/ram_wrapper ram_wrapper
+ln -s $ACTION_ROOT/nvdla-capi/outdir/$NVDLA_CONFIG/vmod/rams/fpga/model     ram_fpga
 ln -s $ACTION_ROOT/nvdla-capi/outdir/$NVDLA_CONFIG/vmod/fpga_ip             ../fpga_ip
 ln -s $ACTION_ROOT/nvdla-capi/outdir/$NVDLA_CONFIG/spec/defs                defs
 
@@ -117,9 +123,21 @@ for vsource in *.v_source; do
         sed -i '/#ifdef NVDLA_DBB_DATA_WIDTH == 64/d' $vfile
     fi
 
-    if [ $dbb_data_width -eq 256 ]; then
+    if [ $dbb_data_width -eq 512 ]; then
+        sed -i '/#ifdef NVDLA_DBB_DATA_WIDTH == 512/d' $vfile
+        sed -i '/#ifdef NVDLA_DBB_DATA_WIDTH == 64/,/#endif/d' $vfile
+        sed -i '/#ifdef NVDLA_DBB_DATA_WIDTH == 256/,/#endif/d' $vfile
+        sed -i '/#ifdef NVDLA_DBB_DATA_WIDTH < 512/,/#endif/d' $vfile
+    elif [ $dbb_data_width -eq 256 ]; then
+        sed -i '/#ifdef NVDLA_DBB_DATA_WIDTH == 512/,/#endif/d' $vfile
         sed -i '/#ifdef NVDLA_DBB_DATA_WIDTH == 64/,/#endif/d' $vfile
         sed -i '/#ifdef NVDLA_DBB_DATA_WIDTH == 256/d' $vfile
+        sed -i '/#ifdef NVDLA_DBB_DATA_WIDTH < 512/d' $vfile
+    else
+        sed -i '/#ifdef NVDLA_DBB_DATA_WIDTH == 512/,/#endif/d' $vfile
+        sed -i '/#ifdef NVDLA_DBB_DATA_WIDTH == 256/,/#endif/d' $vfile
+        sed -i '/#ifdef NVDLA_DBB_DATA_WIDTH == 64/d' $vfile
+        sed -i '/#ifdef NVDLA_DBB_DATA_WIDTH < 512/d' $vfile
     fi
 
     if [ $sram_data_width ]; then

@@ -131,7 +131,7 @@ static  int verbose_level = 0;
 //}
 //
 /* Action or Kernel Write and Read are 32 bit MMIO */
-static void action_write (struct snap_card* h, uint32_t addr, uint32_t data)
+static int action_write (struct snap_card* h, uint32_t addr, uint32_t data)
 {
     int rc;
 
@@ -141,7 +141,7 @@ static void action_write (struct snap_card* h, uint32_t addr, uint32_t data)
         VERBOSE0 ("Write MMIO 32 Err\n");
     }
 
-    return;
+    return rc;
 }
 
 ///*  Calculate msec to FPGA ticks.
@@ -207,12 +207,15 @@ int main (int argc, char* argv[])
     int cmd;
     int rc = 1;
     uint64_t cir;
+    uint32_t irq_control;
+    uint32_t action_control;
+    //uint32_t config;
     int timeout = ACTION_WAIT_TIME;
     snap_action_flag_t attach_flags = 0;
     unsigned long ioctl_data;
     unsigned long dma_align;
     unsigned long dma_min_size;
-    //struct snap_action *act = NULL;
+    struct snap_action *act = NULL;
     char card_name[16];   /* Space for Card name */
     char default_loadable[] = "./basic.nvdla";
     char default_image   [] = "./something.pgm";
@@ -222,6 +225,16 @@ int main (int argc, char* argv[])
     char* input   = NULL;
     int normalize = 0;
     int rawdump = 0;
+    float mean[4] = {0.0, 0.0, 0.0, 0.0};
+    char *mean_token;
+    int i = 0;
+
+    //char loadable1[] = "../sw/nvdla-sw/regression/flatbufs/kmd/CDP/CDP_L0_0_large_fbuf";
+    //char loadable2[] = "../sw/nvdla-sw/regression/flatbufs/kmd/SDP/SDP_X1_L0_0_large_fbuf";
+    //char loadable3[] = "../sw/nvdla-sw/regression/flatbufs/kmd/PDP/PDP_L0_0_large_fbuf";
+    //char loadable4[] = "../sw/nvdla-sw/regression/flatbufs/kmd/CONV/CONV_D_L0_0_large_fbuf";
+    //char loadable5[] = "../sw/nvdla-sw/regression/flatbufs/kmd/NN/NN_L0_1_large_fbuf";
+    //char loadable6[] = "../sw/nvdla-sw/regression/flatbufs/kmd/NN/NN_L0_1_large_random_fbuf";
 
     while (1) {
         int option_index = 0;
@@ -234,13 +247,14 @@ int main (int argc, char* argv[])
             { "loadable", required_argument, NULL, 'l' },
             { "image",    required_argument, NULL, 'm' },
             { "input",    required_argument, NULL, 'i' },
-            { "rawdump",  no_argument, NULL, 'r' },
+            { "rawdump",  no_argument,       NULL, 'r' },
             { "normalize",required_argument, NULL, 'n' },
+            { "mean",     required_argument, NULL, 'M' },
             { "timeout",  required_argument, NULL, 't' },
             { "irq",      no_argument,       NULL, 'I' },
             { 0,          no_argument,       NULL, 0   },
         };
-        cmd = getopt_long (argc, argv, "C:l:m:i:r:n:t:IqvVh",
+        cmd = getopt_long (argc, argv, "C:l:m:i:r:n:M:t:IqvVh",
                            long_options, &option_index);
 
         if (cmd == -1) { /* all params processed ? */
@@ -282,6 +296,21 @@ int main (int argc, char* argv[])
 
         case 'r':
             rawdump = 1;
+            break;
+
+        case 'M':
+            mean_token = strtok(optarg, ",\n");
+            while( mean_token != NULL ) {
+                if (i > 3) {
+                    VERBOSE0 ("ERROR: Number of mean values should not be greater than 4 \n");
+                    usage (argv[0]);
+                    exit (EXIT_FAILURE);
+                }
+                mean[i] = atof(mean_token);
+                mean_token = strtok(NULL, ",\n");
+                i++;
+            }
+
             break;
 
         case 't':
@@ -326,38 +355,160 @@ int main (int argc, char* argv[])
         return -1;
     }
 
+    // Disable the NVDLA register region
+    rc = action_write(dn, ACTION_CONFIG, 0x00000000);
+
+    if (rc) {
+        VERBOSE0 ("ERROR: action_write ERROR\n");
+        errno = ENODEV;
+        perror ("ERROR");
+        return -1;
+    } 
+
     /* Read Card Name */
-    snap_card_ioctl (dn, GET_CARD_NAME, (unsigned long)&card_name);
+    rc = snap_card_ioctl (dn, GET_CARD_NAME, (unsigned long)&card_name);
     VERBOSE1 ("SNAP on %s", card_name);
 
-    snap_card_ioctl (dn, GET_SDRAM_SIZE, (unsigned long)&ioctl_data);
+    if (rc) {
+        VERBOSE0 ("ERROR: snap_card_ioctl ERROR\n");
+        errno = ENODEV;
+        perror ("ERROR");
+        return -1;
+    }
+
+    rc = snap_card_ioctl (dn, GET_SDRAM_SIZE, (unsigned long)&ioctl_data);
     VERBOSE1 (" Card, %d MB of Card Ram avilable. ", (int)ioctl_data);
 
-    snap_card_ioctl (dn, GET_DMA_ALIGN, (unsigned long)&dma_align);
+    if (rc) {
+        VERBOSE0 ("ERROR: snap_card_ioctl ERROR\n");
+        errno = ENODEV;
+        perror ("ERROR");
+        return -1;
+    }
+
+    rc = snap_card_ioctl (dn, GET_DMA_ALIGN, (unsigned long)&dma_align);
     VERBOSE1 (" (Align: %d ", (int)dma_align);
 
-    snap_card_ioctl (dn, GET_DMA_MIN_SIZE, (unsigned long)&dma_min_size);
+    if (rc) {
+        VERBOSE0 ("ERROR: snap_card_ioctl ERROR\n");
+        errno = ENODEV;
+        perror ("ERROR");
+        return -1;
+    }
+
+    rc = snap_card_ioctl (dn, GET_DMA_MIN_SIZE, (unsigned long)&dma_min_size);
     VERBOSE1 (" Min DMA: %d Bytes)\n", (int)dma_min_size);
 
-    snap_mmio_read64 (dn, SNAP_S_CIR, &cir);
+    if (rc) {
+        VERBOSE0 ("ERROR: snap_card_ioctl ERROR\n");
+        errno = ENODEV;
+        perror ("ERROR");
+        return -1;
+    }
+
+    rc = snap_mmio_read64 (dn, SNAP_S_CIR, &cir);
     VERBOSE1 ("Start NVDLA in Card Handle: %p Context: %d\n", dn,
               (int) (cir & 0x1ff));
 
-    snap_attach_action(dn, ACTION_TYPE_NVDLA,
+    if (rc) {
+        VERBOSE0 ("ERROR: snap_mmio_read64 ERROR\n");
+        errno = ENODEV;
+        perror ("ERROR");
+        return -1;
+    }
+
+    act = snap_attach_action(dn, ACTION_TYPE_NVDLA,
             attach_flags, 5 * timeout);
+
+    if (NULL == act) {
+        VERBOSE0 ("ERROR: snap_attach_action ERROR\n");
+        errno = ENODEV;
+        perror ("ERROR");
+        return -1;
+    }
+
+    // Disable the NVDLA register region
+    rc = action_write(dn, ACTION_CONFIG, 0x00000000);
+    VERBOSE0 ("Asserting soft reset\n");
+    //// Assert soft reset
+    //rc |= action_write(dn, ACTION_CONFIG, 0x00000200);
+    //rc |= snap_mmio_read32 (dn, ACTION_CONFIG, &config);
+    //VERBOSE0 ("Config register: %#x\n", config);
+    //// Clear soft reset
+    //rc |= action_write(dn, ACTION_CONFIG, 0x00000000);
+    //rc |= snap_mmio_read32 (dn, ACTION_CONFIG, &config);
+    //VERBOSE0 ("Config register: %#x\n", config);
+
+    if (rc) {
+        VERBOSE0 ("ERROR: action_write/read ERROR\n");
+        errno = ENODEV;
+        perror ("ERROR");
+        return -1;
+    } 
 
     VERBOSE1 ("Turn on the NVDLA register region\n");
     // Enable the NVDLA register region
-    action_write(dn, ACTION_CONFIG, 0x00000100);
+    rc = action_write(dn, ACTION_CONFIG, 0x00000100);
+
+    if (rc) {
+        VERBOSE0 ("ERROR: action_write ERROR\n");
+        errno = ENODEV;
+        perror ("ERROR");
+        return -1;
+    }
 
     VERBOSE1 ("Start to run NVDLA\n");
-    nvdla_probe(dn);
-    nvdla_capi_test(loadable, input, image, normalize, rawdump);
+    rc = nvdla_probe(dn);
+
+    if (rc) {
+        VERBOSE0 ("ERROR: nvdla_probe ERROR\n");
+        errno = ENODEV;
+        perror ("ERROR");
+        return -1;
+    }
+    
+    VERBOSE0 ("NVDLA loadable:  %s\n", loadable);
+    VERBOSE0 ("NVDLA input:     %s\n", input);
+    VERBOSE0 ("NVDLA image:     %s\n", image);
+    VERBOSE0 ("NVDLA normalize: %d\n", normalize);
+    VERBOSE0 ("NVDLA rawdump:   %d\n", rawdump);
+
+    for (i = 0; i < 4; i++) {
+        VERBOSE0 ("NVDLA mean[%d]:   %f\n", i, mean[i]);
+    }
+
+    rc = nvdla_capi_test(loadable, input, image, normalize, rawdump, mean);
     VERBOSE1 ("Stop to run NVDLA\n");
 
+    if (rc) {
+        VERBOSE0 ("ERROR: nvdla_capi_test ERROR\n");
+        errno = ENODEV;
+        perror ("ERROR");
+        return -1;
+    }
+
     VERBOSE1 ("Turn off the NVDLA register region\n");
-    // Disable the NVDLA register region
-    action_write(dn, ACTION_CONFIG, 0x00000000);
+    // Disable the NVDLA register region and indicate action done
+    rc = action_write(dn, ACTION_CONFIG, 0x00000400);
+
+    if (rc) {
+        VERBOSE0 ("ERROR: action_write ERROR\n");
+        errno = ENODEV;
+        perror ("ERROR");
+        return -1;
+    } 
+
+    rc = snap_mmio_read32 (dn, ACTION_IRQ_CONTROL, &irq_control);
+    VERBOSE1 ("irq_control: %#x\n", irq_control);
+    rc |= snap_mmio_read32 (dn, ACTION_CONTROL, &action_control);
+    VERBOSE1 ("action_control: %#x\n", action_control);
+
+    if (rc) {
+        VERBOSE0 ("ERROR: snap_mmio_read64 ERROR\n");
+        errno = ENODEV;
+        perror ("ERROR");
+        return -1;
+    }
 
     // Unmap AFU MMIO registers, if previously mapped
     VERBOSE2 ("Free Card Handle: %p\n", dn);
