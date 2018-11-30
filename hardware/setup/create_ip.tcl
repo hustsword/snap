@@ -125,6 +125,16 @@ generate_target all                          [get_files $ip_dir/fifo_4x512/fifo_
 export_ip_user_files -of_objects             [get_files $ip_dir/fifo_4x512/fifo_4x512.xci] -no_script -force >> $log_file
 export_simulation -of_objects [get_files $ip_dir/fifo_4x512/fifo_4x512.xci] -directory $ip_dir/ip_user_files/sim_scripts -force >> $log_file
 
+#AXI_VIP create axi_vip_dbb_check
+puts "	                generating IP axi_vip_dbb_check"
+create_ip -name axi_vip -vendor xilinx.com -library ip -version 1.1 -module_name axi_vip_dbb_check -dir $ip_dir >> $log_file
+set_property -dict [list CONFIG.ADDR_WIDTH {64} CONFIG.DATA_WIDTH {512} CONFIG.ID_WIDTH {8} CONFIG.AWUSER_WIDTH {8} CONFIG.ARUSER_WIDTH {8} CONFIG.RUSER_WIDTH {1} CONFIG.WUSER_WIDTH {1} CONFIG.BUSER_WIDTH {1}] [get_ips axi_vip_dbb_check] >> $log_file
+set_property generate_synth_checkpoint false [get_files $ip_dir/axi_vip_dbb_check/axi_vip_dbb_check.xci]                    >> $log_file
+generate_target {instantiation_template}     [get_files $ip_dir/axi_vip_dbb_check/axi_vip_dbb_check.xci]                    >> $log_file
+generate_target all                          [get_files $ip_dir/axi_vip_dbb_check/axi_vip_dbb_check.xci]                    >> $log_file
+export_ip_user_files -of_objects             [get_files $ip_dir/axi_vip_dbb_check/axi_vip_dbb_check.xci] -no_script -sync -force -quiet  >> $log_file
+export_simulation -of_objects [get_files $ip_dir/axi_vip_dbb_check/axi_vip_dbb_check.xci] -directory $ip_dir/ip_user_files/sim_scripts -force >> $log_file
+
 #choose type of RAM that will be connected to the DDR AXI Interface
 # BRAM_USED=TRUE  500KB BRAM
 # SDRAM_USED=TRUE   8GB AlphaData KU3  DDR3 RAM

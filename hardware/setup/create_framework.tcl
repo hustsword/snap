@@ -145,6 +145,8 @@ if { [file exists $action_tcl] == 1 } {
 
 # Sim Files
 if { $simulator != "nosim" } {
+  puts "                        importing simulation files for $simulator"  
+  add_files -scan_for_includes $sim_dir/core/verif  >> $log_file
   add_files    -fileset sim_1 -norecurse -scan_for_includes $sim_dir/core/top.sv  >> $log_file
   set_property file_type SystemVerilog [get_files $sim_dir/core/top.sv]
   set_property used_in_synthesis false [get_files $sim_dir/core/top.sv]
@@ -198,6 +200,9 @@ add_files -norecurse  $ip_dir/fifo_10x512/fifo_10x512.xci >> $log_file
 export_ip_user_files -of_objects  [get_files  "$ip_dir/fifo_10x512/fifo_10x512.xci"] -force >> $log_file
 add_files -norecurse  $ip_dir/fifo_513x512/fifo_513x512.xci >> $log_file
 export_ip_user_files -of_objects  [get_files  "$ip_dir/fifo_513x512/fifo_513x512.xci"] -force >> $log_file
+# AXI VIPs
+add_files -norecurse  $ip_dir/axi_vip_dbb_check/axi_vip_dbb_check.xci >> $log_file
+export_ip_user_files -of_objects  [get_files  "$ip_dir/axi_vip_dbb_check/axi_vip_dbb_check.xci"] -force >> $log_file
 # DDR3 / BRAM IPs
 if { $fpga_card == "ADKU3" } {
   if { $bram_used == "TRUE" } {

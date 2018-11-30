@@ -20,10 +20,15 @@
 
 
 `timescale 1ps / 1ps
+
+//`include "../../../actions/hdl_nvdla/hw/verif/env/action_tb_pkg.svh"
+//`include "../../../hardware/sim/core/verif/env/action_tb_pkg.svh"
+`include "../core/verif/env/action_tb_pkg.svh"
+
 module top (
   output          breakpoint
 );
-
+   event action_tb_finish; 
    import "DPI-C" function void psl_bfm_init( );
    import "DPI-C" function void set_simulation_time(input [0:63] simulationTime);
    import "DPI-C" function void get_simuation_error(inout simulationError);
@@ -407,7 +412,6 @@ module top (
   reg             simulationError;
 
   // C code interface registration
-
   initial begin
     ha_pclock <= 0;
     br_wr_ptr <= 0;
@@ -540,6 +544,7 @@ module top (
      sys_reset_n_q <= 0;  #100ns;  // a line can not start with "#", because SNAP is unsing the C preprocessor
      sys_reset_n_q <= 1 ;
   end
+
   // Currently unused inputs
   assign ha_rcachestate = 0;
   assign ha_rcachepos   = 0;
@@ -690,9 +695,11 @@ module top (
 
   always @ (posedge ha_pclock) begin
     ah_jrunning_l <= ah_jrunning;
-    if(simulationError)
+    if(simulationError)begin
+      ->action_tb_finish; #100ns;
       $finish;
 //      $stop;
+    end
   end
 
   assign ah_jrunning_top = ah_jrunning_l;
@@ -1424,4 +1431,163 @@ module top (
     .pcie_rc1_txp(pcie_rc1_txp)
     );
 #endif
+
+  //**********************************************
+  // DBB AXI INTERFACE
+  //**********************************************
+  /**************** Write Address Channel Signals ****************/
+  wire                               dla_core_clk;
+  wire                               dla_reset_rstn;
+  wire [64-1:0]                      dbb_s_axi_awaddr;
+  wire [3-1:0]                       dbb_s_axi_awprot;
+  wire                               dbb_s_axi_awvalid;
+  wire                               dbb_s_axi_awready;
+  wire [3-1:0]                       dbb_s_axi_awsize;
+  wire [2-1:0]                       dbb_s_axi_awburst;
+  wire [4-1:0]                       dbb_s_axi_awcache;
+  wire [8-1:0]                       dbb_s_axi_awlen;
+  wire [1-1:0]                       dbb_s_axi_awlock;
+  wire [4-1:0]                       dbb_s_axi_awqos;
+  wire [4-1:0]                       dbb_s_axi_awregion;
+  wire [8-1:0]                       dbb_s_axi_awid;
+  /**************** Write Data Channel Signals ****************/
+  wire [512-1:0]                     dbb_s_axi_wdata;
+  wire [512/8-1:0]                   dbb_s_axi_wstrb;
+  wire                               dbb_s_axi_wvalid;
+  wire                               dbb_s_axi_wready;
+  wire                               dbb_s_axi_wlast;
+  /**************** Write Response Channel Signals ****************/
+  wire [2-1:0]                       dbb_s_axi_bresp;
+  wire                               dbb_s_axi_bvalid;
+  wire                               dbb_s_axi_bready;
+  wire [8-1:0]                       dbb_s_axi_bid;
+  /**************** Read Address Channel Signals ****************/
+  wire [64-1:0]                      dbb_s_axi_araddr;
+  wire [3-1:0]                       dbb_s_axi_arprot;
+  wire                               dbb_s_axi_arvalid;
+  wire                               dbb_s_axi_arready;
+  wire [3-1:0]                       dbb_s_axi_arsize;
+  wire [2-1:0]                       dbb_s_axi_arburst;
+  wire [4-1:0]                       dbb_s_axi_arcache;
+  wire [1-1:0]                       dbb_s_axi_arlock;
+  wire [8-1:0]                       dbb_s_axi_arlen;
+  wire [4-1:0]                       dbb_s_axi_arqos;
+  wire [4-1:0]                       dbb_s_axi_arregion;
+  wire [8-1:0]                       dbb_s_axi_arid;
+  /**************** Read Data Channel Signals ****************/
+  wire [512-1:0]                     dbb_s_axi_rdata;
+  wire [2-1:0]                       dbb_s_axi_rresp;
+  wire                               dbb_s_axi_rvalid;
+  wire                               dbb_s_axi_rready;
+  wire                               dbb_s_axi_rlast;
+  wire [8-1:0]                       dbb_s_axi_rid;
+
+  // DBB Check agent connect
+  assign                             dla_core_clk=a0.action_w.ap_clk;
+  assign                             dla_reset_rstn=a0.action_w.ap_rst_n;
+  // AXI write resquest channel action_w m_axi_host_mem_araddr
+  //assign                             dbb_s_axi_awid=a0.action_w.m_axi_host_mem_awid;
+  assign                             dbb_s_axi_awid=0;  
+  assign                             dbb_s_axi_awaddr=a0.action_w.m_axi_host_mem_awaddr;
+  assign                             dbb_s_axi_awlen=a0.action_w.m_axi_host_mem_awlen;
+  assign                             dbb_s_axi_awsize=a0.action_w.m_axi_host_mem_awsize;
+  assign                             dbb_s_axi_awburst=a0.action_w.m_axi_host_mem_awburst;
+  assign                             dbb_s_axi_awlock=a0.action_w.m_axi_host_mem_awlock;
+  assign                             dbb_s_axi_awcache=a0.action_w.m_axi_host_mem_awcache;
+  assign                             dbb_s_axi_awprot=a0.action_w.m_axi_host_mem_awprot;
+  assign                             dbb_s_axi_awregion=a0.action_w.m_axi_host_mem_awregion;
+  assign                             dbb_s_axi_awqos=a0.action_w.m_axi_host_mem_awqos;
+  assign                             dbb_s_axi_awvalid=a0.action_w.m_axi_host_mem_awvalid;
+  assign                             dbb_s_axi_awready=a0.action_w.m_axi_host_mem_awready;
+  assign                             dbb_s_axi_wdata=a0.action_w.m_axi_host_mem_wdata;
+  assign                             dbb_s_axi_wstrb=a0.action_w.m_axi_host_mem_wstrb;
+  assign                             dbb_s_axi_wlast=a0.action_w.m_axi_host_mem_wlast;
+  assign                             dbb_s_axi_wvalid=a0.action_w.m_axi_host_mem_wvalid;
+  assign                             dbb_s_axi_wready=a0.action_w.m_axi_host_mem_wready;
+  // AXI write response channel
+  assign                             dbb_s_axi_bready=a0.action_w.m_axi_host_mem_bready;
+  //assign                             dbb_s_axi_bid=a0.action_w.m_axi_host_mem_bid;
+  assign                             dbb_s_axi_bid=0;  
+  assign                             dbb_s_axi_bresp=a0.action_w.m_axi_host_mem_bresp;
+  assign                             dbb_s_axi_bvalid=a0.action_w.m_axi_host_mem_bvalid;
+  // AXI read response channel        
+  //assign                             dbb_s_axi_arid=a0.action_w.m_axi_host_mem_arid;
+  assign                             dbb_s_axi_arid=0;  
+  assign                             dbb_s_axi_araddr=a0.action_w.m_axi_host_mem_araddr;
+  assign                             dbb_s_axi_arlen=a0.action_w.m_axi_host_mem_arlen;
+  assign                             dbb_s_axi_arsize=a0.action_w.m_axi_host_mem_arsize;
+  assign                             dbb_s_axi_arburst=a0.action_w.m_axi_host_mem_arburst;
+  assign                             dbb_s_axi_arlock=a0.action_w.m_axi_host_mem_arlock;
+  assign                             dbb_s_axi_arcache=a0.action_w.m_axi_host_mem_arcache;
+  assign                             dbb_s_axi_arprot=a0.action_w.m_axi_host_mem_arprot;
+  assign                             dbb_s_axi_arregion=a0.action_w.m_axi_host_mem_arregion;
+  assign                             dbb_s_axi_arqos=a0.action_w.m_axi_host_mem_arqos;
+  assign                             dbb_s_axi_arvalid=a0.action_w.m_axi_host_mem_arvalid;
+  assign                             dbb_s_axi_arready=a0.action_w.m_axi_host_mem_arready;
+  // AXI read data channel                
+  assign                             dbb_s_axi_rready=a0.action_w.m_axi_host_mem_rready;
+  //assign                             dbb_s_axi_rid=a0.action_w.m_axi_host_mem_rid;
+  assign                             dbb_s_axi_rid=0;  
+  assign                             dbb_s_axi_rdata=a0.action_w.m_axi_host_mem_rdata;
+  assign                             dbb_s_axi_rresp=a0.action_w.m_axi_host_mem_rresp;
+  assign                             dbb_s_axi_rlast=a0.action_w.m_axi_host_mem_rlast;
+  assign                             dbb_s_axi_rvalid=a0.action_w.m_axi_host_mem_rvalid;
+
+  axi_vip_dbb_check dbb_check_passthrough(
+      .aclk                  (dla_core_clk),
+      .aresetn               (dla_reset_rstn),
+      // AXI write address channel        
+      .s_axi_awid            (dbb_s_axi_awid),
+      .s_axi_awaddr          (dbb_s_axi_awaddr),
+      .s_axi_awlen           (dbb_s_axi_awlen),
+      .s_axi_awsize          (dbb_s_axi_awsize),
+      .s_axi_awburst         (dbb_s_axi_awburst),
+      .s_axi_awlock          (dbb_s_axi_awlock),
+      .s_axi_awcache         (dbb_s_axi_awcache),
+      .s_axi_awprot          (dbb_s_axi_awprot),
+      .s_axi_awregion        (dbb_s_axi_awregion),
+      .s_axi_awqos           (dbb_s_axi_awqos),
+      .s_axi_awvalid         (dbb_s_axi_awvalid),
+      .m_axi_awready         (dbb_s_axi_awready),
+      // AXI write data channel        
+      .s_axi_wdata           (dbb_s_axi_wdata),
+      .s_axi_wstrb           (dbb_s_axi_wstrb),
+      .s_axi_wlast           (dbb_s_axi_wlast),
+      .s_axi_wvalid          (dbb_s_axi_wvalid),
+      .m_axi_wready          (dbb_s_axi_wready),
+      // AXI write response channel
+      .s_axi_bready          (dbb_s_axi_bready),
+      .m_axi_bid             (dbb_s_axi_bid),
+      .m_axi_bresp           (dbb_s_axi_bresp),
+      .m_axi_bvalid          (dbb_s_axi_bvalid),
+      // AXI read response channel        
+      .s_axi_arid            (dbb_s_axi_arid),
+      .s_axi_araddr          (dbb_s_axi_araddr),
+      .s_axi_arlen           (dbb_s_axi_arlen),
+      .s_axi_arsize          (dbb_s_axi_arsize),
+      .s_axi_arburst         (dbb_s_axi_arburst),
+      .s_axi_arlock          (dbb_s_axi_arlock),
+      .s_axi_arcache         (dbb_s_axi_arcache),
+      .s_axi_arprot          (dbb_s_axi_arprot),
+      .s_axi_arregion        (dbb_s_axi_arregion),
+      .s_axi_arqos           (dbb_s_axi_arqos),
+      .s_axi_arvalid         (dbb_s_axi_arvalid),
+      .m_axi_arready         (dbb_s_axi_arready),
+      // AXI read data channel                
+      .s_axi_rready          (dbb_s_axi_rready),
+      .m_axi_rid             (dbb_s_axi_rid),
+      .m_axi_rdata           (dbb_s_axi_rdata),
+      .m_axi_rresp           (dbb_s_axi_rresp),
+      .m_axi_rlast           (dbb_s_axi_rlast),
+      .m_axi_rvalid          (dbb_s_axi_rvalid));
+
+  initial begin
+      uvm_config_db#(virtual axi_vip_if `AXI_VIP_DBB_CHECK_PARAMS)::set(null, "*", "dbb_check_agent_vif", dbb_check_passthrough.inst.IF);
+      dbb_check_passthrough.inst.set_passthrough_mode();
+      dbb_check_passthrough.inst.IF.set_enable_xchecks_to_warn();
+      dbb_check_passthrough.inst.IF.set_xilinx_reset_check_to_warn();      
+  end
+
+  initial run_test("action_tb_base_test");
+
 endmodule
