@@ -18,6 +18,7 @@
 set -e
 
 NAME=`basename $2`
+UVMHOME="/afs/apd.pok.ibm.com/func/vlsi/cte/tools/cds/Xcelium/18.03/tools/methodology/UVM/CDNS-1.2"
 if [ "$NAME" == "top.sh" ]; then
   echo "                     patch $NAME for $SIMULATOR"
   case $SIMULATOR in
@@ -37,7 +38,7 @@ if [ "$NAME" == "top.sh" ]; then
               fi
               ;;
     "xcelium")
-              sed -i "s/93 -relax/93 -sv -elaborate -smartorder -relax +libext+.vlib+.v+.sv+.svh -timescale 1ns\/1ns/gI"         $1/$2 # run irun up to elaboration, skip execution
+              sed -i "s/93 -relax/93 -sv -elaborate -smartorder -relax +libext+.vlib+.v+.sv+.svh -uvm -uvmhome \/afs\/apd.pok.ibm.com\/func\/vlsi\/cte\/tools\/cds\/Xcelium\/18.03\/tools\/methodology\/UVM\/CDNS-1.2 -uvmnocdnsextra +UVM_VERBOSITY=UVM_LOW +UVM_TESTNAME=action_tb_base_test +WORK_MODE=CROSS_CHECK +UVM_OBJECTION_TRACE +uvm_set_config_int=*,auto_dump_surface,1 +UVM_MAX_QUIT_COUNT=1,NO -timescale 1ns\/1ns/gI" $1/$2 # run irun up to elaboration, skip execution
               sed -i "s/-top xil_defaultlib.top/-top work.top/gI"  $1/$2 # build top in work library
               if [[ "$NVME_USED" == "TRUE" && -n "$DENALI" ]]; then :
                 echo "                     patch $irun include denali files for NVMe"
