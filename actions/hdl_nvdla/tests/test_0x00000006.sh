@@ -31,7 +31,7 @@ echo "CARD_NO=$CARD_NO TESTCASE=$TESTCASE"
 [ "${1:-}" = "--" ] && shift
 
 if [ -z $SNAP_ROOT ]; then
-    SNAP_ROOT=../../../
+    SNAP_ROOT=../../..
     echo "WARNING! SNAP_ROOT not specified, seting to $SNAP_ROOT"
 fi
 
@@ -50,7 +50,7 @@ else
 fi
 
 if [ -z $ACTION_ROOT ]; then
-    ACTION_ROOT=../
+    ACTION_ROOT=..
     echo "WARNING! ACTION_ROOT not specified, seting to $ACTION_ROOT"
 fi
 
@@ -84,6 +84,8 @@ if [ ! -d $GOLDEN_ROOT ]; then
     echo "Cannot find directory $GOLDEN_ROOT!"
     exit -1
 fi
+
+export LD_LIBRARY_PATH=/usr/local/lib64:$LD_LIBRARY_PATH
 
 $ACTION_ROOT/../../software/tools/snap_maint -C $CARD_NO -vv
 
@@ -148,7 +150,7 @@ else
     exit -1
 fi
 
-for i in "${!flatbuf_tests[@]}"
+for i in ${!flatbuf_tests[*]}
 do
     if [ $TESTCASE -ne -1 ]; then
         if [ $i -ne $TESTCASE ]; then
@@ -156,8 +158,7 @@ do
         fi
     fi
 
-    # Run simulation with xrun
-    if [ ! -f ${!flatbuf_tests[i]} ]; then
+    if [ ! -f ${flatbuf_tests[i]} ]; then
         echo "Cannot find ${flatbuf_tests[i]} "
         exit -1
     fi
