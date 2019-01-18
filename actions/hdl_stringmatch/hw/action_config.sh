@@ -23,6 +23,10 @@ if [ -L verilog ]; then
     unlink verilog
 fi
 
+if [ -L ../fpga_ip ]; then
+    unlink ../fpga_ip
+fi
+
 #if [ -L ../sw/utils ]; then
 #    unlink ../sw/utils
 #fi
@@ -31,6 +35,7 @@ if [ -z $STRING_MATCH_VERILOG ]; then
   echo "WARNING!!! Please set STRING_MATCH_VERILOG to the path of string match verilog"
 else
   ln -s $STRING_MATCH_VERILOG verilog
+  ln -s $STRING_MATCH_VERILOG/../fpga_ip ../fpga_ip
 #  ln -s $STRING_MATCH_VERILOG/../utils ../sw/utils
 fi
 

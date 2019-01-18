@@ -8,4 +8,4 @@ if [[ ! -z $1 ]]; then
     cp $ACTION_ROOT/tests/$1 packet.txt
 fi
 cp $ACTION_ROOT/tests/pattern.txt pattern.txt
-$ACTION_ROOT/sw/string_match -t 10 $*
+$ACTION_ROOT/sw/string_match -f -t 10 $*
