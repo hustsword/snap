@@ -18,7 +18,7 @@
 
 #include <string.h>
 #include "ap_int.h"
-#include "action_nvme_memcopy.H"
+#include "hw_action_nvme_memcopy.H"
 
 /* ----------------------------------------------------------------------------
  * Known Limitations => Issue #39 & #45
@@ -26,6 +26,21 @@
  * Issue#320 - memcopy doesn't handle 4Kbytes xfer => use patch
  * ----------------------------------------------------------------------------
  */
+
+// FIXME Consider using those defines in the code instead of using hardcoded
+//       numbers which are hard to decypher.
+
+// Action Write Registers
+#define ACTION_W_DPTR_LOW   0
+#define ACTION_W_DPTR_HIGH  1
+#define ACTION_W_LBA_LOW    2
+#define ACTION_W_LBA_HIGH   3
+#define ACTION_W_LBA_NUM    4
+#define ACTION_W_COMMAND    5
+
+// Action Read Registers
+#define ACTION_R_STATUS   0
+#define ACTION_R_TRACK_0  1
 
 // WRITE DATA TO MEMORY
 short write_burst_to_mem(snap_membus_t *dout_gmem,
@@ -136,22 +151,31 @@ short write_burst_to_ssd(snapu32_t *d_nvme,
     rc = 1;
 
     // Poll the status register until the operation is finished
-    while(1)
-    {
-        if((status = ((volatile int*)d_nvme)[1]))
-        {
-            if(status & 0x10)
-                rc = 1;
-            else
-                rc = 0;
-            break;
-        }
+    // See https://github.com/open-power/snap/blob/master/hardware/doc/NVMe_Host_Tech_Desc.pdf
+    // FIXME the registers accessed here could get names instead 
+    //       of using the indexes into an array ...
+    // FIXME I think we use here ACTION_R_TRACK_0 for status.
+    //       Bit 0 a 1 would mean completed, and bit 1 not 0 indicates an error.
+    //       Other bits are reserved and must be ignored.
+    while (1) {
+	    status = ((volatile int*)d_nvme)[1];
+	    if (status & 0x00000003) {
+		    if (status & 0x2)
+			    rc = 1;
+		    else
+			    rc = 0;
+		    break;
+	    }
     }
 
     return rc;
 }
 
 // READ DATA FROM SSD
+// FIXME Why don't we define snapu32_t *d_nvme as volatile snapu32_t *d_nvme,
+//       such that we can ommit all the castings? And why using int * when
+//       we could have used the 32 bit type which is nicer readable and less
+//       ambigous?
 short read_burst_from_ssd(snapu32_t *d_nvme,
                   snapu64_t ddr_addr,
                   snapu64_t ssd_lb_addr,
@@ -178,16 +202,21 @@ short read_burst_from_ssd(snapu32_t *d_nvme,
     ((volatile int*)d_nvme)[5] = (drive_id == 0)? 0x10: 0x30;
 
     // Poll the status register until the operation is finished
-    while(1)
-    {
-        if((status = ((volatile int*)d_nvme)[1]))
-        {
-            if(status & 0x10)
-                rc = 1;
-            else
-                rc = 0;
-            break;
-        }
+    // See https://github.com/open-power/snap/blob/master/hardware/doc/NVMe_Host_Tech_Desc.pdf
+    // FIXME the registers accessed here could get names instead 
+    //       of using the indexes into an array ...
+    // FIXME I think we use here ACTION_R_TRACK_0 for status.
+    //       Bit 0 a 1 would mean completed, and bit 1 not 0 indicates an error.
+    //       Other bits are reserved and must be ignored.
+    while (1) {
+	    status = ((volatile int*)d_nvme)[1];
+	    if (status & 0x00000003) {
+		    if (status & 0x2)
+			    rc = 1;
+		    else
+			    rc = 0;
+		    break;
+	    }
     }
 
     return rc;
@@ -209,16 +238,19 @@ static void process_action(snap_membus_t *din_gmem,
     
     snapu32_t xfer_blocks;
     snapu32_t nvme_xfer_blocks;
-    snapu32_t nvme_xfer_batches = 0;
+    snapu32_t nvme_xfer_batches   = 0;
     
     snapu16_t i;
-    short rc = 0;
+    short rc                      = 0;
     snapu32_t ReturnCode = SNAP_RETC_SUCCESS;
     snapu64_t InputAddress;
     snapu64_t OutputAddress;
-    snap_bool_t drive_id = 0;
-    snap_bool_t skip_mainbody = 0;
-
+    snap_bool_t drive_id          = 0;
+    snap_bool_t skip_mainbody     = 0;
+    snapu64_t Card_Dram_Size      = 0;
+    snapu64_t DRAM_ADDR_FROM_SSD  = 0x00000000;
+    snapu64_t DRAM_ADDR_TO_SSD    = 0x80000000;
+    
     snapu64_t dram_addr;
     snapu64_t memcopy_InputAddress;
     snapu64_t memcopy_OutputAddress;
@@ -228,12 +260,15 @@ static void process_action(snap_membus_t *din_gmem,
 
     // Byte address received need to be aligned with port width
     // Anyway lower ADDR_RIGHT_SHIFT address bits will be cut to 0. 
-    InputAddress = act_reg->Data.in.addr;
-    OutputAddress = act_reg->Data.out.addr;
-    drive_id = act_reg->Data.drive_id & 0x1;
+    InputAddress       = act_reg->Data.in.addr;
+    OutputAddress      = act_reg->Data.out.addr;
+    drive_id           = act_reg->Data.drive_id & 0x1;
+    Card_Dram_Size     = act_reg->Data.maxbuffer_size;
+    DRAM_ADDR_FROM_SSD = act_reg->Data.sdram_buff_fwd_offset;
+    DRAM_ADDR_TO_SSD   = act_reg->Data.sdram_buff_rev_offset;
 
-    address_xfer_offset = 0x0;
-    nvme_address_xfer_offset = 0x0;
+    address_xfer_offset        = 0x0;
+    nvme_address_xfer_offset   = 0x0;
 
 
     // testing sizes to prevent from writing out of bounds
@@ -242,7 +277,7 @@ static void process_action(snap_membus_t *din_gmem,
 
 
     //======================================================================
-    // Illegle conditions checking.
+    // Illegal conditions checking.
     if (action_xfer_size == 0) {
         act_reg->Control.Retc = SNAP_RETC_FAILURE;
         return;
@@ -251,12 +286,14 @@ static void process_action(snap_membus_t *din_gmem,
     // For the case that will use CARD_DRAM (type = NVME or CARD_DRAM)
     // Not allow copying more than CARD_DRAM_SIZE bytes.
     if (act_reg->Data.in.type != SNAP_ADDRTYPE_HOST_DRAM and
-        act_reg->Data.in.size > CARD_DRAM_SIZE) {
+     //   act_reg->Data.in.size > CARD_DRAM_SIZE) {
+        act_reg->Data.in.size >    Card_Dram_Size) {
         act_reg->Control.Retc = SNAP_RETC_FAILURE;
         return;
         }
     if (act_reg->Data.out.type != SNAP_ADDRTYPE_HOST_DRAM and
-        act_reg->Data.out.size > CARD_DRAM_SIZE) {
+ //       act_reg->Data.out.size > CARD_DRAM_SIZE) {
+        act_reg->Data.out.size > Card_Dram_Size) {
         act_reg->Control.Retc = SNAP_RETC_FAILURE;
         return;
         }

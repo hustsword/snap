@@ -290,6 +290,9 @@ ARCHITECTURE action_nvme_example OF action_nvme_example IS
   SIGNAL reg_0x3c                : STD_LOGIC_VECTOR(31 DOWNTO 0);
   SIGNAL reg_0x40                : STD_LOGIC_VECTOR(31 DOWNTO 0);
   SIGNAL reg_0x44                : STD_LOGIC_VECTOR(31 DOWNTO 0);
+  SIGNAL reg_0x48                : STD_LOGIC_VECTOR(31 DOWNTO 0);
+  SIGNAL reg_0x50                : STD_LOGIC_VECTOR(31 DOWNTO 0);
+  SIGNAL reg_0x54                : STD_LOGIC_VECTOR(31 DOWNTO 0);
   SIGNAL app_start               : STD_LOGIC;
   SIGNAL app_done                : STD_LOGIC;
   SIGNAL app_ready               : STD_LOGIC;
@@ -322,23 +325,12 @@ ARCHITECTURE action_nvme_example OF action_nvme_example IS
 
   SIGNAL reg_0x48_nvme_rd_error  : std_logic_vector(MAX_SLOT DOWNTO 0);
   SIGNAL reg_0x48_nvme_wr_error  : std_logic_vector(MAX_SLOT DOWNTO 0);
-  SIGNAL reg_0x4c_req_error      : STD_LOGIC_VECTOR(MAX_SLOT DOWNTO 0);  
+  SIGNAL reg_0x4c_req_error      : STD_LOGIC_VECTOR(MAX_SLOT DOWNTO 0);
   SIGNAL reg_0x4c_nvme_error     : STD_LOGIC_VECTOR(2 DOWNTO 0);
   SIGNAL reg_0x4c_completion     : STD_LOGIC_VECTOR(4 DOWNTO 0);
   SIGNAL reg_0x4c_rd_strobe      : STD_LOGIC;
   SIGNAL reg_0x54_nvme_req       : STD_LOGIC_VECTOR(MAX_SLOT DOWNTO 0);
   SIGNAL reg_0x54_nvme_rsp       : STD_LOGIC_VECTOR(MAX_SLOT DOWNTO 0);
-
-  PROCEDURE INCR (
-    SIGNAL count : INOUT REQ_BUFFER_RANGE_t
-  ) IS
-  BEGIN
-    IF count = (MAX_REQ_BUFFER*2)+1 THEN
-      count <= 0;
-    ELSE
-      count <= count + 1;
-    END IF;
-  END INCR;
 
   FUNCTION MODFIFO (value : INTEGER) RETURN INTEGER IS
   BEGIN  -- MODFIFO
@@ -502,16 +494,13 @@ BEGIN
     reg_0x40_o               => reg_0x40,
     -- number of bytes to copy
     reg_0x44_o               => reg_0x44,
-    reg_0x48_i(31 DOWNTO 16) => reg_0x48_nvme_rd_error,
-    reg_0x48_i(15 DOWNTO  0) => reg_0x48_nvme_wr_error,
+    reg_0x48_i               => reg_0x48,
     reg_0x4c_req_error_i     => reg_0x4c_req_error,
     reg_0x4c_nvme_error_i    => reg_0x4c_nvme_error,
     reg_0x4c_completion_i    => reg_0x4c_completion,
     reg_0x4c_rd_strobe_o     => reg_0x4c_rd_strobe,
-    reg_0x50_i(31 DOWNTO 16) => req_buffer.busy,
-    reg_0x50_i(15 DOWNTO  0) => req_buffer.rnw,
-    reg_0x54_i(31 DOWNTO 16) => reg_0x54_nvme_req,
-    reg_0x54_i(15 DOWNTO  0) => reg_0x54_nvme_rsp,
+    reg_0x50_i               => reg_0x50,
+    reg_0x54_i               => reg_0x54,
     int_enable_o             => int_enable,
     app_start_o              => app_start,
     app_done_i               => app_done,
@@ -538,6 +527,12 @@ BEGIN
     S_AXI_RVALID             => axi_ctrl_reg_rvalid,
     S_AXI_RREADY             => axi_ctrl_reg_rready
   );
+  reg_0x48(31 DOWNTO 16) <= reg_0x48_nvme_rd_error;
+  reg_0x48(15 DOWNTO  0) <= reg_0x48_nvme_wr_error;
+  reg_0x50(31 DOWNTO 16) <= req_buffer.busy;
+  reg_0x50(15 DOWNTO  0) <= req_buffer.rnw;
+  reg_0x54(31 DOWNTO 16) <= reg_0x54_nvme_req;
+  reg_0x54(15 DOWNTO  0) <= reg_0x54_nvme_rsp;
 
 
   -- READ and WRITE requests:
@@ -573,7 +568,11 @@ BEGIN
                  cmd_type  := NVME_WRITE;
                  req_buffer.rnw(slot_id)                    <= '0';
                  dma_rd_req_fifo.slot(MODFIFO(dma_rd_head)) <= slot_id;
-                 INCR(dma_rd_head);
+                 IF dma_rd_head = (MAX_REQ_BUFFER*2)+1 THEN
+                   dma_rd_head <= 0;
+                 ELSE
+                   dma_rd_head <= dma_rd_head + 1;
+                 END IF;
 
               WHEN x"4" =>
                  -- memcopy NVMe to host
@@ -581,7 +580,11 @@ BEGIN
                  cmd_type  := NVME_READ;
                  req_buffer.rnw(slot_id)                      <= '1';
                  nvme_rd_req_fifo.slot(MODFIFO(nvme_rd_head)) <= slot_id;
-                 INCR(nvme_rd_head);
+                 IF nvme_rd_head = (MAX_REQ_BUFFER*2)+1 THEN
+                   nvme_rd_head <= 0;
+                 ELSE
+                   nvme_rd_head <= nvme_rd_head + 1;
+                 END IF;
 
                WHEN OTHERS =>
                  fsm_app_q  <= ILLEGAL_OPERATION;
@@ -644,8 +647,8 @@ BEGIN
     ALIAS    dma_rd_tail  : REQ_BUFFER_RANGE_t IS dma_rd_req_fifo.tail;
     ALIAS    dma_rd_head  : REQ_BUFFER_RANGE_t IS dma_rd_req_fifo.head;
     ALIAS    nvme_wr_head : REQ_BUFFER_RANGE_t IS nvme_wr_req_fifo.head;
-    VARIABLE slot_id      : SLOT_RANGE_t; 
-    VARIABLE req_slot     : SLOT_TYPE_t; 
+    VARIABLE slot_id      : SLOT_RANGE_t;
+    VARIABLE req_slot     : SLOT_TYPE_t;
   BEGIN
     IF (rising_edge(action_clk)) THEN
       IF axi_host_mem_arready = '1'  AND host_mem_arvalid = '1' THEN
@@ -674,8 +677,16 @@ BEGIN
               -- we can initiate the NVMe write transfer
               nvme_wr_req_fifo.slot(MODFIFO(nvme_wr_head)) <= slot_id;
               fsm_dma_rd                                   <= IDLE;
-              INCR(nvme_wr_head);
-              INCR(dma_rd_tail);
+              IF nvme_wr_head = (MAX_REQ_BUFFER*2)+1 THEN
+                nvme_wr_head <= 0;
+              ELSE
+                nvme_wr_head <= nvme_wr_head + 1;
+              END IF;
+              IF dma_rd_tail = (MAX_REQ_BUFFER*2)+1 THEN
+                dma_rd_tail <= 0;
+              ELSE
+                dma_rd_tail <= dma_rd_tail + 1;
+              END IF;
             ELSE
               -- 2nd 4 k request
               card_mem_awvalid     <= '1';
@@ -691,8 +702,16 @@ BEGIN
             -- initiate the NVMe data transfer
             nvme_wr_req_fifo.slot(MODFIFO(nvme_wr_head)) <= slot_id;
             fsm_dma_rd                                   <= IDLE;
-            INCR(nvme_wr_head);
-            INCR(dma_rd_tail);
+            IF nvme_wr_head = (MAX_REQ_BUFFER*2)+1 THEN
+              nvme_wr_head <= 0;
+            ELSE
+              nvme_wr_head <= nvme_wr_head + 1;
+            END IF;
+            IF dma_rd_tail = (MAX_REQ_BUFFER*2)+1 THEN
+              dma_rd_tail <= 0;
+            ELSE
+              dma_rd_tail <= dma_rd_tail + 1;
+            END IF;
           END IF;
 
         WHEN OTHERS => null;
@@ -742,7 +761,11 @@ BEGIN
           nvme_lba_addr   <= req_buffer.src_addr(nvme_rd_slot);
           lba_count_dec   := (req_buffer.size(nvme_rd_slot) & "000") - 1;
           nvme_lba_count  <= x"0000" & lba_count_dec(15 DOWNTO 0);
-          INCR(nvme_rd_tail);
+          IF nvme_rd_tail = (MAX_REQ_BUFFER*2)+1 THEN
+            nvme_rd_tail <= 0;
+          ELSE
+            nvme_rd_tail <= nvme_rd_tail + 1;
+          END IF;
 
           IF reg_0x54_nvme_req(nvme_rd_slot) = '1' THEN
             reg_0x48_nvme_rd_error(nvme_rd_slot) <= '1';
@@ -759,7 +782,11 @@ BEGIN
           nvme_mem_addr   <= x"0000_0002_00" & "000" & req_slot & "0" & x"0000";
           nvme_lba_addr   <= req_buffer.dest_addr(nvme_wr_slot);
           nvme_lba_count  <= x"0000_000" & req_buffer.size(nvme_wr_slot)(1) & "111";
-          INCR(nvme_wr_tail);
+          IF nvme_wr_tail = (MAX_REQ_BUFFER*2)+1 THEN
+            nvme_wr_tail <= 0;
+          ELSE
+            nvme_wr_tail <= nvme_wr_tail + 1;
+          END IF;
 
           IF reg_0x54_nvme_req(nvme_wr_slot) = '1' THEN
             reg_0x48_nvme_wr_error(nvme_wr_slot) <= '1';
@@ -806,11 +833,19 @@ BEGIN
           -- NVMe read has been completed
           -- say that the data is ready to be sent to the host
           dma_wr_req_fifo.slot(MODFIFO(dma_wr_head)) <= nvme_done_index;
-          INCR(dma_wr_head);
+          IF dma_wr_head = (MAX_REQ_BUFFER*2)+1 THEN
+            dma_wr_head <= 0;
+          ELSE
+            dma_wr_head <= dma_wr_head + 1;
+          END IF;
         ELSE
           write_complete_int <= TRUE;
           wr_cpl_fifo.slot(MODFIFO(wr_cpl_head)) <= nvme_complete(7 DOWNTO 4);
-          INCR(wr_cpl_head);
+          IF wr_cpl_head = (MAX_REQ_BUFFER*2)+1 THEN
+            wr_cpl_head <= 0;
+          ELSE
+            wr_cpl_head <= wr_cpl_head + 1;
+          END IF;
         END IF;
 
         IF reg_0x54_nvme_req(nvme_done_index) = '0' THEN
@@ -862,7 +897,7 @@ BEGIN
         WHEN IDLE =>
           IF dma_wr_tail /= dma_wr_head THEN
             -- determine host and card memory address on buffer postion
-            slot_id     := dma_wr_req_fifo.slot(MODFIFO(dma_wr_tail)); 
+            slot_id     := dma_wr_req_fifo.slot(MODFIFO(dma_wr_tail));
             dma_wr_slot := std_logic_vector(to_unsigned(slot_id,4));
             host_mem_awaddr                             <= req_buffer.dest_addr(slot_id);
             card_mem_araddr                             <= x"00" & "000" & dma_wr_slot & "0" & x"0000";
@@ -871,7 +906,11 @@ BEGIN
             card_mem_arvalid                            <= '1';
             dma_wr_cpl_fifo.slot(MODFIFO(dma_cpl_head)) <= dma_wr_req_fifo.slot(MODFIFO(dma_wr_tail));
             fsm_dma_wr                                  <= DMA_WR_REQ;
-            INCR(dma_cpl_head);
+            IF dma_cpl_head = (MAX_REQ_BUFFER*2)+1 THEN
+              dma_cpl_head <= 0;
+            ELSE
+              dma_cpl_head <= dma_cpl_head + 1;
+            END IF;
           END IF;
 
         WHEN DMA_WR_REQ =>
@@ -886,7 +925,11 @@ BEGIN
               fsm_dma_wr        <= DMA_WR_REQ;
             ELSE
               fsm_dma_wr                         <= IDLE;
-              INCR(dma_wr_tail);
+              IF dma_wr_tail = (MAX_REQ_BUFFER*2)+1 THEN
+                dma_wr_tail <= 0;
+              ELSE
+                dma_wr_tail <= dma_wr_tail + 1;
+              END IF;
             END IF;
           END IF;
 
@@ -933,8 +976,16 @@ BEGIN
           -- point to the next entry in the queue
           rd_cpl_fifo.slot(MODFIFO(rd_cpl_head)) <= std_logic_vector(to_unsigned(dma_cpl_slot,4));
           dma_wr_size                            <= req_buffer.size(dma_wr_cpl_fifo.slot(INCRPTR(dma_cpl_slot)));
-          INCR(dma_cpl_tail);
-          INCR(rd_cpl_head);
+          IF dma_cpl_tail = (MAX_REQ_BUFFER*2)+1 THEN
+            dma_cpl_tail <= 0;
+          ELSE
+            dma_cpl_tail <= dma_cpl_tail + 1;
+          END IF;
+          IF rd_cpl_head = (MAX_REQ_BUFFER*2)+1 THEN
+            rd_cpl_head <= 0;
+          ELSE
+            rd_cpl_head <= rd_cpl_head + 1;
+          END IF;
         END IF;
         dma_wr_size <= dma_wr_size - 1;
       END IF;
@@ -963,12 +1014,28 @@ BEGIN
       -- Fill completion fifo with read and write completions
       IF completion_arbiter_read AND (rd_cpl_tail /= rd_cpl_head) THEN
         completion_fifo.slot(MODFIFO(cpl_head)) <= rd_cpl_fifo.slot(MODFIFO(rd_cpl_tail));
-        INCR(cpl_head);
-        INCR(rd_cpl_tail);
+        IF cpl_head = (MAX_REQ_BUFFER*2)+1 THEN
+          cpl_head <= 0;
+        ELSE
+          cpl_head <= cpl_head + 1;
+        END IF;
+        IF rd_cpl_tail = (MAX_REQ_BUFFER*2)+1 THEN
+          rd_cpl_tail <= 0;
+        ELSE
+          rd_cpl_tail <= rd_cpl_tail + 1;
+        END IF;
       ELSIF wr_cpl_tail /= wr_cpl_head THEN
         completion_fifo.slot(MODFIFO(cpl_head)) <= wr_cpl_fifo.slot(MODFIFO(wr_cpl_tail));
-        INCR(cpl_head);
-        INCR(wr_cpl_tail);
+        IF cpl_head = (MAX_REQ_BUFFER*2)+1 THEN
+          cpl_head <= 0;
+        ELSE
+          cpl_head <= cpl_head + 1;
+        END IF;
+        IF wr_cpl_tail = (MAX_REQ_BUFFER*2)+1 THEN
+          wr_cpl_tail <= 0;
+        ELSE
+          wr_cpl_tail <= wr_cpl_tail + 1;
+        END IF;
       END IF;
       completion_arbiter_read <= NOT completion_arbiter_read;
 
@@ -978,7 +1045,11 @@ BEGIN
       IF reg_0x4c_rd_strobe = '1' THEN
         IF cpl_tail /= cpl_head THEN
           req_buffer.done(to_integer(unsigned(completion_fifo.slot(MODFIFO(cpl_tail))))) <= '1';
-          INCR(cpl_tail);
+          IF cpl_tail = (MAX_REQ_BUFFER*2)+1 THEN
+            cpl_tail <= 0;
+          ELSE
+            cpl_tail <= cpl_tail + 1;
+          END IF;
         END IF;
       END IF;
 

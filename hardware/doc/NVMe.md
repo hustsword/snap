@@ -1,13 +1,13 @@
 # NVMe Usage
-When SNAP is built for the Nallatech 250S card with NVMe support enabled, the SNAP framework provides an easy to use interface to initiate data transfers between the NVMe drives and the onboard SDRAM. Before the NVMe sub-system can be used, it needs to be initialized. The **"snap_nvme_init"** utility program in the software/tools directory can be used to perform the initalization. 
+When SNAP is built for the Nallatech 250S card with NVMe support enabled, the SNAP framework provides an easy to use interface to initiate data transfers between the NVMe drives and the onboard SDRAM. Before the NVMe sub-system can be used, it needs to be initialized (but not when using "nvme lite" simulation models). The **"snap_nvme_init"** utility program in the software/tools directory can be used to perform the initalization. 
 Once initalization is done,  SNAP actions must use the NVMe action interface (AXI MM write burst) to initiate transfers. The following registers must be programmed to do so.
 
 
 ## NVMe Host Action Registers (write only)
 ```
 offset (write only registers)
-  0x0 :  onboard memory address (low  32 bits)
-  0x4 :  onboard memory address (high 32 bits) 
+  0x0 :  onboard memory address (SDRAM) (low  32 bits)
+  0x4 :  onboard memory address (SDRAM) (high 32 bits) 
   0x8 :  NVMe drive LB address  (low  32 bits)
   0xc :  NVMe drive LB address  (high 32 bits)
   0x10:  number of blocks to transfer (zero based value; a 0 means 1 block (512 bytes)) 
@@ -52,7 +52,7 @@ The user action must poll for completion for each submitted read or write comman
     if ( data and 0x3) > 0) break;  # break loop if completion bit or error bit has been set
  print  (read command completed !); 
 ```
-An example design can be found under [snap/hardware/action_examples/hdl_example/](../../hardware/action_examples/hdl_example/)
+An example design can be found under [snap/actions/hdl_example/hw](../../actions/hdl_example/hw)
 
 ## Remark:
 
