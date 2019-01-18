@@ -5,6 +5,7 @@ if [ -z $CTEPATH ]; then
     exit 1
 fi
 
+# For 2017.4, vivado and vivado_hls are in the same diretory
 export XILINX_VIVADO=$CTEPATH/tools/xilinx/2018.2/Vivado/2018.2
 export XILINXD_LICENSE_FILE=2100@pokwinlic1.pok.ibm.com
 
@@ -23,10 +24,6 @@ export CDS_LIC_FILE=5295@poklnxlic04.pok.ibm.com:\
 
 export PATH=${CDS_INST_DIR}/tools/bin:${XILINX_VIVADO}/bin:${XILINX_HLS}/bin:$PATH
 export UVM_HOME=$CTEPATH/tools/cds/Incisiv/latest/tools/methodology/UVM/CDNS-1.2/
-
-#use C++ 4.8
-export PATH=/opt/rh/devtoolset-2/root/usr/bin/:$PATH
-
 # Please don't commit the IES_LIBS settings if you set it to your own directory ... 
 # Set IES_LIBS manually every time you source setup.ksh ...
 unset  IES_LIBS
