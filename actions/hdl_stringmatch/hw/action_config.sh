@@ -39,3 +39,8 @@ else
 #  ln -s $STRING_MATCH_VERILOG/../utils ../sw/utils
 fi
 
+if [ ! -d $STRING_MATCH_VERILOG/../fpga_ip/managed_ip_project ]; then
+    $STRING_MATCH_VERILOG/../fpga_ip/all_ip_gen.pl -ieslibs $IES_LIBS -fpga_chip $FPGACHIP -outdir $STRING_MATCH_VERILOG/../fpga_ip
+else
+    echo "IP already exit, no need to regenerate"
+fi
