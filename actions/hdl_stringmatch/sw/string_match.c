@@ -738,7 +738,7 @@ static void *sm_scan_file (const char *file_path, size_t *size, size_t *size_for
     return pkt_src_base;
 }
 
-static int compare_results(size_t num_matched_pkt, void *stat_dest_base)
+static int compare_results(size_t num_matched_pkt, void *stat_dest_base, int no_chk_offset)
 {
     int i = 0, j = 0;
     uint16_t offset = 0;
@@ -753,8 +753,8 @@ static int compare_results(size_t num_matched_pkt, void *stat_dest_base)
         rc = 1;
     }
 
-    VERBOSE1("---- Results (A: actual, E: expected) ----\n");
-    VERBOSE1("PKT(A)   \tPATT(A) \tOFFSET(A) \tPKT(E)   \tPATT(E) \tOFFSET(E)\n");
+    VERBOSE1("---- Results (HW: hardware, SW: software) ----\n");
+    VERBOSE1("PKT(HW) PATT(HW) OFFSET(HW) PKT(SW) PATT(SW) OFFSET(SW)\n");
 
     for (i = 0; i < (int)num_matched_pkt; i++) {
         for (j = 0; j < 4; j++) {
@@ -776,14 +776,17 @@ static int compare_results(size_t num_matched_pkt, void *stat_dest_base)
 
         if ((ref_stat.packet_id != pkt_id) ||
                 (ref_stat.pattern_id != patt_id) ||
-                (ref_stat.offset != offset)) {
-            VERBOSE1("%9d\t%8d\t%9d\t%9d\t%8d\t%9d", pkt_id, patt_id, offset,
+                ((ref_stat.offset != offset) && (no_chk_offset == 0))) {
+            VERBOSE1("%7d\t%6d\t%7d\t%7d\t%6d\t%9d", pkt_id, patt_id, offset,
                      ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
 
             VERBOSE1(" MISMATCH!\n");
             rc = 1;
         } else {
-            //VERBOSE1("\n");
+            VERBOSE1("%7d\t%6d\t%7d\t%7d\t%6d\t%7d", pkt_id, patt_id, offset,
+                     ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
+
+            VERBOSE1("    MATCHED!\n");
         }
 
         patt_id = 0;
@@ -803,6 +806,7 @@ int main (int argc, char *argv[])
     int rc = 1;
     uint64_t cir;
     int timeout = ACTION_WAIT_TIME;
+    int no_chk_offset = 0;
     snap_action_flag_t attach_flags = 0;
     struct snap_action *act = NULL;
     unsigned long ioctl_data;
@@ -820,18 +824,19 @@ int main (int argc, char *argv[])
     while (1) {
         int option_index = 0;
         static struct option long_options[] = {
-            { "card",     required_argument, NULL, 'C' },
-            { "verbose",  no_argument,       NULL, 'v' },
-            { "help",     no_argument,       NULL, 'h' },
-            { "version",  no_argument,       NULL, 'V' },
-            { "quiet",    no_argument,       NULL, 'q' },
-            { "timeout",  required_argument, NULL, 't' },
-            { "irq",      no_argument,       NULL, 'I' },
-            { "packet",   no_argument,       NULL, 'p' },
-            { "pattern",  no_argument,       NULL, 'q' },
-            { 0,          no_argument,       NULL, 0   },
+            { "card",         required_argument, NULL, 'C' },
+            { "verbose",      no_argument,       NULL, 'v' },
+            { "help",         no_argument,       NULL, 'h' },
+            { "version",      no_argument,       NULL, 'V' },
+            { "quiet",        no_argument,       NULL, 'q' },
+            { "timeout",      required_argument, NULL, 't' },
+            { "irq",          no_argument,       NULL, 'I' },
+            { "no_chk_offset",no_argument,       NULL, 'f' },
+            { "packet",       required_argument, NULL, 'p' },
+            { "pattern",      required_argument, NULL, 'q' },
+            { 0,              no_argument,       NULL, 0   },
         };
-        cmd = getopt_long (argc, argv, "C:t:p:q:IqvVh",
+        cmd = getopt_long (argc, argv, "C:t:p:q:IfqvVh",
                            long_options, &option_index);
 
         if (cmd == -1) { /* all params processed ? */
@@ -861,6 +866,10 @@ int main (int argc, char *argv[])
 
         case 'I':      /* irq */
             attach_flags = SNAP_ACTION_DONE_IRQ | SNAP_ATTACH_IRQ;
+            break;
+
+        case 'f':      /* don't check offset */
+            no_chk_offset = 1;
             break;
 
         default:
@@ -984,7 +993,7 @@ int main (int argc, char *argv[])
         __hexdump (stdout, stat_dest_base, (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt());
     }
 
-    rc = compare_results(num_matched_pkt, stat_dest_base);
+    rc = compare_results(num_matched_pkt, stat_dest_base, no_chk_offset);
 
     if (rc) {
         VERBOSE0 ("Miscompare detected between hardware and software ref model.\n");
