@@ -109,10 +109,12 @@ static inline void __free(void *ptr)
 static inline long int timediff_sec(struct timeval *a, struct timeval *b)
 {
 	struct timeval res;
+	static int count = 0;
 
 	timersub(a, b , &res);
 
-	if (res.tv_sec > 100)
+	/* FIXME In simulation this warning is annoying ... */
+	if ((res.tv_sec > 1000) && (count++ < 5))
 		fprintf(stderr, "err: Strange time diff "
 			"a.tv_sec=%ld a.tv_usec=%ld "
 			"b.tv_sec=%ld b.tv_usec=%ld "
@@ -867,8 +869,7 @@ static void cblk_req_dump(struct cblk_dev *c)
 		switch (req->status) {
 		case CBLK_IDLE:
 			usecs = 0;
-			if (req->lba == 0)
-				break;
+			break;
 		case CBLK_READY:
 			usecs = timediff_usec(&req->etime, &req->stime);
 			break;
@@ -895,8 +896,7 @@ static void stat_req_dump(struct cblk_dev *c)
 		switch (req->status) {
 		case CBLK_IDLE:
 			usecs = 0;
-			if (req->lba == 0)
-				break;
+			break;
 		case CBLK_READY:
 			usecs = timediff_usec(&req->etime, &req->stime);
 			break;

@@ -30,6 +30,7 @@ extern "C" {
 
 /* Standardized, non-zero return codes to be expected from FPGA actions */
 #define SNAP_RETC_SUCCESS		0x0102
+#define SNAP_RETC_TIMEOUT		0x0103
 #define SNAP_RETC_FAILURE		0x0104
 
 /* FIXME Constants are too long, I like to type less */
@@ -69,10 +70,10 @@ static inline void snap_addr_set(struct snap_addr *da,
 }
 
 /*
- * Maximum size of an SNAP HLS job without addr extension, this size is required
+ * Maximum size of a SNAP job without addr extension, this size is required
  * such that the output MMIO registers will end up at the correct address offset.
  */
-#define SNAP_JOBSIZE (16 * 6) /* 108 */
+#define SNAP_JOBSIZE 108 /* 108 bytes is the maximum size allowed to stay aligned */
 
 #ifdef __cplusplus
 }
