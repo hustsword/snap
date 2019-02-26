@@ -45,8 +45,17 @@ $(info NOTICE!! NVDLA_CONFIG set to $(NVDLA_CONFIG))
 
 uname_p := $(shell uname -p)
 
+distro := $(shell awk -F\" '/^NAME/{print $$2}' /etc/os-release)
+
+$(info $(distro))
+
 ifeq ($(uname_p),ppc64le)
-export TOOLCHAIN_PREFIX=ppc64le-redhat-linux-
+    ifeq ($(distro),Redhat)
+    export TOOLCHAIN_PREFIX=ppc64le-redhat-linux-
+    endif
+    ifeq ($(distro),Ubuntu)
+    export TOOLCHAIN_PREFIX=powerpc64le-linux-gnu-
+    endif
 else
 export TOOLCHAIN_PREFIX=x86_64-redhat-linux-
 endif
