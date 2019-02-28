@@ -39,12 +39,17 @@ $(error Please make sure that $$SNAP_ROOT is set up correctly.)
 endif
 endif
 
+POSTGRESQL_INCLUDE=$(shell pg_config --includedir)
+POSTGRESQL_INCLUDE_SERVER=$(shell pg_config --includedir-server)
+POSTGRESQL_LIB=$(shell pg_config --libdir)
+POSTGRESQL_PKGLIB=$(shell pg_config --pkglibdir)
+
 CXX=g++
-EXTRA_CFLGAS+= -Wall -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -Wno-format-truncation -Wformat -Werror=format-security -Wdate-time  -fdebug-prefix-map=/build/postgresql-10-ByQ2hv/postgresql-10-10.6=. -fstack-protector-strong  
+EXTRA_CFLGAS+=  -Wall -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -Wno-format-truncation -Wno-stringop-truncation
 
-CPPFLAGS+= -O3 $(EXTRA_CFLGAS) -g -fPIC -I. -I./ -I/usr/include/postgresql/10/server -I/usr/include/postgresql/internal  -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE -I/usr/include/libxml2  -I/usr/include/mit-krb5 
+CPPFLAGS+= -O3 $(EXTRA_CFLGAS) -g -fPIC -I. -I./ -I$(POSTGRESQL_INCLUDE_SERVER) -I$(POSTGRESQL_INCLUDE)/internal -D_GNU_SOURCE
 
-LDFLAGS+= $(EXTRA_CFLGAS) -g -fPIC -L/usr/lib/powerpc64le-linux-gnu -Wl,-Bsymbolic-functions -Wl,-z,relro -Wl,-z,now  -L/usr/lib/powerpc64le-linux-gnu/mit-krb5 -Wl,--as-needed
+LDFLAGS+= $(EXTRA_CFLGAS) -g -fPIC -L$(POSTGRESQL_LIB)   -Wl,--as-needed -Wl,-rpath,'$(POSTGRESQL_LIB)',--enable-new-dtags
 
 LDLIBS+= -lcxl -lpthread -lsnap
 
@@ -63,9 +68,9 @@ projs += psql_regex_capi
 
 psql_regex_capi: fregex.o regex_config.o psql_regex_capi.o
 	$(CXX) $(LDFLAGS) $($(@)_LDFLAGS) $($(@)_objs) $($(@)_libs) -shared -o $@.so $^ $(LDLIBS) 
-	sudo ./install.sh
+	sudo cp $@.so $(POSTGRESQL_PKGLIB)
 	psql -f ./uninstall_psql_regex_capi.sql
-	#psql -f ./psql_regex_capi.source
+	#/usr/local/pgsql/bin/psql -f ./psql_regex_capi.source
 
 # If you have the host code outside of the default snap directory structure, 
 # change to /path/to/snap/actions/software.mk
