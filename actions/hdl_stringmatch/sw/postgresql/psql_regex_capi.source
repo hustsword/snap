@@ -20,4 +20,4 @@ $_$ LANGUAGE plpgsql;
 
 SELECT copy_if_not_exists();
 
-SELECT psql_regex_capi(pkt, 'abc.*xyz') over(), pkt, name from sm_test;
+SELECT * FROM (SELECT psql_regex_capi(pkt, 'abc.*xyz') over(), pkt, name from sm_test) s WHERE psql_regex_capi = 1;

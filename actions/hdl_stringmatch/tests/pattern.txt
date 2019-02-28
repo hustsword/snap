@@ -1,8 +1,8 @@
 abc.*xyz
-hello
-he.*llo
-world+
-yz.*12
-world.*
-ema+cs
-vim+git
+abc.*xyz
+abc.*xyz
+abc.*xyz
+abc.*xyz
+abc.*xyz
+abc.*xyz
+abc.*xyz

@@ -53,9 +53,9 @@ PG_FUNCTION_INFO_V1 (psql_regex_capi);
 extern Datum psql_regex_capi (PG_FUNCTION_ARGS);
 
 typedef struct {
-    bool    isdone;
-    bool    isnull;
-    int     result[1];
+    bool     isdone;
+    bool     isnull;
+    int      result[1];
     /* variable length */
 } psql_regex_capi_context;
 
@@ -82,18 +82,6 @@ static uint64_t get_usec (void)
     return t.tv_sec * 1000000 + t.tv_usec;
 }
 
-static void remove_newline (char* str)
-{
-    char* pos;
-
-    if ((pos = strchr (str, '\n')) != NULL) {
-        *pos = '\0';
-    } else {
-        elog (LOG, "Input too long for remove_newline ... ");
-        exit (EXIT_FAILURE);
-    }
-}
-
 static void print_time (uint64_t elapsed, uint64_t size)
 {
     int t;
@@ -108,6 +96,31 @@ static void print_time (uint64_t elapsed, uint64_t size)
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
         elog (LOG, " end after %d usec (%0.3f MB/sec)\n", t, ft);
+    }
+}
+
+static void *alloc_mem (int align, size_t size)
+{
+    void *a;
+    size_t size2 = size + align;
+
+    elog (DEBUG1, "%s Enter Align: %d Size: %zu\n", __func__, align, size);
+
+    if (posix_memalign ((void **)&a, 4096, size2) != 0) {
+        perror ("FAILED: posix_memalign()");
+        return NULL;
+    }
+
+    elog (DEBUG1, "%s Exit %p\n", __func__, a);
+    return a;
+}
+
+static void free_mem (void *a)
+{
+    elog (DEBUG1, "Free Mem %p\n", a);
+
+    if (a) {
+        free (a);
     }
 }
 
@@ -281,21 +294,6 @@ static uint32_t action_read (struct snap_card* h, uint32_t addr)
 
     return data;
 }
-
-/*  Calculate msec to FPGA ticks.
- *  we run at 250 Mhz on FPGA so 4 ns per tick
- */
-//static uint32_t msec_2_ticks (int msec)
-//{
-//    uint32_t fpga_ticks = msec;
-//
-//    fpga_ticks = fpga_ticks * 250;
-//#ifndef _SIM_
-//    fpga_ticks = fpga_ticks * 1000;
-//#endif
-//    elog (DEBUG1," fpga Ticks = %d (0x%x)", fpga_ticks, fpga_ticks);
-//    return fpga_ticks;
-//}
 
 /*
  *  Start Action and wait for Idle.
@@ -582,8 +580,8 @@ static void* sm_compile (char* patt, size_t* size)
                                     ((PATTERN_WIDTH_BYTES - 4) % 64) == 0 ? 0 :
                                     (64 - ((PATTERN_WIDTH_BYTES - 4) % 64)));
 
-    //void *patt_src_base = alloc_mem (64, max_alloc_size);
-    void* patt_src_base = palloc0 (max_alloc_size);
+    void *patt_src_base = alloc_mem (64, max_alloc_size);
+    //void* patt_src_base = palloc0 (max_alloc_size);
     void* patt_src = patt_src_base;
 
     elog (DEBUG1, "PATTERN Source Address Start at 0X%016lX\n", (uint64_t)patt_src);
@@ -593,7 +591,7 @@ static void* sm_compile (char* patt, size_t* size)
         exit (EXIT_FAILURE);
     }
 
-    remove_newline (patt);
+    //remove_newline (patt);
     // TODO: fill the same pattern for 8 times, workaround for 32x8.
     for (int i = 0; i < 8; i++) {
         elog (DEBUG3, "%s\n", patt);
@@ -623,8 +621,8 @@ static void* sm_pkt_psql (WindowObject* win, int row_count, size_t* size, size_t
     // The max size that should be alloc
     size_t max_alloc_size = MAX_NUM_PKT * (64 + 2048);
 
-    //void *pkt_src_base = alloc_mem (64, max_alloc_size);
-    void* pkt_src_base = palloc0 (max_alloc_size);
+    void *pkt_src_base = alloc_mem (64, max_alloc_size);
+    //void* pkt_src_base = palloc0 (max_alloc_size);
     void* pkt_src = pkt_src_base;
 
     elog (DEBUG1, "PACKET Source Address Start at 0X%016lX\n", (uint64_t)pkt_src);
@@ -660,13 +658,57 @@ static void* sm_pkt_psql (WindowObject* win, int row_count, size_t* size, size_t
     return pkt_src_base;
 }
 
+static int get_results(void *result, size_t num_matched_pkt, void *stat_dest_base)
+{
+    int i = 0, j = 0;
+    //uint16_t offset = 0;
+    uint32_t pkt_id = 0;
+    //uint32_t patt_id = 0;
+
+    if (result == NULL) {
+        elog (LOG, "Invalid result pointer.\n");
+        return 1;
+    }
+
+    for (i = 0; i < (int)((OUTPUT_STAT_WIDTH / 8) * num_matched_pkt); i++) {
+        elog (DEBUG2, "OUTPUT[%d] %#X\n", i, ((uint8_t *)stat_dest_base)[i]);
+    }
+
+    elog (DEBUG1, "---- Results (HW: hardware) ----\n");
+    elog (DEBUG1, "PKT(HW) PATT(HW) OFFSET(HW)\n");
+
+    for (i = 0; i < (int)num_matched_pkt; i++) {
+        //for (j = 0; j < 4; j++) {
+        //    patt_id |= (((uint8_t *)stat_dest_base)[i * 10 + j] << j * 8);
+        //}
+
+        for (j = 4; j < 8; j++) {
+            pkt_id |= (((uint8_t *)stat_dest_base)[i * 10 + j] << (j % 4) * 8);
+        }
+
+        elog (DEBUG1, "MATCHED PKT: %d\n", pkt_id);
+        ((int*)result)[pkt_id - 1] = 1;
+
+        //for (j = 8; j < 10; j++) {
+        //    offset |= (((uint8_t *)stat_dest_base)[i * 10 + j] << (j % 2) * 8);
+        //}
+
+        //patt_id = 0;
+        pkt_id = 0;
+        //offset = 0;
+    }
+
+    return 0;
+}
+
+
 static Datum
 regex_capi (PG_FUNCTION_ARGS)
 {
     char device[64];
     struct snap_card* dn;   /* lib snap handle */
     int card_no = 0;
-    int rc = 1;
+    int rc = 0;
     uint64_t cir;
     int timeout = ACTION_WAIT_TIME;
     //int no_chk_offset = 0;
@@ -686,55 +728,21 @@ regex_capi (PG_FUNCTION_ARGS)
     int count = 0;
     // Alloc state output buffer, aligned to 4K
     //int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt();
-    int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * MAX_NUM_PKT;
-    int stat_size = (real_stat_size % 4096 == 0) ? real_stat_size : real_stat_size + (4096 - (real_stat_size % 4096));
+    int real_stat_size = 0;
+    int stat_size = 0;
 
     int N;
     char* cstr_p = NULL;
     bool isnull = true;
-
-    elog (DEBUG2, "Open Card: %d\n", card_no);
-    sprintf (device, "/dev/cxl/afu%d.0s", card_no);
-    dn = snap_card_alloc_dev (device, SNAP_VENDOR_ID_IBM, SNAP_DEVICE_ID_SNAP);
-
-    if (NULL == dn) {
-        errno = ENODEV;
-        elog (LOG, "ERROR: snap_card_alloc_dev(%s)\n", device);
-        return -1;
-    }
-
-    /* Read Card Capabilities */
-    snap_card_ioctl (dn, GET_CARD_TYPE, (unsigned long)&ioctl_data);
-    elog (DEBUG1, "SNAP on ");
-
-    switch (ioctl_data) {
-    case  0:
-        elog (DEBUG1, "ADKU3");
-        break;
-
-    case  1:
-        elog (DEBUG1, "N250S");
-        break;
-
-    case 16:
-        elog (DEBUG1, "N250SP");
-        break;
-
-    default:
-        elog (DEBUG1, "Unknown");
-        break;
-    }
+    PATTERN_ID = 0;
+    PACKET_ID = 0;
 
     //snap_card_ioctl (dn, GET_SDRAM_SIZE, (unsigned long)&ioctl_data);
     //elog (DEBUG1," Card, %d MB of Card Ram avilable.\n", (int)ioctl_data);
 
-    snap_mmio_read64 (dn, SNAP_S_CIR, &cir);
-    elog (LOG, "Start of Card Handle: %p Context: %d\n", dn,
-          (int) (cir & 0x1ff));
-
     WindowObject winobj = PG_WINDOW_OBJECT();
     psql_regex_capi_context* context;
-    //int64     curpos, rowcount;
+    int64 curpos;
     int64 rowcount;
 
     rowcount = WinGetPartitionRowCount (winobj);
@@ -744,21 +752,61 @@ regex_capi (PG_FUNCTION_ARGS)
 
     elog (LOG, "In regex_capi\n");
 
-    // At least 4K for output buffer.
-    if (stat_size == 0) {
-        stat_size = 4096;
-    }
-
-    //stat_dest_base = alloc_mem (64, stat_size);
-    stat_dest_base = palloc0 (stat_size);
-    memset (stat_dest_base, 0, stat_size);
-
-    elog (LOG, "Start to get action.\n");
-    act = get_action (dn, attach_flags, 5 * timeout);
-    elog (LOG, "Finish get action.\n");
-
     if (!context->isdone) {
+        elog (DEBUG2, "Open Card: %d\n", card_no);
+        sprintf (device, "/dev/cxl/afu%d.0s", card_no);
+        dn = snap_card_alloc_dev (device, SNAP_VENDOR_ID_IBM, SNAP_DEVICE_ID_SNAP);
+
+        if (NULL == dn) {
+            errno = ENODEV;
+            elog (LOG, "ERROR: snap_card_alloc_dev(%s)\n", device);
+            return -1;
+        }
+
+        /* Read Card Capabilities */
+        snap_card_ioctl (dn, GET_CARD_TYPE, (unsigned long)&ioctl_data);
+        elog (DEBUG1, "SNAP on ");
+
+        switch (ioctl_data) {
+            case  0:
+                elog (DEBUG1, "ADKU3");
+                break;
+
+            case  1:
+                elog (DEBUG1, "N250S");
+                break;
+
+            case 16:
+                elog (DEBUG1, "N250SP");
+                break;
+
+            default:
+                elog (DEBUG1, "Unknown");
+                break;
+        }
+
+
+        snap_mmio_read64 (dn, SNAP_S_CIR, &cir);
+        elog (LOG, "Start of Card Handle: %p Context: %d\n", dn,
+                (int) (cir & 0x1ff));
+
+
         N = (int) WinGetPartitionRowCount (winobj);
+
+        real_stat_size = (OUTPUT_STAT_WIDTH / 8) * N;
+        stat_size = (real_stat_size % 4096 == 0) ? real_stat_size : real_stat_size + (4096 - (real_stat_size % 4096));
+
+        // At least 4K for output buffer.
+        if (stat_size == 0) {
+            stat_size = 4096;
+        }
+
+        stat_dest_base = alloc_mem (64, stat_size);
+        memset (stat_dest_base, 0, stat_size);
+
+        elog (LOG, "Start to get action.\n");
+        act = get_action (dn, attach_flags, 5 * timeout);
+        elog (LOG, "Finish get action.\n");
 
         cstr_p = TextDatumGetCString (
                      WinGetFuncArgCurrent (winobj, 1, &isnull));
@@ -800,36 +848,41 @@ regex_capi (PG_FUNCTION_ARGS)
 
         // Wait for transaction to be done.
         do {
-            elog (DEBUG3, " Draining %i! \n", count);
+            //elog (DEBUG3, " Draining %i! \n", count);
             action_read (dn, ACTION_STATUS_L);
             count++;
-        } while (count < 1000);
+        } while (count < 200);
 
         reg_data = action_read (dn, ACTION_STATUS_H);
         elog (LOG, "After draining, number of matched packets: %d\n", reg_data);
         num_matched_pkt = reg_data;
 
+        if (get_results(context->result, num_matched_pkt, stat_dest_base)) {
+            errno = ENODEV;
+            elog (LOG, "ERROR: failed to get results.\n");
+            return -1;
+        }
+
+        snap_detach_action (act);
+        // Unmap AFU MMIO registers, if previously mapped
+        snap_card_free (dn);
+        elog (DEBUG2, "Free Card Handle: %p\n", dn);
+
+        free_mem (patt_src_base);
+        free_mem (pkt_src_base);
+        free_mem (stat_dest_base);
+
         context->isdone = true;
+
+        elog (DEBUG1, "End of Test rc: %d\n", rc);
     }
 
     if (context->isnull) {
         PG_RETURN_NULL();
     }
 
-    snap_detach_action (act);
-    // Unmap AFU MMIO registers, if previously mapped
-    snap_card_free (dn);
-    elog (DEBUG2, "Free Card Handle: %p\n", dn);
-
-    pfree (patt_src_base);
-    pfree (pkt_src_base);
-    pfree (stat_dest_base);
-
-    elog (DEBUG1, "End of Test rc: %d\n", rc);
-
-    //curpos = WinGetCurrentPosition(winobj);
-    //PG_RETURN_INT32(context->result[curpos]);
-    PG_RETURN_INT32 (0);
+    curpos = WinGetCurrentPosition(winobj);
+    PG_RETURN_INT32((int)(context->result[curpos]));
 }
 
 Datum
