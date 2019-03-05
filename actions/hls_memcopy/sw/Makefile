@@ -38,11 +38,18 @@ endif
 
 # This is solution specific. Check if we can replace this by generics too.
 
-snap_memcopy: sw_action_memcopy.o
-snap_memcopy_objs = sw_action_memcopy.o
-snap_memcopy_libs = -lm
+#snap_memcopy_dualcard: sw_action_memcopy.o
+#
+#snap_memcopy_dualcard_objs = sw_action_memcopy.o
+#snap_memcopy_dualcard_libs = -lm
+#
+#snap_memcopy: sw_action_memcopy.o
+#
+#snap_memcopy_objs = sw_action_memcopy.o
+#snap_memcopy_libs = -lm
 
 projs += snap_memcopy
+projs += snap_memcopy_dualcard
 
 # If you have the host code outside of the default snap directory structure, 
 # change to /path/to/snap/actions/software.mk
