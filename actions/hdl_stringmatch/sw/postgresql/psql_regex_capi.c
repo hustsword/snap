@@ -55,7 +55,7 @@ extern Datum psql_regex_capi (PG_FUNCTION_ARGS);
 typedef struct {
     bool     isdone;
     bool     isnull;
-    int      result[1];
+    uint8_t* result;
     /* variable length */
 } psql_regex_capi_context;
 
@@ -99,14 +99,14 @@ static void print_time (uint64_t elapsed, uint64_t size)
     }
 }
 
-static void *alloc_mem (int align, size_t size)
+static void* alloc_mem (int align, size_t size)
 {
-    void *a;
+    void* a;
     size_t size2 = size + align;
 
     elog (DEBUG1, "%s Enter Align: %d Size: %zu\n", __func__, align, size);
 
-    if (posix_memalign ((void **)&a, 4096, size2) != 0) {
+    if (posix_memalign ((void**)&a, 4096, size2) != 0) {
         perror ("FAILED: posix_memalign()");
         return NULL;
     }
@@ -115,7 +115,7 @@ static void *alloc_mem (int align, size_t size)
     return a;
 }
 
-static void free_mem (void *a)
+static void free_mem (void* a)
 {
     elog (DEBUG1, "Free Mem %p\n", a);
 
@@ -275,7 +275,7 @@ static void action_write (struct snap_card* h, uint32_t addr, uint32_t data)
     rc = snap_mmio_write32 (h, (uint64_t)addr, data);
 
     if (0 != rc) {
-        elog (LOG, "Write MMIO 32 Err\n");
+        elog (DEBUG1, "Write MMIO 32 Err\n");
     }
 
     return;
@@ -289,7 +289,7 @@ static uint32_t action_read (struct snap_card* h, uint32_t addr)
     rc = snap_mmio_read32 (h, (uint64_t)addr, &data);
 
     if (0 != rc) {
-        elog (LOG, "Read MMIO 32 Err\n");
+        elog (DEBUG1, "Read MMIO 32 Err\n");
     }
 
     return data;
@@ -315,7 +315,7 @@ static int action_wait_idle (struct snap_card* h, int timeout, uint64_t* elapsed
     if (rc) {
         rc = 0;    /* Good */
     } else {
-        elog (LOG, "Error. Timeout while Waiting for Idle\n");
+        elog (DEBUG1, "Error. Timeout while Waiting for Idle\n");
     }
 
     *elapsed = td;
@@ -422,7 +422,7 @@ static void action_sm (struct snap_card* h,
 
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
-            elog (LOG, "Error code got 0X%X\n", ((reg_data & 0x00FFFF00) >> 8));
+            elog (DEBUG1, "Error code got 0X%X\n", ((reg_data & 0x00FFFF00) >> 8));
             exit (EXIT_FAILURE);
         }
 
@@ -445,13 +445,13 @@ static void action_sm (struct snap_card* h,
 
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
-            elog (LOG, "Error code got 0X%X\n", ((reg_data & 0x00FFFF00) >> 8));
+            elog (DEBUG1, "Error code got 0X%X\n", ((reg_data & 0x00FFFF00) >> 8));
             exit (EXIT_FAILURE);
         }
 
         // Status[0]
         if ((reg_data & 0x00000010) != 0) {
-            elog (LOG, "Memory space for stat used up!\n");
+            elog (DEBUG1, "Memory space for stat used up!\n");
             exit (EXIT_FAILURE);
         }
 
@@ -503,7 +503,7 @@ static void action_sm (struct snap_card* h,
 
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
-            elog (LOG, "Error code got 0X%X\n", ((reg_data & 0x00FFFF00) >> 8));
+            elog (DEBUG1, "Error code got 0X%X\n", ((reg_data & 0x00FFFF00) >> 8));
             exit (EXIT_FAILURE);
         }
 
@@ -564,8 +564,8 @@ static struct snap_action* get_action (struct snap_card* handle,
                               flags, timeout);
 
     if (NULL == act) {
-        elog (LOG, "Error: Can not attach Action: %x\n", ACTION_TYPE_STRING_MATCH);
-        elog (LOG, "       Try to run snap_main tool\n");
+        elog (DEBUG1, "Error: Can not attach Action: %x\n", ACTION_TYPE_STRING_MATCH);
+        elog (DEBUG1, "       Try to run snap_main tool\n");
     }
 
     return act;
@@ -580,14 +580,14 @@ static void* sm_compile (char* patt, size_t* size)
                                     ((PATTERN_WIDTH_BYTES - 4) % 64) == 0 ? 0 :
                                     (64 - ((PATTERN_WIDTH_BYTES - 4) % 64)));
 
-    void *patt_src_base = alloc_mem (64, max_alloc_size);
+    void* patt_src_base = alloc_mem (64, max_alloc_size);
     //void* patt_src_base = palloc0 (max_alloc_size);
     void* patt_src = patt_src_base;
 
     elog (DEBUG1, "PATTERN Source Address Start at 0X%016lX\n", (uint64_t)patt_src);
 
     if (patt == NULL) {
-        elog (LOG, "PATTERN pointer is NULL!\n");
+        elog (DEBUG1, "PATTERN pointer is NULL!\n");
         exit (EXIT_FAILURE);
     }
 
@@ -621,7 +621,7 @@ static void* sm_pkt_psql (WindowObject* win, int row_count, size_t* size, size_t
     // The max size that should be alloc
     size_t max_alloc_size = MAX_NUM_PKT * (64 + 2048);
 
-    void *pkt_src_base = alloc_mem (64, max_alloc_size);
+    void* pkt_src_base = alloc_mem (64, max_alloc_size);
     //void* pkt_src_base = palloc0 (max_alloc_size);
     void* pkt_src = pkt_src_base;
 
@@ -629,11 +629,11 @@ static void* sm_pkt_psql (WindowObject* win, int row_count, size_t* size, size_t
 
     for (int i = 0; i < row_count; i++) {
         line = TextDatumGetCString (
-                WinGetFuncArgInPartition (*win, 0, i,
-                    WINDOW_SEEK_HEAD, false, &isnull, &isout));
+                   WinGetFuncArgInPartition (*win, 0, i,
+                                             WINDOW_SEEK_HEAD, false, &isnull, &isout));
 
         if (isnull) {
-            elog (LOG, "PACKET pointer is NULL!\n");
+            elog (DEBUG1, "PACKET pointer is NULL!\n");
             exit (EXIT_FAILURE);
         }
 
@@ -658,7 +658,7 @@ static void* sm_pkt_psql (WindowObject* win, int row_count, size_t* size, size_t
     return pkt_src_base;
 }
 
-static int get_results(void *result, size_t num_matched_pkt, void *stat_dest_base)
+static int get_results (void* result, size_t num_matched_pkt, void* stat_dest_base)
 {
     int i = 0, j = 0;
     //uint16_t offset = 0;
@@ -666,12 +666,12 @@ static int get_results(void *result, size_t num_matched_pkt, void *stat_dest_bas
     //uint32_t patt_id = 0;
 
     if (result == NULL) {
-        elog (LOG, "Invalid result pointer.\n");
+        elog (DEBUG1, "Invalid result pointer.\n");
         return 1;
     }
 
-    for (i = 0; i < (int)((OUTPUT_STAT_WIDTH / 8) * num_matched_pkt); i++) {
-        elog (DEBUG2, "OUTPUT[%d] %#X\n", i, ((uint8_t *)stat_dest_base)[i]);
+    for (i = 0; i < (int) ((OUTPUT_STAT_WIDTH / 8) * num_matched_pkt); i++) {
+        elog (DEBUG2, "OUTPUT[%d] %#X\n", i, ((uint8_t*)stat_dest_base)[i]);
     }
 
     elog (DEBUG1, "---- Results (HW: hardware) ----\n");
@@ -683,11 +683,11 @@ static int get_results(void *result, size_t num_matched_pkt, void *stat_dest_bas
         //}
 
         for (j = 4; j < 8; j++) {
-            pkt_id |= (((uint8_t *)stat_dest_base)[i * 10 + j] << (j % 4) * 8);
+            pkt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 4) * 8);
         }
 
         elog (DEBUG1, "MATCHED PKT: %d\n", pkt_id);
-        ((int*)result)[pkt_id - 1] = 1;
+        ((uint8_t*)result)[pkt_id - 1] = 1;
 
         //for (j = 8; j < 10; j++) {
         //    offset |= (((uint8_t *)stat_dest_base)[i * 10 + j] << (j % 2) * 8);
@@ -709,12 +709,12 @@ regex_capi (PG_FUNCTION_ARGS)
     struct snap_card* dn;   /* lib snap handle */
     int card_no = 0;
     int rc = 0;
-    uint64_t cir;
+    //uint64_t cir;
     int timeout = ACTION_WAIT_TIME;
     //int no_chk_offset = 0;
     snap_action_flag_t attach_flags = 0;
     struct snap_action* act = NULL;
-    unsigned long ioctl_data;
+    //unsigned long ioctl_data;
     void* patt_src_base = NULL;
     void* pkt_src_base = NULL;
     void* stat_dest_base = NULL;
@@ -722,8 +722,22 @@ regex_capi (PG_FUNCTION_ARGS)
     size_t pkt_size = 0;
     size_t patt_size = 0;
     size_t pkt_size_for_sw = 0;
+    uint64_t hw_start_time;
+    uint64_t hw_elapsed_time;
+    uint64_t patt_start_time;
+    uint64_t patt_elapsed_time;
+    uint64_t pkt_start_time;
+    uint64_t pkt_elapsed_time;
+    uint64_t result_start_time;
+    uint64_t result_elapsed_time;
     uint64_t start_time;
     uint64_t elapsed_time;
+    uint64_t pre_start_time;
+    uint64_t pre_elapsed_time;
+    uint64_t pre_db_start_time;
+    uint64_t pre_db_elapsed_time;
+    uint64_t post_start_time;
+    uint64_t post_elapsed_time;
     uint32_t reg_data;
     int count = 0;
     // Alloc state output buffer, aligned to 4K
@@ -743,55 +757,43 @@ regex_capi (PG_FUNCTION_ARGS)
     WindowObject winobj = PG_WINDOW_OBJECT();
     psql_regex_capi_context* context;
     int64 curpos;
-    int64 rowcount;
 
-    rowcount = WinGetPartitionRowCount (winobj);
     context = (psql_regex_capi_context*)
               WinGetPartitionLocalMemory (winobj,
-                                          sizeof (psql_regex_capi_context) + sizeof (int) * rowcount);
+                                          sizeof (psql_regex_capi_context));
 
-    elog (LOG, "In regex_capi\n");
+    elog (DEBUG1, "In regex_capi\n");
 
     if (!context->isdone) {
+        start_time = get_usec();
+        pre_start_time = get_usec();
+
         elog (DEBUG2, "Open Card: %d\n", card_no);
         sprintf (device, "/dev/cxl/afu%d.0s", card_no);
         dn = snap_card_alloc_dev (device, SNAP_VENDOR_ID_IBM, SNAP_DEVICE_ID_SNAP);
 
         if (NULL == dn) {
             errno = ENODEV;
-            elog (LOG, "ERROR: snap_card_alloc_dev(%s)\n", device);
+            elog (DEBUG1, "ERROR: snap_card_alloc_dev(%s)\n", device);
             return -1;
         }
 
-        /* Read Card Capabilities */
-        snap_card_ioctl (dn, GET_CARD_TYPE, (unsigned long)&ioctl_data);
-        elog (DEBUG1, "SNAP on ");
+        // Reset the hardware
+        soft_reset (dn);
 
-        switch (ioctl_data) {
-            case  0:
-                elog (DEBUG1, "ADKU3");
-                break;
+        elog (DEBUG1, "Start to get action.\n");
+        act = get_action (dn, attach_flags, 5 * timeout);
+        elog (DEBUG1, "Finish get action.\n");
 
-            case  1:
-                elog (DEBUG1, "N250S");
-                break;
+        pre_elapsed_time = get_usec() - pre_start_time;
+        elog (LOG, "Card prepare time:\n");
+        print_time (pre_elapsed_time, 1);
 
-            case 16:
-                elog (DEBUG1, "N250SP");
-                break;
-
-            default:
-                elog (DEBUG1, "Unknown");
-                break;
-        }
-
-
-        snap_mmio_read64 (dn, SNAP_S_CIR, &cir);
-        elog (LOG, "Start of Card Handle: %p Context: %d\n", dn,
-                (int) (cir & 0x1ff));
-
-
+        pre_db_start_time = get_usec();
         N = (int) WinGetPartitionRowCount (winobj);
+        pre_db_elapsed_time = get_usec() - pre_db_start_time;
+        elog (LOG, "DB prepare time:\n");
+        print_time (pre_db_elapsed_time, 1);
 
         real_stat_size = (OUTPUT_STAT_WIDTH / 8) * N;
         stat_size = (real_stat_size % 4096 == 0) ? real_stat_size : real_stat_size + (4096 - (real_stat_size % 4096));
@@ -801,68 +803,79 @@ regex_capi (PG_FUNCTION_ARGS)
             stat_size = 4096;
         }
 
+        context->result = palloc0 (N);
         stat_dest_base = alloc_mem (64, stat_size);
-        memset (stat_dest_base, 0, stat_size);
+        //memset (stat_dest_base, 0, stat_size);
 
-        elog (LOG, "Start to get action.\n");
-        act = get_action (dn, attach_flags, 5 * timeout);
-        elog (LOG, "Finish get action.\n");
+        elog (DEBUG1, "======== COMPILE PATTERN FILE ========\n");
+        // Compile the regular expression
+        patt_start_time = get_usec();
 
         cstr_p = TextDatumGetCString (
                      WinGetFuncArgCurrent (winobj, 1, &isnull));
 
         if (!isnull) {
-            elog (LOG, "pattern: %s\n", cstr_p);
+            elog (DEBUG1, "pattern: %s\n", cstr_p);
         }
 
-        elog (LOG, "======== COMPILE PATTERN FILE ========\n");
-        // Compile the regular expression
         patt_src_base = sm_compile (cstr_p, &patt_size);
-        elog (LOG, "Pattern buffer size: %zu\n", patt_size);
-        elog (LOG, "======== COMPILE PATTERN FILE DONE ========\n");
+        patt_elapsed_time = get_usec() - patt_start_time;
+        elog (LOG, "Pattern compile time:\n");
+        print_time (patt_elapsed_time, patt_size);
+        elog (DEBUG1, "Pattern buffer size: %zu\n", patt_size);
+        elog (DEBUG1, "======== COMPILE PATTERN FILE DONE ========\n");
 
-        elog (LOG, "======== COMPILE PACKET FILE ========\n");
+        elog (DEBUG1, "======== COMPILE PACKET FILE ========\n");
         // Compile the packets
+        pkt_start_time = get_usec();
         pkt_src_base = sm_pkt_psql (&winobj, N, &pkt_size, &pkt_size_for_sw);
-        elog (LOG, "======== COMPILE PACKET FILE DONE ========\n");
+        pkt_elapsed_time = get_usec() - pkt_start_time;
+        elog (LOG, "Packet compile time:\n");
+        print_time (pkt_elapsed_time, pkt_size);
+        elog (DEBUG1, "======== COMPILE PACKET FILE DONE ========\n");
 
-        // Reset the hardware
-        soft_reset (dn);
-
-        elog (LOG, "======== HARDWARE RUN ========\n");
-        start_time = get_usec();
+        elog (DEBUG1, "======== HARDWARE RUN ========\n");
+        hw_start_time = get_usec();
         rc = sm_scan (dn, timeout,
-                patt_src_base,
-                pkt_src_base,
-                stat_dest_base,
-                &num_matched_pkt,
-                patt_size,
-                pkt_size,
-                stat_size);
-        elapsed_time = get_usec() - start_time;
+                      patt_src_base,
+                      pkt_src_base,
+                      stat_dest_base,
+                      &num_matched_pkt,
+                      patt_size,
+                      pkt_size,
+                      stat_size);
+        hw_elapsed_time = get_usec() - hw_start_time;
         // pkt_size_for_sw is the real size without hardware specific 64B header
-        print_time (elapsed_time, pkt_size_for_sw);
+        elog (LOG, "HW run time:\n");
+        print_time (hw_elapsed_time, pkt_size_for_sw);
 
-        elog (LOG, "Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
-        elog (LOG, "======== HARDWARE DONE========\n");
+        elog (DEBUG1, "Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
+        elog (DEBUG1, "======== HARDWARE DONE========\n");
+
+        result_start_time = get_usec();
 
         // Wait for transaction to be done.
         do {
             //elog (DEBUG3, " Draining %i! \n", count);
             action_read (dn, ACTION_STATUS_L);
             count++;
-        } while (count < 200);
+        } while (count < 2);
 
         reg_data = action_read (dn, ACTION_STATUS_H);
-        elog (LOG, "After draining, number of matched packets: %d\n", reg_data);
+        elog (DEBUG1, "After draining, number of matched packets: %d\n", reg_data);
         num_matched_pkt = reg_data;
 
-        if (get_results(context->result, num_matched_pkt, stat_dest_base)) {
+        if (get_results (context->result, num_matched_pkt, stat_dest_base)) {
             errno = ENODEV;
-            elog (LOG, "ERROR: failed to get results.\n");
+            elog (DEBUG1, "ERROR: failed to get results.\n");
             return -1;
         }
 
+        result_elapsed_time = get_usec() - result_start_time;
+        elog (LOG, "Result harvest time:\n");
+        print_time (result_elapsed_time, stat_size);
+
+        post_start_time = get_usec();
         snap_detach_action (act);
         // Unmap AFU MMIO registers, if previously mapped
         snap_card_free (dn);
@@ -871,9 +884,18 @@ regex_capi (PG_FUNCTION_ARGS)
         free_mem (patt_src_base);
         free_mem (pkt_src_base);
         free_mem (stat_dest_base);
+        pfree (context->result);
 
         context->isdone = true;
 
+        post_elapsed_time = get_usec() - post_start_time;
+        elog (LOG, "Post function cleanup time:\n");
+        print_time (post_elapsed_time, stat_size);
+
+        elapsed_time = get_usec() - start_time;
+        // pkt_size_for_sw is the real size without hardware specific 64B header
+        elog (LOG, "Total time:\n");
+        print_time (elapsed_time, pkt_size_for_sw);
         elog (DEBUG1, "End of Test rc: %d\n", rc);
     }
 
@@ -881,8 +903,8 @@ regex_capi (PG_FUNCTION_ARGS)
         PG_RETURN_NULL();
     }
 
-    curpos = WinGetCurrentPosition(winobj);
-    PG_RETURN_INT32((int)(context->result[curpos]));
+    curpos = WinGetCurrentPosition (winobj);
+    PG_RETURN_INT32 ((int) (context->result[curpos]));
 }
 
 Datum

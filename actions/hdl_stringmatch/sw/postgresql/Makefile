@@ -47,9 +47,9 @@ POSTGRESQL_PKGLIB=$(shell pg_config --pkglibdir)
 CXX=g++
 EXTRA_CFLGAS+=  -Wall -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -Wno-format-truncation -Wno-stringop-truncation
 
-CPPFLAGS+= -O3 $(EXTRA_CFLGAS) -g -fPIC -I. -I./ -I$(POSTGRESQL_INCLUDE_SERVER) -I$(POSTGRESQL_INCLUDE)/internal -D_GNU_SOURCE
+CPPFLAGS+= -O3 $(EXTRA_CFLGAS) -fPIC -I. -I./ -I$(POSTGRESQL_INCLUDE_SERVER) -I$(POSTGRESQL_INCLUDE)/internal -D_GNU_SOURCE
 
-LDFLAGS+= $(EXTRA_CFLGAS) -g -fPIC -L$(POSTGRESQL_LIB)   -Wl,--as-needed -Wl,-rpath,'$(POSTGRESQL_LIB)',--enable-new-dtags
+LDFLAGS+= $(EXTRA_CFLGAS) -fPIC -L$(POSTGRESQL_LIB) -Wl,--as-needed -Wl,-rpath,'$(POSTGRESQL_LIB)',--enable-new-dtags
 
 LDLIBS+= -lcxl -lpthread -lsnap
 
