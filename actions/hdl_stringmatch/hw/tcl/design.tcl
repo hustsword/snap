@@ -9,7 +9,7 @@ add_files -scan_for_includes -norecurse $verilog_dir/core
 #User IPs
 foreach usr_ip [list \
                 $action_ipdir/bram_1744x16                   \
-                $action_ipdir/bram_dual_port_512x64          \
+                $action_ipdir/bram_dual_port_64x512          \
                 $action_ipdir/fifo_48x16_async               \
                 $action_ipdir/fifo_512x64_sync_bram          \
                 $action_ipdir/fifo_80x16_async               \

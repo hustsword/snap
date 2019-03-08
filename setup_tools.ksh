@@ -9,7 +9,7 @@ fi
 export XILINX_VIVADO=$CTEPATH/tools/xilinx/2018.2/Vivado/2018.2
 export XILINXD_LICENSE_FILE=2100@pokwinlic1.pok.ibm.com
 
-export CDS_INST_DIR=$CTEPATH/tools/cds/Xcelium/18.03
+export CDS_INST_DIR=$CTEPATH/tools/cds/Xcelium/18.03.010
 export CDS_LIC_FILE=5295@poklnxlic04.pok.ibm.com:\
 1716@rchlic1.rchland.ibm.com:\
 1716@rchlic2.rchland.ibm.com:\
