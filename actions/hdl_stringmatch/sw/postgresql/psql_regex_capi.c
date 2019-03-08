@@ -65,7 +65,9 @@ typedef struct {
 #define DEFAULT_MEMCPY_ITER 1
 #define ACTION_WAIT_TIME    10   /* Default in sec */
 //#define MAX_NUM_PKT 502400
-#define MAX_NUM_PKT 4096
+//#define MAX_NUM_PKT 4096
+#define MIN_NUM_PKT 4096
+#define MAX_NUM_PATT 1024
 
 #define MEGAB       (1024*1024ull)
 #define GIGAB       (1024 * MEGAB)
@@ -91,11 +93,11 @@ static void print_time (uint64_t elapsed, uint64_t size)
     if (elapsed > 10000) {
         t = (int)elapsed / 1000;
         ft = (1000 / (float)t) * fsize;
-        elog (LOG, " end after %d msec (%0.3f MB/sec)\n", t, ft);
+        elog (INFO, " end after %d msec (%0.3f MB/sec)\n", t, ft);
     } else {
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
-        elog (LOG, " end after %d usec (%0.3f MB/sec)\n", t, ft);
+        elog (INFO, " end after %d usec (%0.3f MB/sec)\n", t, ft);
     }
 }
 
@@ -151,10 +153,12 @@ static void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
     bytes_used ++;
 
     // Skip the reserved bytes
-    for (int i = 0; i < 54; i++) {
-        pkt_base_addr[bytes_used] = 0;
-        bytes_used++;
-    }
+    //for (int i = 0; i < 54; i++) {
+    //    pkt_base_addr[bytes_used] = 0;
+    //    bytes_used++;
+    //}
+    memset (pkt_base_addr + bytes_used, 0, 54);
+    bytes_used += 54;
 
     for (int i = 0; i < 4 ; i++) {
         pkt_base_addr[bytes_used] = ((pkt_id >> (8 * i)) & 0xFF);
@@ -162,10 +166,12 @@ static void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
     }
 
     // The payload
-    for (int i = 0; i < pkt_len; i++) {
-        pkt_base_addr[bytes_used] = in_pkt[i];
-        bytes_used++;
-    }
+    //for (int i = 0; i < pkt_len; i++) {
+    //    pkt_base_addr[bytes_used] = in_pkt[i];
+    //    bytes_used++;
+    //}
+    memcpy (pkt_base_addr + bytes_used, in_pkt, pkt_len);
+    bytes_used += pkt_len;
 
     // Padding to 64 bytes alignment
     bytes_used--;
@@ -229,10 +235,13 @@ static void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
     patt_base_addr[bytes_used] = (patt_byte_cnt >> 8) & 0x7;
     bytes_used ++;
 
-    for (int i = 0; i < 54; i++) {
-        patt_base_addr[bytes_used] = 0x00;
-        bytes_used ++;
-    }
+    //for (int i = 0; i < 54; i++) {
+    //    patt_base_addr[bytes_used] = 0x00;
+    //    bytes_used ++;
+    //}
+
+    memset (patt_base_addr + bytes_used, 0, 54);
+    bytes_used += 54;
 
     // Pattern ID;
     for (int i = 0; i < 4; i++) {
@@ -358,8 +367,6 @@ static void action_sm (struct snap_card* h,
                        size_t stat_size)
 {
     uint32_t reg_data;
-    //uint64_t start_time;
-    //uint64_t elapsed_time;
 
     elog (DEBUG2, " ------ String Match Start -------- \n");
     elog (DEBUG2, " PATTERN SOURCE ADDR: %p -- SIZE: %d\n", patt_src_base, (int)patt_size);
@@ -433,7 +440,6 @@ static void action_sm (struct snap_card* h,
         }
     } while (1);
 
-    //start_time = get_usec();
     // Start working control[2:1] = 11
     action_write (h, ACTION_CONTROL_L, 0x00000006);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
@@ -458,35 +464,9 @@ static void action_sm (struct snap_card* h,
         if ((reg_data & 0x00000006) == 6) {
             elog (DEBUG1, "Work done!\n");
 
-            //reg_data = action_read(h, ACTION_STATUS_H);
-            //elog (DEBUG1,"%d bytes of valid stat data transfered!\n", reg_data);
-
             break;
         }
-
-        //// TODO: for test
-        //if ((reg_data & 0x00000080) == 0x80) {
-        //    elog (DEBUG1,"Run out!\n");
-
-        //    //reg_data = action_read(h, ACTION_STATUS_H);
-        //    //elog (DEBUG1,"%d bytes of valid stat data transfered!\n", reg_data);
-
-        //    break;
-        //}
-
-        //reg_data = action_read(h, ACTION_LOG_L);
-        //elog (DEBUG1,"Packet Phase: LOG_l reg 0X%X\n", reg_data);
-        //reg_data = action_read(h, ACTION_LOG_H);
-        //elog (DEBUG1,"Packet Phase: LOG_h reg 0X%X\n", reg_data);
-
     } while (1);
-
-    //elapsed_time = get_usec() - start_time;
-
-    //print_time(elapsed_time, pkt_size);
-
-    //// TODO: for test
-    //usleep(1000000);
 
     // Stop working
     action_write (h, ACTION_CONTROL_L, 0x00000000);
@@ -575,10 +555,10 @@ static void* sm_compile (char* patt, size_t* size)
 {
     // The max size that should be alloc
     // Assume we have at most 1024 lines in a pattern file
-    size_t max_alloc_size = 1024 * (64 +
-                                    (PATTERN_WIDTH_BYTES - 4) +
-                                    ((PATTERN_WIDTH_BYTES - 4) % 64) == 0 ? 0 :
-                                    (64 - ((PATTERN_WIDTH_BYTES - 4) % 64)));
+    size_t max_alloc_size = MAX_NUM_PATT * (64 +
+                                            (PATTERN_WIDTH_BYTES - 4) +
+                                            ((PATTERN_WIDTH_BYTES - 4) % 64) == 0 ? 0 :
+                                            (64 - ((PATTERN_WIDTH_BYTES - 4) % 64)));
 
     void* patt_src_base = alloc_mem (64, max_alloc_size);
     //void* patt_src_base = palloc0 (max_alloc_size);
@@ -619,7 +599,8 @@ static void* sm_pkt_psql (WindowObject* win, int row_count, size_t* size, size_t
     bool isnull = true, isout = false;
 
     // The max size that should be alloc
-    size_t max_alloc_size = MAX_NUM_PKT * (64 + 2048);
+    //size_t max_alloc_size = MAX_NUM_PKT * (64 + 2048);
+    size_t max_alloc_size = (row_count < MIN_NUM_PKT ? MIN_NUM_PKT : row_count) * (64 + 2048);
 
     void* pkt_src_base = alloc_mem (64, max_alloc_size);
     //void* pkt_src_base = palloc0 (max_alloc_size);
@@ -686,7 +667,7 @@ static int get_results (void* result, size_t num_matched_pkt, void* stat_dest_ba
             pkt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 4) * 8);
         }
 
-        elog (DEBUG1, "MATCHED PKT: %d\n", pkt_id);
+        elog (INFO, "MATCHED PKT: %d\n", pkt_id);
         ((uint8_t*)result)[pkt_id - 1] = 1;
 
         //for (j = 8; j < 10; j++) {
@@ -745,7 +726,7 @@ regex_capi (PG_FUNCTION_ARGS)
     int real_stat_size = 0;
     int stat_size = 0;
 
-    int N;
+    int N = 0;
     char* cstr_p = NULL;
     bool isnull = true;
     PATTERN_ID = 0;
@@ -773,8 +754,9 @@ regex_capi (PG_FUNCTION_ARGS)
         dn = snap_card_alloc_dev (device, SNAP_VENDOR_ID_IBM, SNAP_DEVICE_ID_SNAP);
 
         if (NULL == dn) {
-            errno = ENODEV;
-            elog (DEBUG1, "ERROR: snap_card_alloc_dev(%s)\n", device);
+            ereport (ERROR,
+                     (errcode (ERRCODE_INVALID_PARAMETER_VALUE),
+                      errmsg ("Cannot allocate CARD!")));
             return -1;
         }
 
@@ -786,13 +768,15 @@ regex_capi (PG_FUNCTION_ARGS)
         elog (DEBUG1, "Finish get action.\n");
 
         pre_elapsed_time = get_usec() - pre_start_time;
-        elog (LOG, "Card prepare time:\n");
+        elog (INFO, "Card prepare time:\n");
         print_time (pre_elapsed_time, 1);
 
         pre_db_start_time = get_usec();
         N = (int) WinGetPartitionRowCount (winobj);
+        // TODO: hack me!!!!
+        //N = 8000;
         pre_db_elapsed_time = get_usec() - pre_db_start_time;
-        elog (LOG, "DB prepare time:\n");
+        elog (INFO, "DB prepare time:\n");
         print_time (pre_db_elapsed_time, 1);
 
         real_stat_size = (OUTPUT_STAT_WIDTH / 8) * N;
@@ -803,7 +787,8 @@ regex_capi (PG_FUNCTION_ARGS)
             stat_size = 4096;
         }
 
-        context->result = palloc0 (N);
+        //context->result = palloc0 (N);
+        context->result = alloc_mem (64, N);
         stat_dest_base = alloc_mem (64, stat_size);
         //memset (stat_dest_base, 0, stat_size);
 
@@ -820,7 +805,7 @@ regex_capi (PG_FUNCTION_ARGS)
 
         patt_src_base = sm_compile (cstr_p, &patt_size);
         patt_elapsed_time = get_usec() - patt_start_time;
-        elog (LOG, "Pattern compile time:\n");
+        elog (INFO, "Pattern compile time:\n");
         print_time (patt_elapsed_time, patt_size);
         elog (DEBUG1, "Pattern buffer size: %zu\n", patt_size);
         elog (DEBUG1, "======== COMPILE PATTERN FILE DONE ========\n");
@@ -830,27 +815,35 @@ regex_capi (PG_FUNCTION_ARGS)
         pkt_start_time = get_usec();
         pkt_src_base = sm_pkt_psql (&winobj, N, &pkt_size, &pkt_size_for_sw);
         pkt_elapsed_time = get_usec() - pkt_start_time;
-        elog (LOG, "Packet compile time:\n");
+        elog (INFO, "Packet compile time:\n");
         print_time (pkt_elapsed_time, pkt_size);
         elog (DEBUG1, "======== COMPILE PACKET FILE DONE ========\n");
 
         elog (DEBUG1, "======== HARDWARE RUN ========\n");
         hw_start_time = get_usec();
-        rc = sm_scan (dn, timeout,
-                      patt_src_base,
-                      pkt_src_base,
-                      stat_dest_base,
-                      &num_matched_pkt,
-                      patt_size,
-                      pkt_size,
-                      stat_size);
+
+        if (sm_scan (dn, timeout,
+                     patt_src_base,
+                     pkt_src_base,
+                     stat_dest_base,
+                     &num_matched_pkt,
+                     patt_size,
+                     pkt_size,
+                     stat_size)) {
+
+            ereport (ERROR,
+                     (errcode (ERRCODE_INVALID_PARAMETER_VALUE),
+                      errmsg ("Hardware ERROR!")));
+            return -1;
+        }
+
         hw_elapsed_time = get_usec() - hw_start_time;
         // pkt_size_for_sw is the real size without hardware specific 64B header
-        elog (LOG, "HW run time:\n");
+        elog (INFO, "HW run time:\n");
         print_time (hw_elapsed_time, pkt_size_for_sw);
 
-        elog (DEBUG1, "Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
-        elog (DEBUG1, "======== HARDWARE DONE========\n");
+        elog (INFO, "Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
+        elog (INFO, "======== HARDWARE DONE========\n");
 
         result_start_time = get_usec();
 
@@ -862,7 +855,7 @@ regex_capi (PG_FUNCTION_ARGS)
         } while (count < 2);
 
         reg_data = action_read (dn, ACTION_STATUS_H);
-        elog (DEBUG1, "After draining, number of matched packets: %d\n", reg_data);
+        elog (INFO, "After draining, number of matched packets: %d\n", reg_data);
         num_matched_pkt = reg_data;
 
         if (get_results (context->result, num_matched_pkt, stat_dest_base)) {
@@ -872,7 +865,7 @@ regex_capi (PG_FUNCTION_ARGS)
         }
 
         result_elapsed_time = get_usec() - result_start_time;
-        elog (LOG, "Result harvest time:\n");
+        elog (INFO, "Result harvest time:\n");
         print_time (result_elapsed_time, stat_size);
 
         post_start_time = get_usec();
@@ -884,19 +877,19 @@ regex_capi (PG_FUNCTION_ARGS)
         free_mem (patt_src_base);
         free_mem (pkt_src_base);
         free_mem (stat_dest_base);
-        pfree (context->result);
+        //pfree (context->result);
 
         context->isdone = true;
 
         post_elapsed_time = get_usec() - post_start_time;
-        elog (LOG, "Post function cleanup time:\n");
+        elog (INFO, "Post function cleanup time:\n");
         print_time (post_elapsed_time, stat_size);
 
         elapsed_time = get_usec() - start_time;
         // pkt_size_for_sw is the real size without hardware specific 64B header
-        elog (LOG, "Total time:\n");
+        elog (INFO, "Total time:\n");
         print_time (elapsed_time, pkt_size_for_sw);
-        elog (DEBUG1, "End of Test rc: %d\n", rc);
+        elog (DEBUG1, "End of Test.\n");
     }
 
     if (context->isnull) {
@@ -904,7 +897,14 @@ regex_capi (PG_FUNCTION_ARGS)
     }
 
     curpos = WinGetCurrentPosition (winobj);
-    PG_RETURN_INT32 ((int) (context->result[curpos]));
+    rc = (int) context->result[curpos];
+    elog (DEBUG1, "Curpos: %d, result: %p\n", (int)curpos, context->result);
+
+    if ((N != -1) && curpos == (N - 1)) {
+        free_mem (context->result);
+    }
+
+    PG_RETURN_INT32 (rc);
 }
 
 Datum
@@ -912,4 +912,3 @@ psql_regex_capi (PG_FUNCTION_ARGS)
 {
     PG_RETURN_DATUM (regex_capi (fcinfo));
 }
-

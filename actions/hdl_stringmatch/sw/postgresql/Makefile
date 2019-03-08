@@ -70,7 +70,7 @@ psql_regex_capi: fregex.o regex_config.o psql_regex_capi.o
 	$(CXX) $(LDFLAGS) $($(@)_LDFLAGS) $($(@)_objs) $($(@)_libs) -shared -o $@.so $^ $(LDLIBS) 
 	sudo cp $@.so $(POSTGRESQL_PKGLIB)
 	psql -f ./uninstall_psql_regex_capi.sql
-	#/usr/local/pgsql/bin/psql -f ./psql_regex_capi.source
+	psql -f ./psql_regex_capi.source
 
 # If you have the host code outside of the default snap directory structure, 
 # change to /path/to/snap/actions/software.mk
