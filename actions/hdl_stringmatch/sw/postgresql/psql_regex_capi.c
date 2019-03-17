@@ -1375,7 +1375,7 @@ regex_capi (PG_FUNCTION_ARGS)
 
 fail:
     PERF_MEASURE (capi_regex_job_cleanup (job_desc), job_desc->t_cleanup);
-    print_perf_stat (job_desc, out_str);
+    print_perf_stat (job_desc);
 
     clock_gettime(CLOCK_REALTIME, &t_end);
     print_time_text ("|The total run time|", diff_time(&t_beg, &t_end) / 1000, job_desc->pkt_size_wo_hw_hdr);
