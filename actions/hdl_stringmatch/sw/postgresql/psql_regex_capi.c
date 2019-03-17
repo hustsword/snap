@@ -109,11 +109,11 @@ static void print_time (uint64_t elapsed, uint64_t size)
     if (elapsed > 10000) {
         t = (int)elapsed / 1000;
         ft = (1000 / (float)t) * fsize;
-        elog (INFO, " end after %d msec (%0.3f MB/sec)\n", t, ft);
+        elog (DEBUG1, " end after %d msec (%0.3f MB/sec)\n", t, ft);
     } else {
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
-        elog (INFO, " end after %d usec (%0.3f MB/sec)\n", t, ft);
+        elog (DEBUG1, " end after %d usec (%0.3f MB/sec)\n", t, ft);
     }
 }
 
@@ -126,11 +126,11 @@ static void print_time_text (const char* text, uint64_t elapsed, uint64_t size)
     if (elapsed > 10000) {
         t = (int)elapsed / 1000;
         ft = (1000 / (float)t) * fsize;
-        elog (INFO, "%s run time: %d msec (%0.3f MB/sec)\n", text, t, ft);
+        elog (DEBUG1, "%s run time: %d msec (%0.3f MB/sec)\n", text, t, ft);
     } else {
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
-        elog (INFO, "%s run time:  %d usec (%0.3f MB/sec)\n", text, t, ft);
+        elog (DEBUG1, "%s run time:  %d usec (%0.3f MB/sec)\n", text, t, ft);
     }
 }
 
@@ -797,13 +797,13 @@ regex_capi_win (PG_FUNCTION_ARGS)
         elog (DEBUG1, "Finish get action.\n");
 
         pre_elapsed_time = get_usec() - pre_start_time;
-        elog (INFO, "Card prepare time:\n");
+        elog (DEBUG1, "Card prepare time:\n");
         print_time (pre_elapsed_time, 1);
 
         pre_db_start_time = get_usec();
         N = (int) WinGetPartitionRowCount (winobj);
         pre_db_elapsed_time = get_usec() - pre_db_start_time;
-        elog (INFO, "DB prepare time:\n");
+        elog (DEBUG1, "DB prepare time:\n");
         print_time (pre_db_elapsed_time, 1);
 
         // TODO: To reserve twice more spaces in case hardware goes into panic (i.e., writing to more spaces than expected)
@@ -834,7 +834,7 @@ regex_capi_win (PG_FUNCTION_ARGS)
 
         patt_src_base = capi_regex_compile_internal (cstr_p, &patt_size);
         patt_elapsed_time = get_usec() - patt_start_time;
-        elog (INFO, "Pattern compile time:\n");
+        elog (DEBUG1, "Pattern compile time:\n");
         print_time (patt_elapsed_time, patt_size);
         elog (DEBUG1, "Pattern buffer size: %zu\n", patt_size);
         elog (DEBUG1, "======== COMPILE PATTERN FILE DONE ========\n");
@@ -844,7 +844,7 @@ regex_capi_win (PG_FUNCTION_ARGS)
         pkt_start_time = get_usec();
         pkt_src_base = capi_regex_pkt_psql_win (&winobj, N, &pkt_size, &pkt_size_wo_hw_hdr);
         pkt_elapsed_time = get_usec() - pkt_start_time;
-        elog (INFO, "Packet compile time:\n");
+        elog (DEBUG1, "Packet compile time:\n");
         print_time (pkt_elapsed_time, pkt_size);
         elog (DEBUG1, "======== COMPILE PACKET FILE DONE ========\n");
 
@@ -868,11 +868,11 @@ regex_capi_win (PG_FUNCTION_ARGS)
 
         hw_elapsed_time = get_usec() - hw_start_time;
         // pkt_size_wo_hw_hdr is the real size without hardware specific 64B header
-        elog (INFO, "HW run time:\n");
+        elog (DEBUG1, "HW run time:\n");
         print_time (hw_elapsed_time, pkt_size_wo_hw_hdr);
 
-        elog (INFO, "Finish capi_regex_scan_internal with %d matched packets.\n", (int)num_matched_pkt);
-        elog (INFO, "======== HARDWARE DONE========\n");
+        elog (DEBUG1, "Finish capi_regex_scan_internal with %d matched packets.\n", (int)num_matched_pkt);
+        elog (DEBUG1, "======== HARDWARE DONE========\n");
 
         result_start_time = get_usec();
 
@@ -884,7 +884,7 @@ regex_capi_win (PG_FUNCTION_ARGS)
         } while (count < 2);
 
         reg_data = action_read (dn, ACTION_STATUS_H);
-        elog (INFO, "After draining, number of matched packets: %d\n", reg_data);
+        elog (DEBUG1, "After draining, number of matched packets: %d\n", reg_data);
         num_matched_pkt = reg_data;
 
         if (get_results_win (context->result, num_matched_pkt, stat_dest_base)) {
@@ -894,7 +894,7 @@ regex_capi_win (PG_FUNCTION_ARGS)
         }
 
         result_elapsed_time = get_usec() - result_start_time;
-        elog (INFO, "Result harvest time:\n");
+        elog (DEBUG1, "Result harvest time:\n");
         print_time (result_elapsed_time, stat_size);
 
         post_start_time = get_usec();
@@ -911,12 +911,12 @@ regex_capi_win (PG_FUNCTION_ARGS)
         context->isdone = true;
 
         post_elapsed_time = get_usec() - post_start_time;
-        elog (INFO, "Post function cleanup time:\n");
+        elog (DEBUG1, "Post function cleanup time:\n");
         print_time (post_elapsed_time, stat_size);
 
         elapsed_time = get_usec() - start_time;
         // pkt_size_wo_hw_hdr is the real size without hardware specific 64B header
-        elog (INFO, "Total time:\n");
+        elog (DEBUG1, "Total time:\n");
         print_time (elapsed_time, pkt_size_wo_hw_hdr);
         elog (DEBUG1, "End of Test.\n");
     }
@@ -1234,7 +1234,7 @@ static int get_results (void* result, size_t num_matched_pkt, void* stat_dest_ba
             pkt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 4) * 8);
         }
 
-        elog (INFO, "MATCHED PKT: %d\n", pkt_id);
+        elog (DEBUG1, "MATCHED PKT: %d\n", pkt_id);
         ((uint32_t*)result)[i] = pkt_id;
 
         pkt_id = 0;
@@ -1259,7 +1259,7 @@ static int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc, char* ou
     } while (count < 2);
 
     uint32_t reg_data = action_read (job_desc->dn, ACTION_STATUS_H);
-    elog (INFO, "After draining, number of matched packets: %d\n", reg_data);
+    elog (DEBUG1, "After draining, number of matched packets: %d\n", reg_data);
     job_desc->num_matched_pkt = reg_data;
     job_desc->results = palloc (job_desc->num_matched_pkt * sizeof (uint32_t));
 
@@ -1327,8 +1327,10 @@ static bool capi_regex_check_relation (Relation rel)
 
 static void print_perf_stat (CAPIRegexJobDescriptor* job_desc)
 {
-    elog (INFO, "init,patt,pkt_cpy,pkt_other,scan,harvest,cleanup\n");
-    elog (INFO, "%ld,%ld,%ld,%ld,%ld,%ld,%ld\n",
+    elog (INFO, "num_pkt,pkt_size,init,patt,pkt_cpy,pkt_other,scan,harvest,cleanup\n");
+    elog (INFO, "%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld\n",
+                job_desc->num_pkt,
+                job_desc->pkt_size_wo_hw_hdr,
                 job_desc->t_init,
                 job_desc->t_regex_patt,
                 job_desc->t_regex_pkt_copy,
@@ -1337,8 +1339,6 @@ static void print_perf_stat (CAPIRegexJobDescriptor* job_desc)
                 job_desc->t_regex_harvest,
                 job_desc->t_cleanup);
     print_time_text ("|Regex hardware scan|", job_desc->t_regex_scan / 1000, job_desc->pkt_size_wo_hw_hdr);
-    elog (INFO, "Total packets processed: %zu\n", job_desc->num_pkt);
-    elog (INFO, "Total bytes processed (without hardware header): %zu\n", job_desc->pkt_size_wo_hw_hdr);
 }
 
 static Datum
@@ -1350,8 +1350,8 @@ regex_capi (PG_FUNCTION_ARGS)
     const char* i_pattern = text_to_cstring (PG_GETARG_TEXT_PP (1));
     const int32_t i_attr_id = PG_GETARG_INT32 (2);
 
-    // TODO: Only 1024 for the output?
-    char out_str[1024] = "";
+    // TODO: Only 2048 for the output?
+    char out_str[2048] = "";
 
     RangeVar* relrv = makeRangeVarFromNameList (textToQualifiedNameList (relname));
     Relation rel = relation_openrv (relrv, AccessShareLock);
@@ -1375,7 +1375,7 @@ regex_capi (PG_FUNCTION_ARGS)
 
 fail:
     PERF_MEASURE (capi_regex_job_cleanup (job_desc), job_desc->t_cleanup);
-    print_perf_stat (job_desc);
+    print_perf_stat (job_desc, out_str);
 
     clock_gettime(CLOCK_REALTIME, &t_end);
     print_time_text ("|The total run time|", diff_time(&t_beg, &t_end) / 1000, job_desc->pkt_size_wo_hw_hdr);
