@@ -134,6 +134,19 @@ static void print_time_text (const char* text, uint64_t elapsed, uint64_t size)
     }
 }
 
+static float perf_calc (uint64_t elapsed, uint64_t size)
+{
+    int t;
+    float fsize = (float)size / (1024 * 1024);
+    float ft;
+
+    t = (int)elapsed / 1000;
+    if (t == 0) return 0.0;
+    ft = (1000 / (float)t) * fsize;
+    return ft;
+}
+
+
 static void* alloc_mem (int align, size_t size)
 {
     void* a;
@@ -1131,9 +1144,9 @@ static void* capi_regex_pkt_psql_internal (Relation rel, int attr_id, size_t* si
                 elog (DEBUG3, "PACKET line read with length %d :\n", attr_len);
                 elog (DEBUG3, "%s\n", VARDATA (attr_ptr));
                 (*size_wo_hw_hdr) += attr_len;
-                clock_gettime(CLOCK_REALTIME, &t_beg);
+                clock_gettime (CLOCK_REALTIME, &t_beg);
                 pkt_src = fill_one_packet (VARDATA (attr_ptr), attr_len, pkt_src);
-                clock_gettime(CLOCK_REALTIME, &t_end);
+                clock_gettime (CLOCK_REALTIME, &t_end);
                 (*t_pkt_cpy) += diff_time (&t_beg, &t_end);
                 elog (DEBUG3, "PACKET Source Address 0X%016lX\n", (uint64_t)pkt_src);
                 (*num_pkt)++;
@@ -1243,9 +1256,9 @@ static int get_results (void* result, size_t num_matched_pkt, void* stat_dest_ba
     return 0;
 }
 
-static int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc, char* out_str)
+static int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc)
 {
-    if (job_desc == NULL || out_str == NULL) {
+    if (job_desc == NULL) {
         return -1;
     }
 
@@ -1268,8 +1281,6 @@ static int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc, char* ou
         elog (DEBUG1, "ERROR: failed to get results.\n");
         return -1;
     }
-
-    sprintf (out_str, "Number of matched rows: %ld.\n", job_desc->num_matched_pkt);
 
     return 0;
 }
@@ -1325,19 +1336,21 @@ static bool capi_regex_check_relation (Relation rel)
     return retVal;
 }
 
-static void print_perf_stat (CAPIRegexJobDescriptor* job_desc)
+static void print_result (CAPIRegexJobDescriptor* job_desc, char* out_str)
 {
-    elog (INFO, "num_pkt,pkt_size,init,patt,pkt_cpy,pkt_other,scan,harvest,cleanup\n");
-    elog (INFO, "%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld\n",
-                job_desc->num_pkt,
-                job_desc->pkt_size_wo_hw_hdr,
-                job_desc->t_init,
-                job_desc->t_regex_patt,
-                job_desc->t_regex_pkt_copy,
-                job_desc->t_regex_pkt - job_desc->t_regex_pkt_copy,
-                job_desc->t_regex_scan,
-                job_desc->t_regex_harvest,
-                job_desc->t_cleanup);
+    sprintf (out_str, "num_pkt,pkt_size,init,patt,pkt_cpy,pkt_other,hw_re_scan,harvest,cleanup,hw_perf(MB/s),num_matched_pkt\n");
+    sprintf (out_str, "%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%f,%ld\n",
+             job_desc->num_pkt,
+             job_desc->pkt_size_wo_hw_hdr,
+             job_desc->t_init,
+             job_desc->t_regex_patt,
+             job_desc->t_regex_pkt_copy,
+             job_desc->t_regex_pkt - job_desc->t_regex_pkt_copy,
+             job_desc->t_regex_scan,
+             job_desc->t_regex_harvest,
+             job_desc->t_cleanup,
+             perf_calc (job_desc->t_regex_scan / 1000, job_desc->pkt_size_wo_hw_hdr),
+             job_desc->num_matched_pkt);
     print_time_text ("|Regex hardware scan|", job_desc->t_regex_scan / 1000, job_desc->pkt_size_wo_hw_hdr);
 }
 
@@ -1350,8 +1363,8 @@ regex_capi (PG_FUNCTION_ARGS)
     const char* i_pattern = text_to_cstring (PG_GETARG_TEXT_PP (1));
     const int32_t i_attr_id = PG_GETARG_INT32 (2);
 
-    // TODO: Only 2048 for the output?
-    char out_str[2048] = "";
+    // TODO: Only 4096 for the output?
+    char out_str[4096] = "";
 
     RangeVar* relrv = makeRangeVarFromNameList (textToQualifiedNameList (relname));
     Relation rel = relation_openrv (relrv, AccessShareLock);
@@ -1361,7 +1374,7 @@ regex_capi (PG_FUNCTION_ARGS)
     PACKET_ID = 0;
 
     struct timespec t_beg, t_end;
-    clock_gettime(CLOCK_REALTIME, &t_beg);
+    clock_gettime (CLOCK_REALTIME, &t_beg);
 
     if (!capi_regex_check_relation (rel)) {
         sprintf (out_str, "regex_capi cannot use the relation %s\n", i_relName);
@@ -1370,15 +1383,15 @@ regex_capi (PG_FUNCTION_ARGS)
         PERF_MEASURE (capi_regex_compile (job_desc, i_pattern),       job_desc->t_regex_patt);
         PERF_MEASURE (capi_regex_pkt_psql (job_desc, rel, i_attr_id), job_desc->t_regex_pkt);
         PERF_MEASURE (capi_regex_scan (job_desc),                     job_desc->t_regex_scan);
-        PERF_MEASURE (capi_regex_result_harvest (job_desc, out_str),  job_desc->t_regex_harvest);
+        PERF_MEASURE (capi_regex_result_harvest (job_desc),  job_desc->t_regex_harvest);
     }
 
 fail:
     PERF_MEASURE (capi_regex_job_cleanup (job_desc), job_desc->t_cleanup);
-    print_perf_stat (job_desc);
+    print_result (job_desc, out_str);
 
-    clock_gettime(CLOCK_REALTIME, &t_end);
-    print_time_text ("|The total run time|", diff_time(&t_beg, &t_end) / 1000, job_desc->pkt_size_wo_hw_hdr);
+    clock_gettime (CLOCK_REALTIME, &t_end);
+    print_time_text ("|The total run time|", diff_time (&t_beg, &t_end) / 1000, job_desc->pkt_size_wo_hw_hdr);
     pfree (job_desc);
     relation_close (rel, AccessShareLock);
     elog (DEBUG1, "regex_capi done\n");
@@ -1398,4 +1411,3 @@ psql_regex_capi (PG_FUNCTION_ARGS)
 {
     PG_RETURN_DATUM (regex_capi (fcinfo));
 }
-
