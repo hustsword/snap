@@ -34,7 +34,7 @@ proc flash_help {} {
   puts "The JTAG hardware target number is optional if only one hardware target is connected"
   puts "  Omitting this option with multiple hardware targets will list all available targets"
   puts "Set the environment FPGACARD to the card type: N250S, ADKU3, AD8K5, S121B, RCXVUP, FX609, S241 or N250SP"
-  puts "  e.g. $ export FPGACARD=ADKU3"
+  puts "  e.g. $ export FPGACARD=ADKU3  or $ set FPGACARD=ADKU3 in windows command line environment"
 }
 
 if { $argc != 1 && $argc != 2 } {
@@ -77,6 +77,9 @@ switch $fpgacard {
           set fpgapartnum xcku15p
           set rs_pins	{26:25}
         }
+  AD9V3 { set flashdevice mt25qu256-spi-x1_x2_x4_x8
+          set fpgapartnum xcvu3p
+        } 
   default {
     puts "Error: Environment FPGACARD must be set to N250S, ADKU3, AD8K5, S121B, RCXVUP, FX609, S241 or N250SP"
     exit 96

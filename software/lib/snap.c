@@ -136,6 +136,7 @@ struct card_2_name snap_card_2_name_tab[] = {
 	{.card_id = RCXVUP_CARD, .card_name = "RCXVUP"},
 	{.card_id = FX609_CARD,  .card_name = "FX609"},
 	{.card_id = S241_CARD,   .card_name = "S241"},
+	{.card_id = AD9V3_CARD,  .card_name = "AD9V3"},
 	{.card_id = -1,          .card_name = "INVALID"}
 };
 
@@ -941,6 +942,7 @@ int snap_action_completed(struct snap_action *action, int *rc, int timeout)
 	if (rc)
 		*rc = _rc;
 
+	// Test the rc in calling function for normal or timeout (rc=0) termination
 	return (action_data & ACTION_CONTROL_IDLE) == ACTION_CONTROL_IDLE;
 }
 
