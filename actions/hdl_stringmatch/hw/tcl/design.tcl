@@ -14,8 +14,9 @@ foreach usr_ip [list \
                 $action_ipdir/fifo_512x64_sync_bram          \
                 $action_ipdir/fifo_80x16_async               \
                 $action_ipdir/unit_fifo_48x16_async          \
-                $action_ipdir/fifo_sync_32_512i512o  \
-                $action_ipdir/ram_512i_512o_dual_64  \
+                $action_ipdir/fifo_sync_32_512i512o          \
+                $action_ipdir/fifo_sync_32_5i5o              \
+                $action_ipdir/ram_512i_512o_dual_64          \
                ] {
   foreach usr_ip_xci [exec find $usr_ip -name *.xci] {
     puts "                        importing user IP $usr_ip_xci (in string_match core)"
