@@ -72,7 +72,7 @@ psql_regex_capi: fregex.o regex_config.o psql_regex_capi.o
 	$(CXX) $(LDFLAGS) $($(@)_LDFLAGS) $($(@)_objs) $($(@)_libs) -shared -o $@.so $^ $(LDLIBS) 
 
 psql_install: psql_regex_capi
-	sudo cp psql_regex_capi.so $(POSTGRESQL_PKGLIB)
+	sudo ./install.sh $(POSTGRESQL_PKGLIB)
 	psql -f ./uninstall_psql_regex_capi.sql
 	psql -f ./psql_regex_capi.source
 

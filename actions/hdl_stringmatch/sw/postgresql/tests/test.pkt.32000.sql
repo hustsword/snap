@@ -12,7 +12,7 @@ RETURNS void AS
 $_$
 BEGIN
     IF NOT EXISTS (select * from sm_pkt_32000) THEN
-        COPY sm_pkt_32000 (pkt) FROM '/home/pengfei/capi/snap/actions/hdl_stringmatch/tests/packets/packet.1024.32000.txt' DELIMITER ' ' ;
+        COPY sm_pkt_32000 (pkt) FROM '/home/pengfei/capi/db/snap/actions/hdl_stringmatch/tests/packets/packet.1024.32000.txt' DELIMITER ' ' ;
     END IF;
 END;
 $_$ LANGUAGE plpgsql;
