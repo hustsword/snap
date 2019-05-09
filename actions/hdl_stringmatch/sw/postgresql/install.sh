@@ -25,6 +25,17 @@ install_path=$1
 echo "Copying psql_regex_capi.so to $install_path"
 cp psql_regex_capi.so $install_path
 
+# Grant CAPI device permission to user *postgres*
+setfacl -m u:postgres:rw /dev/cxl/afu0.0s
+setfacl -m u:postgres:rw /dev/cxl/afu0.0m
+# Enable CAPI-SNAP card
+../../../../software/tools/snap_maint -vv
+
+if [[ $? != 0 ]]; then
+    echo "SNAP maint failed, please check the card status!"
+    exit 1
+fi
+
 # generate tests for performance test
 if [[ ! -d ./tests/perf_test ]]; then
     mkdir -p ./tests/perf_test

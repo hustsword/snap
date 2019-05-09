@@ -1383,7 +1383,7 @@ regex_capi (PG_FUNCTION_ARGS)
         PERF_MEASURE (capi_regex_compile (job_desc, i_pattern),       job_desc->t_regex_patt);
         PERF_MEASURE (capi_regex_pkt_psql (job_desc, rel, i_attr_id), job_desc->t_regex_pkt);
         PERF_MEASURE (capi_regex_scan (job_desc),                     job_desc->t_regex_scan);
-        PERF_MEASURE (capi_regex_result_harvest (job_desc),  job_desc->t_regex_harvest);
+        PERF_MEASURE (capi_regex_result_harvest (job_desc),           job_desc->t_regex_harvest);
     }
 
 fail:
