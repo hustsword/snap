@@ -616,7 +616,8 @@ static void* capi_regex_compile_internal (const char* patt, size_t* size)
 
     //remove_newline (patt);
     // TODO: fill the same pattern for 8 times, workaround for 32x8.
-    for (int i = 0; i < 8; i++) {
+    // TODO: for 64X1, only 1 pattern is needed.
+    for (int i = 0; i < 1; i++) {
         elog (DEBUG3, "%s\n", patt);
         patt_src = fill_one_pattern (patt, patt_src);
         elog (DEBUG3, "Pattern Source Address 0X%016lX\n", (uint64_t)patt_src);
