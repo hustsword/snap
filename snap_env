@@ -93,9 +93,10 @@ while [ -z "$SETUP_DONE" ]; do
     echo "Vivado version          is set to: `vivado -version|head -n1`"
     RESP=`vivado -version|head -n1 |cut -d' ' -f2`
     if [ "$CAPI10" == "y" ] && [ $RESP == "v2018.2" ]; then
-      SETUP_INFO="$SETUP_INFO\n### WARNING ### Building an image with Vivado 2018.2 for CAPI1.0 cards will drive to errors."
+      SETUP_INFO="$SETUP_INFO\n### WARNING ### Building an image with Vivado 2018.2 or 2018.3 for CAPI1.0 cards will drive to errors."
       SETUP_INFO="$SETUP_INFO\n###    It is highly recommended to use Vivado 2018.1 with CAPI1.0 cards."
     fi
+    echo "Vivado HLS version      is set to:        `vivado_hls -version|head -n1|cut -d " " -f 11`"
   fi
 
   ####### checking default variables
@@ -203,6 +204,11 @@ while [ -z "$SETUP_DONE" ]; do
   unset AR
   if [ -n "$HDL_EXAMPLE" ]; then
     AR='${SNAP_ROOT}/actions/hdl_example'
+<<<<<<< HEAD
+=======
+  elif [ -n "$HDL_NVDLA" ]; then
+    AR='${SNAP_ROOT}/actions/hdl_nvdla'
+>>>>>>> c810fbb96ddeeb868706802e2a23579441ee2504
   elif [ -n "$HDL_STRINGMATCH" ]; then
     AR='${SNAP_ROOT}/actions/hdl_stringmatch'
     RESP=`grep STRING_MATCH_VERILOG $snap_env_sh`

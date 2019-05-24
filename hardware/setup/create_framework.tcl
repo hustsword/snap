@@ -118,6 +118,8 @@ if { $hls_support == "TRUE" } {
   add_files -scan_for_includes $hdl_dir/hls/ >> $log_file
 }
 
+add_files -scan_for_includes $action_dir/ >> $log_file
+
 # Action Specific tcl
 if { [file exists $action_tcl] == 1 } {
   set tcl_exists [exec find $action_tcl -name *.tcl]
@@ -131,7 +133,6 @@ if { [file exists $action_tcl] == 1 } {
 }
 
 add_files -scan_for_includes $action_hw_dir/ >> $log_file
-
 
 # Sim Files
 if { $simulator != "nosim" } {
@@ -321,7 +322,6 @@ if { $ila_debug == "TRUE" } {
 #
 # update the compile order
 update_compile_order >> $log_file
-
 
 puts "\[CREATE_FRAMEWORK....\] done  [clock format [clock seconds] -format {%T %a %b %d %Y}]"
 close_project >> $log_file

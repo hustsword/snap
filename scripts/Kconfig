@@ -189,11 +189,14 @@ choice
                 select DISABLE_SDRAM_AND_BRAM
                 select DISABLE_NVME
 
+        config HDL_EXAMPLE
+                bool "HDL Example"
+
         config HDL_STRINGMATCH
             bool "HDL STRING MATCH - regular expression acceleration"
 
-        config HDL_EXAMPLE
-                bool "HDL Example"
+        config HDL_NVDLA
+            bool "HDL NVDLA - NVidia Deep Learning Accelerator"
 
 	config HDL_NVME_EXAMPLE
 		bool "HDL NVMe Example"
@@ -344,8 +347,37 @@ choice
 		select DISABLE_SDRAM_AND_BRAM
 		select DISABLE_NVME
 		select ENABLE_ACTION_CLK_DERATE
-
 endchoice
+
+choice
+	bool "NVDLA configuration"
+	default NV_SMALL
+	help
+            Select different NVDLA configurations
+        depends on HDL_NVDLA
+
+	config NV_SMALL
+		bool "nv_small -- NVDLA with 64 MACs"
+		help
+		  NVDLA with 64 MACs
+
+	config NV_LARGE
+		bool "nv_large -- NVDLA with 2048 MACs"
+		help
+		  NVDLA with 2048 MACs
+
+	config NV_FULL
+		bool "nv_full -- NVDLA with 2048 MACs and all feature"
+		help
+		  NVDLA with 2048 MACs and all feature
+endchoice
+
+config NVDLA_CONFIG 
+        depends on HDL_NVDLA
+	string
+	default "nv_small"     if NV_SMALL
+	default "nv_large"     if NV_LARGE
+	default "nv_full"      if NV_FULL
 
 config ENABLE_HLS_SUPPORT
 	bool

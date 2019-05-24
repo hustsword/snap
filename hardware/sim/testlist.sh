@@ -119,10 +119,14 @@
         "00000108") a0="hls_blowfish";;
         "10141007") a0="hls_nvme_memcopy";;
         "10141008") a0="hls_helloworld";;
+<<<<<<< HEAD
+        "00000006") a0="hdl_nvdla";;
+=======
         "10141009") a0="hls_latency_eval";;
         "1014100a") a0="hls_mm_test";;
         "1014100b") a0="hls_decimal_mult";;
         "1014100c") a0="hls_scatter_gather";;
+>>>>>>> b73003679a418247196d657599ffd85c6717b517
         *) echo "unknown action0 type=$t0l, exiting";exit 1;;
       esac; echo "action0 type0s=$t0s type0l=$t0l $a0"
       t="snap_peek 0x180       ";   r=$($t|grep ']'|awk '{print $2}');echo -e "$t result=$r # action0 counter reg"
@@ -147,6 +151,7 @@
         "00000108") a1="hls_blowfish";;
         "10141007") a1="hls_nvme_memcopy";;
         "10141008") a1="hls_helloworld";;
+        "00000000") a1="hdl_nvdla";;
         "10141009") a1="hls_latency_eval";;
         "1014100a") a1="hls_mm_test";;
         "1014100b") a1="hls_decimal_mult";;
@@ -510,6 +515,11 @@
         if diff in.in decr.out>/dev/null;then echo -e "RC=$rc file_diff ok$del";rm ${size}.*;else echo -e "$t RC=$rc file_diff is wrong$del";exit 1;fi
       done
     fi # blowfish
+    if [[ "$t0l" == "00000006" || "${env_action}" == "hdl_nvdla" ]];then echo -e "$del\ntesting hdl_nvdla"
+      echo "NVDLA_CONFIG: ${NVDLA_CONFIG}"
+      step "$ACTION_ROOT/tests/test_0x00000006.sh"                                            # running the test list
+    fi # hdl_nvdla
+
  #
     if [[ "$t0l" == "10141009" || "${env_action}" == "hls_latency_eval" ]];then echo -e "$del\ntesting latency_eval"
       step "snap_latency_eval -h"
