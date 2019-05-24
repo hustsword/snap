@@ -204,11 +204,8 @@ while [ -z "$SETUP_DONE" ]; do
   unset AR
   if [ -n "$HDL_EXAMPLE" ]; then
     AR='${SNAP_ROOT}/actions/hdl_example'
-<<<<<<< HEAD
-=======
   elif [ -n "$HDL_NVDLA" ]; then
     AR='${SNAP_ROOT}/actions/hdl_nvdla'
->>>>>>> c810fbb96ddeeb868706802e2a23579441ee2504
   elif [ -n "$HDL_STRINGMATCH" ]; then
     AR='${SNAP_ROOT}/actions/hdl_stringmatch'
     RESP=`grep STRING_MATCH_VERILOG $snap_env_sh`

@@ -5,7 +5,7 @@ if [ -z $CTEPATH ]; then
     exit 1
 fi
 
-export XILINX_VIVADO=$CTEPATH/tools/xilinx/2018.2/Vivado/2018.2
+export XILINX_VIVADO=$CTEPATH/tools/xilinx/2018.3.1/Vivado/2018.3
 export XILINXD_LICENSE_FILE=2100@pokwinlic1.pok.ibm.com
 
 export CDS_INST_DIR=$CTEPATH/tools/cds/Xcelium/18.03.010
