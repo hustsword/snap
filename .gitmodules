@@ -9,3 +9,6 @@
 	path = actions/hdl_nvdla/nvdla-capi
 	url = git@github.ibm.com:shgoupf/nvdla-capi
 	branch = xrun
+[submodule "actions/hdl_stringmatch/string-match-fpga"]
+	path = actions/hdl_stringmatch/string-match-fpga
+	url = git@github.ibm.com:shgoupf/string-match-fpga.git
