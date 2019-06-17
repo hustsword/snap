@@ -114,8 +114,10 @@ BEGIN
             --loop exit when counter = 5;
                 --execute format('EXPLAIN (ANALYZE, FORMAT JSON) SELECT * FROM %I WHERE pkt ~ ''abc.*xyz'''
                 --    , v_table) into rc_where;
+
                 rc_regex_capi := measure_run_time(format('INSERT INTO psql_regex_capi_perf_breakdown_tmp (results, ts) VALUES (psql_regex_capi(''%I'', ''abc.*xyz'', 0)::text, current_timestamp)'
                     , v_table), 10);
+
                 --rc_regex_capi_win := measure_run_time(format('SELECT psql_regex_capi_win(pkt, ''abc.*xyz'') over(), pkt, id from %I'
                 --    , v_table), 10);
                 rc_where := measure_run_time(format('SELECT * FROM %I WHERE pkt ~ ''abc.*xyz'''
@@ -132,6 +134,7 @@ BEGIN
                 insert into perf_data (test_name, regex_capi, regex_capi_win, where_clause, ts) values (
                     format('%s', v_table),
                     rc_regex_capi, 0.0, rc_where,
+                    --0.0, 0.0, rc_where,
                     --rc_regex_capi::jsonb-> 0 -> 'Execution Time',
                     --rc_regex_capi_win::jsonb-> 0 -> 'Execution Time',
                     --rc_regexp::jsonb-> 0 -> 'Execution Time',

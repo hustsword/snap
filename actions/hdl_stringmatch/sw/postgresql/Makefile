@@ -46,8 +46,10 @@ POSTGRESQL_PKGLIB=$(shell pg_config --pkglibdir)
 
 CXX=g++
 EXTRA_CFLGAS+= -Wall -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv
-EXTRA_CFLGAS+= -Wno-format-truncation -Wno-stringop-truncation -Wno-unused-parameter -Wno-sign-compare
-EXTRA_CFLGAS+= -Wimplicit-function-declaration -Wint-conversion -Wno-implicit-function-declaration -Wno-int-conversion -Wno-return-local-addr
+#EXTRA_CFLGAS+= -Wno-format-truncation -Wno-stringop-truncation -Wno-unused-parameter -Wno-sign-compare
+EXTRA_CFLGAS+= -Wno-error -Wno-unused-parameter -Wno-sign-compare
+#EXTRA_CFLGAS+= -Wimplicit-function-declaration -Wint-conversion -Wno-implicit-function-declaration -Wno-int-conversion -Wno-return-local-addr
+EXTRA_CFLGAS+= -Wimplicit-function-declaration -Wno-implicit-function-declaration -Wno-return-local-addr -w
 
 CPPFLAGS+= -O3 $(EXTRA_CFLGAS) -fPIC -I. -I./ -I$(POSTGRESQL_INCLUDE_SERVER) -I$(POSTGRESQL_INCLUDE)/internal -D_GNU_SOURCE
 
