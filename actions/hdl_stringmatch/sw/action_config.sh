@@ -25,6 +25,8 @@ if [ -L ./utils ]; then
     unlink ./utils
 fi
 
+STRING_MATCH_VERILOG=../string-match-fpga/verilog
+
 if [ -z $STRING_MATCH_VERILOG ]; then
   echo "WARNING!!! Please set STRING_MATCH_VERILOG to the path of string match verilog"
 else

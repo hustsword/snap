@@ -3,8 +3,8 @@
 // Author: Gou Peng Fei (shgoupf@cn.ibm.com)
 // ****************************************************************
 
-#ifndef F_CONSTANTS
-#define F_CONSTANTS
+#ifndef __F_CONSTANTS__
+#define __F_CONSTANTS__
 
 /* Header file for SNAP Framework STRING_MATCH code */
 #define ACTION_TYPE_STRING_MATCH     0x00000001	/* Action Type */
