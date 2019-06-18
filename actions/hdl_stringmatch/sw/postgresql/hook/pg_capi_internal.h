@@ -85,6 +85,10 @@ typedef struct CAPIRegexJobDescriptor_s {
     // The pointer to the results (id of matched packets)
     uint32_t* results;
 
+    // An index to record the result processing.
+    // Each id corresponds one entry in the results buffer.
+    int curr_result_id;
+
     // Perf statistics (in nano seconds);
     int64_t t_init;
     int64_t t_regex_patt; // Pattern compile time
@@ -142,7 +146,7 @@ void soft_reset (struct snap_card* h);
 void print_control_status (struct snap_card* h);
 struct snap_action* get_action (struct snap_card* handle,
                                 snap_action_flag_t flags, int timeout);
-void print_result (CAPIRegexJobDescriptor* job_desc, char* out_str);
+void print_result (CAPIRegexJobDescriptor* job_desc, char* header_str, char* out_str);
 
 // CAPI regex operations for PostgreSQL
 void action_regex (struct snap_card* h,

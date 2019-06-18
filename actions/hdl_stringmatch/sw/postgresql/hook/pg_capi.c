@@ -17,23 +17,37 @@
 #include "pg_capi.h"
 #include "pg_capi_internal.h"
 
+/*
+ * Take https://github.com/kaigai/ctidscan.git as example
+ */
+
 PG_MODULE_MAGIC;
 
+// TODO: extern global variable for capi-regex, consider to remove. 
 extern uint32_t PATTERN_ID;
 extern uint32_t PACKET_ID;
-int tmp = 0;
-int tmp_exec = 0;
 
 /*
  * PGCAPIScanState - state object of PGCAPIscan on executor.
+ * Job descriptors and relation information is passed with this struct.
  */
 typedef struct {
-    CustomScanState css;
-    List*           PGCAPI_quals;       /* list of ExprState for inequality ops */
+    CustomScanState         css;
+
+    // Relation related variables
+    List*                   PGCAPI_quals;
+    AttInMetadata*          attinmeta;
+
+    // Capi related variables and job descriptors
+    const char*             capi_regex_pattern;
+    int                     capi_regex_attr_id;
+    CAPIRegexJobDescriptor* job_desc;
 } PGCAPIScanState;
 
-/* static variables */
-static bool     enable_PGCAPIscan;
+/*
+ * Static variables
+ */
+static bool enable_PGCAPIscan;
 static set_rel_pathlist_hook_type set_rel_pathlist_next = NULL;
 
 /* function declarations */
@@ -54,75 +68,85 @@ static Plan* PlanPGCAPIScanPath (PlannerInfo* root,
 /* CustomScanMethods */
 static Node* CreatePGCAPIScanState (CustomScan* custom_plan);
 
-/* CustomScanExecMethods */
+/*
+ * CustomScanExecMethods 
+ * All customer scan related methods are defined here.
+ */
 static void BeginPGCAPIScan (CustomScanState* node, EState* estate, int eflags);
 static void ReScanPGCAPIScan (CustomScanState* node);
 static TupleTableSlot* ExecPGCAPIScan (CustomScanState* node);
 static void EndPGCAPIScan (CustomScanState* node);
-static void ExplainPGCAPIScan (CustomScanState* node, List* ancestors,
-                               ExplainState* es);
+static void ExplainPGCAPIScan (CustomScanState* node, shm_toc* ancestors, void* es);
 
-/* static table of custom-scan callbacks */
+/* 
+ * static table of custom-scan callbacks 
+ *
+ */
 static CustomPathMethods    PGCAPIscan_path_methods = {
     "PGCAPIscan",               /* CustomName */
-    PlanPGCAPIScanPath,     /* PlanCustomPath */
+    PlanPGCAPIScanPath,         /* PlanCustomPath */
 #if PG_VERSION_NUM < 90600
-    NULL,                   /* TextOutCustomPath */
+    NULL,                       /* TextOutCustomPath */
 #endif
 };
 
 static CustomScanMethods    PGCAPIscan_scan_methods = {
     "PGCAPIscan",               /* CustomName */
-    CreatePGCAPIScanState,  /* CreateCustomScanState */
+    CreatePGCAPIScanState,      /* CreateCustomScanState */
 #if PG_VERSION_NUM < 90600
-    NULL,                   /* TextOutCustomScan */
+    NULL,                       /* TextOutCustomScan */
 #endif
 };
 
 static CustomExecMethods    PGCAPIscan_exec_methods = {
     "PGCAPIscan",               /* CustomName */
     BeginPGCAPIScan,            /* BeginCustomScan */
-    ExecPGCAPIScan,         /* ExecCustomScan */
-    EndPGCAPIScan,          /* EndCustomScan */
+    ExecPGCAPIScan,             /* ExecCustomScan */
+    EndPGCAPIScan,              /* EndCustomScan */
     ReScanPGCAPIScan,           /* ReScanCustomScan */
-    NULL,                   /* MarkPosCustomScan */
-    NULL,                   /* RestrPosCustomScan */
+    NULL,                       /* MarkPosCustomScan */
+    NULL,                       /* RestrPosCustomScan */
 #if PG_VERSION_NUM >= 90600
-    NULL,                   /* EstimateDSMCustomScan */
-    NULL,                   /* InitializeDSMCustomScan */
-    NULL,                   /* InitializeWorkerCustomScan */
+    NULL,                       /* EstimateDSMCustomScan */
+    NULL,                       /* InitializeDSMCustomScan */
+    NULL,                       /* InitializeWorkerCustomScan */
 #endif
-    ExplainPGCAPIScan,      /* ExplainCustomScan */
+    ExplainPGCAPIScan,          /* ExplainCustomScan */
 };
 
 #define IsPGCAPIVar(node,rtindex)                                           \
     ((node) != NULL &&                                                  \
      IsA((node), Var) &&                                                \
      ((Var *) (node))->varno == (rtindex) &&                            \
-     ((Var *) (node))->varattno == SelfItemPointerAttributeNumber &&    \
      ((Var *) (node))->varlevelsup == 0)
 
-static Datum
+/*
+ * The regular expression matching procedure on CAPI
+ */
+static void
 regex_capi (CustomScanState* node)
 {
-    PGCAPIScanState*  ctss = (PGCAPIScanState*) node;
-    text* relname = "test";
+    PGCAPIScanState*  capiss = (PGCAPIScanState*) node;
 
-    //const char* i_relName = text_to_cstring (relname);
-    const char* i_pattern = "abc.*xyz";
-    const int32_t i_attr_id = 0;
-    //const int32_t i_attr_id = 1;
+    const char* i_pattern = capiss->capi_regex_pattern;
+    const AttrNumber i_attr_id = (capiss->capi_regex_attr_id - 1);
 
-    // TODO: Only 4096 for the output?
-    char out_str[4096] = "";
+    if (NULL == i_pattern) {
+        elog (ERROR, "Invalid pattern pointer for CAPI task!");
+    }
 
-    //RangeVar* relrv = makeRangeVarFromNameList (textToQualifiedNameList (relname));
-    //Relation rel = relation_openrv (relrv, AccessShareLock);
-    Relation rel = ctss->css.ss.ss_currentRelation;
+    if (i_attr_id < 0) {
+        elog (ERROR, "Invalid attribute id for CAPI task!");
+    }
+
+    if (NULL == capiss->job_desc) {
+        elog (ERROR, "Invalid job descriptorfor CAPI task!");
+    }
+
+    Relation rel = capiss->css.ss.ss_currentRelation;
 
     elog (INFO, "regex_capi start");
 
-    CAPIRegexJobDescriptor* job_desc = palloc0 (sizeof (CAPIRegexJobDescriptor));
     PATTERN_ID = 0;
     PACKET_ID = 0;
 
@@ -130,38 +154,24 @@ regex_capi (CustomScanState* node)
     clock_gettime (CLOCK_REALTIME, &t_beg);
 
     if (!capi_regex_check_relation (rel)) {
-        sprintf (out_str, "regex_capi cannot use the relation %s\n", RelationGetRelationName (rel));
+        elog (ERROR, "regex_capi cannot use the relation %s\n", RelationGetRelationName (rel));
     } else {
-        PERF_MEASURE (capi_regex_job_init (job_desc),                 job_desc->t_init);
-        PERF_MEASURE (capi_regex_compile (job_desc, i_pattern),       job_desc->t_regex_patt);
-        PERF_MEASURE (capi_regex_pkt_psql (job_desc, rel, i_attr_id), job_desc->t_regex_pkt);
-        PERF_MEASURE (capi_regex_scan (job_desc),                     job_desc->t_regex_scan);
-        PERF_MEASURE (capi_regex_result_harvest (job_desc),           job_desc->t_regex_harvest);
+        PERF_MEASURE (capi_regex_job_init       (capiss->job_desc),                 capiss->job_desc->t_init);
+        PERF_MEASURE (capi_regex_compile        (capiss->job_desc, i_pattern),      capiss->job_desc->t_regex_patt);
+        PERF_MEASURE (capi_regex_pkt_psql       (capiss->job_desc, rel, i_attr_id), capiss->job_desc->t_regex_pkt);
+        PERF_MEASURE (capi_regex_scan           (capiss->job_desc),                 capiss->job_desc->t_regex_scan);
+        PERF_MEASURE (capi_regex_result_harvest (capiss->job_desc),                 capiss->job_desc->t_regex_harvest);
     }
 
 fail:
-    PERF_MEASURE (capi_regex_job_cleanup (job_desc), job_desc->t_cleanup);
-    print_result (job_desc, out_str);
-
     clock_gettime (CLOCK_REALTIME, &t_end);
-    print_time_text ("|The total run time|", diff_time (&t_beg, &t_end) / 1000, job_desc->pkt_size_wo_hw_hdr);
-    pfree (job_desc);
+    print_time_text ("|The total run time|", diff_time (&t_beg, &t_end) / 1000, capiss->job_desc->pkt_size_wo_hw_hdr);
     elog (INFO, "regex_capi done");
-
-    char* result = pstrdup (out_str);
-    elog (INFO, "Result: %s", result);
-    PG_RETURN_CSTRING (result);
 }
 
 /*
  * PGCAPIQualFromExpr
- *
- * It checks whether the given restriction clauses enables to determine
- * the zone to be scanned, or not. If one or more restriction clauses are
- * available, it returns a list of them, or NIL elsewhere.
- * The caller can consider all the conditions are chained with AND-
- * boolean operator, so all the operator works for narrowing down the
- * scope of custom tid scan.
+ * Get expression (restrictinfo) for later usage.
  */
 static List*
 PGCAPIQualFromExpr (Node* expr, int varno)
@@ -172,21 +182,8 @@ PGCAPIQualFromExpr (Node* expr, int varno)
         Node*   arg2;
         Node*   other = NULL;
 
-        elog (INFO, "In opclause.");
-        elog (INFO, "Opno: %d.", op->opno);
-
         arg1 = linitial (op->args);
         arg2 = lsecond (op->args);
-
-        elog (INFO, "Arg1 nodeTag: %d", nodeTag (arg1));
-        elog (INFO, "Arg2 nodeTag: %d", nodeTag (arg2));
-
-        if (nodeTag (arg2) == T_Const) {
-            Const* t_const = (Const*) arg2;
-            bytea* t_ptr = DatumGetByteaP (t_const->constvalue);
-            elog (INFO, "Arg2 Size: %d", VARSIZE_ANY_EXHDR (t_ptr));
-            elog (INFO, "Arg2: %s", VARDATA (t_ptr));
-        }
 
         /* only inequality operators are candidate */
         if (op->opno != OID_NAME_REGEXEQ_OP &&
@@ -198,28 +195,22 @@ PGCAPIQualFromExpr (Node* expr, int varno)
             return false;    /* should not happen */
         }
 
-        //arg1 = linitial (op->args);
-        //arg2 = lsecond (op->args);
+        if (IsPGCAPIVar (arg1, varno)) {
+            other = arg2;
+        } else if (IsPGCAPIVar (arg2, varno)) {
+            other = arg1;
+        } else {
+            return NULL;
+        }
 
-        //if (IsPGCAPIVar (arg1, varno)) {
-        //    other = arg2;
-        //} else if (IsPGCAPIVar (arg2, varno)) {
-        //    other = arg1;
-        //} else {
-        //    return NULL;
-        //}
-
-        //if (exprType (other) != TIDOID) {
-        //    return NULL;    /* should not happen */
-        //}
-
-        ///* The other argument must be a pseudoconstant */
-        //if (!is_pseudo_constant_clause (other)) {
-        //    return NULL;
-        //}
+        /* The other argument must be a pseudoconstant */
+        if (!is_pseudo_constant_clause (other)) {
+            return NULL;
+        }
 
         return list_make1 (copyObject (op));
     } else if (and_clause (expr)) {
+        // TODO: AND clause is not supported.
         //List*       rlst = NIL;
         //ListCell*   lc;
 
@@ -230,9 +221,9 @@ PGCAPIQualFromExpr (Node* expr, int varno)
 
         //    rlst = list_concat (rlst, temp);
         //}
-        return NULL;
 
         //return rlst;
+        return NIL;
     }
 
     return NIL;
@@ -241,178 +232,14 @@ PGCAPIQualFromExpr (Node* expr, int varno)
 /*
  * PGCAPIEstimateCosts
  *
- * It estimates cost to scan the target relation according to the given
- * restriction clauses. Its logic to scan relations are almost same as
- * SeqScan doing, because it uses regular heap_getnext(), except for
- * the number of tuples to be scanned if restriction clauses work well.
+ * This estimation procedure is FAKE! Need to revisit and get a meaningful estimation equation.
 */
 static void
 PGCAPIEstimateCosts (PlannerInfo* root,
                      RelOptInfo* baserel,
                      CustomPath* cpath)
 {
-    Path*       path = &cpath->path;
-    List*       PGCAPI_quals = cpath->custom_private;
-    ListCell*   lc;
-    double      ntuples;
-    ItemPointerData ip_min;
-    ItemPointerData ip_max;
-    bool        has_min_val = false;
-    bool        has_max_val = false;
-    BlockNumber num_pages;
-    Cost        startup_cost = 0;
-    Cost        run_cost = 0;
-    Cost        cpu_per_tuple;
-    QualCost    qpqual_cost;
-    QualCost    PGCAPI_qual_cost;
-    double      spc_random_page_cost;
-
-    /* Should only be applied to base relations */
-    Assert (baserel->relid > 0);
-    Assert (baserel->rtekind == RTE_RELATION);
-
-    /* Mark the path with the correct row estimate */
-    if (path->param_info) {
-        path->rows = path->param_info->ppi_rows;
-    } else {
-        path->rows = baserel->rows;
-    }
-
-    /* Estimate how many tuples we may retrieve */
-    ItemPointerSet (&ip_min, 0, 0);
-    ItemPointerSet (&ip_max, MaxBlockNumber, MaxOffsetNumber);
-
-    //foreach (lc, PGCAPI_quals) {
-    //    OpExpr*     op = lfirst (lc);
-    //    Oid         opno;
-    //    Node*       other;
-
-    //    //Assert (is_opclause (op));
-
-    //    //if (IsPGCAPIVar (linitial (op->args), baserel->relid)) {
-    //    //    opno = op->opno;
-    //    //    other = lsecond (op->args);
-    //    //} else if (IsPGCAPIVar (lsecond (op->args), baserel->relid)) {
-    //    //    /* To simplifies, we assume as if Var node is 1st argument */
-    //    //    opno = get_commutator (op->opno);
-    //    //    other = linitial (op->args);
-    //    //} else {
-    //    //    elog (ERROR, "could not identify PGCAPI variable");
-    //    //}
-
-    //    //if (IsA (other, Const)) {
-    //    //    ItemPointer ip = (ItemPointer) (((Const*) other)->constvalue);
-
-    //    //    /*
-    //    //     * Just an rough estimation, we don't distinct inequality and
-    //    //     * inequality-or-equal operator from scan-size estimation
-    //    //     * perspective.
-    //    //     */
-    //    //    switch (opno) {
-    //    //    case TIDLessOperator:
-    //    //    case TIDLessEqualOperator:
-    //    //        if (ItemPointerCompare (ip, &ip_max) < 0) {
-    //    //            ItemPointerCopy (ip, &ip_max);
-    //    //        }
-
-    //    //        has_max_val = true;
-    //    //        break;
-
-    //    //    case TIDGreaterOperator:
-    //    //    case TIDGreaterEqualOperator:
-    //    //        if (ItemPointerCompare (ip, &ip_min) > 0) {
-    //    //            ItemPointerCopy (ip, &ip_min);
-    //    //        }
-
-    //    //        has_min_val = true;
-    //    //        break;
-
-    //    //    default:
-    //    //        elog (ERROR, "unexpected operator code: %u", op->opno);
-    //    //        break;
-    //    //    }
-    //    //}
-    //}
-
-    /* estimated number of tuples in this relation */
-    ntuples = baserel->pages * baserel->tuples;
-
-    if (has_min_val && has_max_val) {
-        /* case of both side being bounded */
-        BlockNumber bnum_max = BlockIdGetBlockNumber (&ip_max.ip_blkid);
-        BlockNumber bnum_min = BlockIdGetBlockNumber (&ip_min.ip_blkid);
-
-        bnum_max = Min (bnum_max, baserel->pages);
-        bnum_min = Max (bnum_min, 0);
-        num_pages = Min (bnum_max - bnum_min + 1, 1);
-    } else if (has_min_val) {
-        /* case of only lower side being bounded */
-        BlockNumber bnum_max = baserel->pages;
-        BlockNumber bnum_min = BlockIdGetBlockNumber (&ip_min.ip_blkid);
-
-        bnum_min = Max (bnum_min, 0);
-        num_pages = Min (bnum_max - bnum_min + 1, 1);
-    } else if (has_max_val) {
-        /* case of only upper side being bounded */
-        BlockNumber bnum_max = BlockIdGetBlockNumber (&ip_max.ip_blkid);
-        BlockNumber bnum_min = 0;
-
-        bnum_max = Min (bnum_max, baserel->pages);
-        num_pages = Min (bnum_max - bnum_min + 1, 1);
-    } else {
-        /*
-         * Just a rough estimation. We assume half of records shall be
-         * read using this restriction clause, but indeterministic until
-         * executor run it actually.
-         */
-        num_pages = Max ((baserel->pages + 1) / 2, 1);
-    }
-
-    ntuples *= ((double) num_pages) / ((double) baserel->pages);
-
-    /*
-     * The TID qual expressions will be computed once, any other baserestrict
-     * quals once per retrieved tuple.
-     */
-    cost_qual_eval (&PGCAPI_qual_cost, PGCAPI_quals, root);
-
-    /* fetch estimated page cost for tablespace containing table */
-    get_tablespace_page_costs (baserel->reltablespace,
-                               &spc_random_page_cost,
-                               NULL);
-
-    /* disk costs --- assume each tuple on a different page */
-    run_cost += spc_random_page_cost * ntuples;
-
-    /*
-     * Add scanning CPU costs
-     * (logic copied from get_restriction_qual_cost)
-     */
-    if (path->param_info) {
-        /* Include costs of pushed-down clauses */
-        cost_qual_eval (&qpqual_cost, path->param_info->ppi_clauses, root);
-
-        qpqual_cost.startup += baserel->baserestrictcost.startup;
-        qpqual_cost.per_tuple += baserel->baserestrictcost.per_tuple;
-    } else {
-        qpqual_cost = baserel->baserestrictcost;
-    }
-
-    /*
-     * We don't decrease cost for the inequality operators, because
-     * it is subset of qpquals and still in.
-     */
-    startup_cost += qpqual_cost.startup + PGCAPI_qual_cost.per_tuple;
-    cpu_per_tuple = cpu_tuple_cost + qpqual_cost.per_tuple -
-                    PGCAPI_qual_cost.per_tuple;
-    run_cost = cpu_per_tuple * ntuples;
-
     // TODO: fake cost
-    startup_cost = 0.0;
-    run_cost = 0.1;
-
-    //path->startup_cost = startup_cost;
-    //path->total_cost = startup_cost + run_cost;
 }
 
 /*
@@ -442,9 +269,7 @@ SetPGCAPIScanPath (PlannerInfo* root, RelOptInfo* baserel,
     }
 
     /*
-     * NOTE: Unlike built-in execution path, always we can have core path
-     * even though PGCAPI scan is not available. So, simply, we don't add
-     * any paths, instead of adding disable_cost.
+     * A knob to control if this hook should be enabled.
      */
     if (!enable_PGCAPIscan) {
         return;
@@ -538,13 +363,18 @@ PlanPGCAPIScanPath (PlannerInfo* root,
 static Node*
 CreatePGCAPIScanState (CustomScan* custom_plan)
 {
-    PGCAPIScanState*  ctss = palloc0 (sizeof (PGCAPIScanState));
+    PGCAPIScanState*  capiss = palloc0 (sizeof (PGCAPIScanState));
 
-    NodeSetTag (ctss, T_CustomScanState);
-    ctss->css.flags = custom_plan->flags;
-    ctss->css.methods = &PGCAPIscan_exec_methods;
+    NodeSetTag (capiss, T_CustomScanState);
+    capiss->css.flags = custom_plan->flags;
+    capiss->css.methods = &PGCAPIscan_exec_methods;
 
-    return (Node*)&ctss->css;
+    // Initialize CAPI job descriptor and related variables
+    capiss->capi_regex_pattern = NULL;
+    capiss->capi_regex_attr_id = -1;
+    capiss->job_desc = palloc0 (sizeof (CAPIRegexJobDescriptor));
+
+    return (Node*)&capiss->css;
 }
 
 /*
@@ -554,243 +384,107 @@ CreatePGCAPIScanState (CustomScan* custom_plan)
 static void
 BeginPGCAPIScan (CustomScanState* node, EState* estate, int eflags)
 {
-    PGCAPIScanState*  ctss = (PGCAPIScanState*) node;
+    PGCAPIScanState*  capiss = (PGCAPIScanState*) node;
     CustomScan*     cscan = (CustomScan*) node->ss.ps.plan;
-    //Relation        relation = ctss->css.ss.ss_currentRelation;
+    ListCell*       lc;
 
+    TupleDesc tupdesc   = RelationGetDescr (capiss->css.ss.ss_currentRelation);
+    capiss->attinmeta = TupleDescGetAttInMetadata (tupdesc);
+
+    // Rewind the restriction expression to get the column id (attr id)
+    // to be scanned and the pattern in regex expression.
+    foreach (lc, cscan->custom_exprs) {
+        OpExpr*         op = (OpExpr*) lfirst (lc);
+        Node* arg1 = linitial (op->args);
+        Node* arg2 = lsecond (op->args);
+
+        if (nodeTag (arg1) == T_Var) {
+            AttrNumber t_attr_id = ((Var*) (arg1))->varattno;
+            elog (INFO, "Arg1 attr no: %d", t_attr_id);
+            capiss->capi_regex_attr_id = t_attr_id;
+        }
+
+        if (nodeTag (arg2) == T_Const) {
+            Const* t_const = (Const*) arg2;
+            bytea* t_ptr = DatumGetByteaP (t_const->constvalue);
+            elog (INFO, "Arg2 Size: %lu", VARSIZE_ANY_EXHDR (t_ptr));
+            elog (INFO, "Arg2: %s", VARDATA (t_ptr));
+            capiss->capi_regex_pattern = VARDATA (t_ptr);
+        }
+    }
+
+    // Start the CAPI regular expression procedure.
     regex_capi (node);
+
+    // Need to set this qualification variable to NULL so that
+    // in ExecScan phase the result is not filtered out.
     (&node->ss)->ps.qual = NULL;
-    //ctss->css.ss.ss_currentScanDesc = heap_beginscan (relation, estate->es_snapshot, 0, NULL);
-    /*
-     * In case of custom-scan provider that offers an alternative way
-     * to scan a particular relation, most of the needed initialization,
-     * like relation open or assignment of scan tuple-slot or projection
-     * info, shall be done by the core implementation. So, all we need
-     * to have is initialization of own local properties.
-     */
-#if PG_VERSION_NUM < 100000
-    //ctss->PGCAPI_quals = (List*)
-    //                     ExecInitExpr ((Expr*)cscan->custom_exprs, &node->ss.ps);
-#else
-    //ctss->PGCAPI_quals = ExecInitQual (cscan->custom_exprs, &node->ss.ps);
-#endif
 }
 
 /*
- * ReScanPGCAPIScan - A method of CustomScanState; that rewind the current
- * seek position.
+ * ReScanPGCAPIScan
+ * TODO: Currently this rescan method is FAKE, need to revisit.
  */
 static void
 ReScanPGCAPIScan (CustomScanState* node)
 {
-    PGCAPIScanState*  ctss = (PGCAPIScanState*)node;
-    HeapScanDesc    scan = ctss->css.ss.ss_currentScanDesc;
+    PGCAPIScanState*  capiss = (PGCAPIScanState*)node;
+    HeapScanDesc    scan = capiss->css.ss.ss_currentScanDesc;
     EState*         estate = node->ss.ps.state;
-    ScanDirection   direction = estate->es_direction;
-    Relation        relation = ctss->css.ss.ss_currentRelation;
-    ExprContext*    econtext = ctss->css.ss.ps.ps_ExprContext;
-    ScanKeyData     keys[2];
-    bool            has_ubound = false;
-    bool            has_lbound = false;
-    ItemPointerData ip_max;
-    ItemPointerData ip_min;
-    ListCell*       lc;
+    Relation        relation = capiss->css.ss.ss_currentRelation;
 
     /* once close the existing scandesc, if any */
     if (scan) {
         heap_endscan (scan);
-        scan = ctss->css.ss.ss_currentScanDesc = NULL;
+        scan = capiss->css.ss.ss_currentScanDesc = NULL;
     }
 
-    ///* walks on the inequality operators */
-    //foreach (lc, ctss->PGCAPI_quals) {
-    //    //FuncExprState*  fexstate = (FuncExprState*) lfirst (lc);
-    //    OpExpr*         op = (OpExpr*) lfirst (lc);
-    //    Node*           arg1 = linitial (op->args);
-    //    Node*           arg2 = lsecond (op->args);
-    //    Index           scanrelid;
-    //    Oid             opno;
-    //    ExprState*      exstate;
-    //    ItemPointer     itemptr;
-    //    bool            isnull;
-
-    //    scanrelid = ((Scan*)ctss->css.ss.ps.plan)->scanrelid;
-
-    //    if (IsPGCAPIVar (arg1, scanrelid)) {
-    //        exstate = (ExprState*) lsecond (op->args);
-    //        opno = op->opno;
-    //    } else if (IsPGCAPIVar (arg2, scanrelid)) {
-    //        exstate = (ExprState*) linitial (op->args);
-    //        opno = get_commutator (op->opno);
-    //    } else {
-    //        elog (ERROR, "could not identify PGCAPI variable");
-    //    }
-
-    //    itemptr = (ItemPointer)
-    //              DatumGetPointer (ExecEvalExprSwitchContext (exstate,
-    //                               econtext,
-    //                               &isnull));
-
-    //    if (isnull) {
-    //        /*
-    //         * Whole of the restriction clauses chained with AND- boolean
-    //         * operators because false, if one of the clauses has NULL result.
-    //         * So, we can immediately break the evaluation to inform caller
-    //         * it does not make sense to scan any more.
-    //         * In this case, scandesc is kept to NULL.
-    //         */
-    //        return;
-    //    }
-
-    //    switch (opno) {
-    //    case TIDLessOperator:
-    //        if (!has_ubound ||
-    //            ItemPointerCompare (itemptr, &ip_max) <= 0) {
-    //            ScanKeyInit (&keys[0],
-    //                         SelfItemPointerAttributeNumber,
-    //                         BTLessStrategyNumber,
-    //                         F_TIDLT,
-    //                         PointerGetDatum (itemptr));
-    //            ItemPointerCopy (itemptr, &ip_max);
-    //            has_ubound = true;
-    //        }
-
-    //        break;
-
-    //    case TIDLessEqualOperator:
-    //        if (!has_ubound ||
-    //            ItemPointerCompare (itemptr, &ip_max) < 0) {
-    //            ScanKeyInit (&keys[0],
-    //                         SelfItemPointerAttributeNumber,
-    //                         BTLessEqualStrategyNumber,
-    //                         F_TIDLE,
-    //                         PointerGetDatum (itemptr));
-    //            ItemPointerCopy (itemptr, &ip_max);
-    //            has_ubound = true;
-    //        }
-
-    //        break;
-
-    //    case TIDGreaterOperator:
-    //        if (!has_lbound ||
-    //            ItemPointerCompare (itemptr, &ip_min) >= 0) {
-    //            ScanKeyInit (&keys[1],
-    //                         SelfItemPointerAttributeNumber,
-    //                         BTGreaterStrategyNumber,
-    //                         F_TIDGT,
-    //                         PointerGetDatum (itemptr));
-    //            ItemPointerCopy (itemptr, &ip_min);
-    //            has_lbound = true;
-    //        }
-
-    //        break;
-
-    //    case TIDGreaterEqualOperator:
-    //        if (!has_lbound ||
-    //            ItemPointerCompare (itemptr, &ip_min) > 0) {
-    //            ScanKeyInit (&keys[1],
-    //                         SelfItemPointerAttributeNumber,
-    //                         BTGreaterEqualStrategyNumber,
-    //                         F_TIDGE,
-    //                         PointerGetDatum (itemptr));
-    //            ItemPointerCopy (itemptr, &ip_min);
-    //            has_lbound = true;
-    //        }
-
-    //        break;
-
-    //    default:
-    //        elog (ERROR, "unsupported operator");
-    //        break;
-    //    }
-    //}
-
-    ///* begin heapscan with the key above */
-    //if (has_ubound && has_lbound) {
-    //    scan = heap_beginscan (relation, estate->es_snapshot, 2, &keys[0]);
-    //} else if (has_ubound) {
-    //    scan = heap_beginscan (relation, estate->es_snapshot, 1, &keys[0]);
-    //} else if (has_lbound) {
-    //    scan = heap_beginscan (relation, estate->es_snapshot, 1, &keys[1]);
-    //} else {
     scan = heap_beginscan (relation, estate->es_snapshot, 0, NULL);
-    //}
-
-    ///* Seek the starting position, if possible */
-    //if (direction == ForwardScanDirection && has_lbound) {
-    //    BlockNumber blknum = Min (BlockIdGetBlockNumber (&ip_min.ip_blkid),
-    //                              scan->rs_nblocks - 1);
-    //    scan->rs_startblock = blknum;
-    //} else if (direction == BackwardScanDirection && has_ubound) {
-    //    BlockNumber blknum = Min (BlockIdGetBlockNumber (&ip_max.ip_blkid),
-    //                              scan->rs_nblocks - 1);
-    //    scan->rs_startblock = blknum;
-    //}
-
-    ctss->css.ss.ss_currentScanDesc = scan;
-
+    capiss->css.ss.ss_currentScanDesc = scan;
 }
 
 /*
  * PGCAPIAccessCustomScan
  *
- * Access method of ExecPGCAPIScan below. It fetches a tuple from the underlying
- * heap scan that was  started from the point according to the tid clauses.
+ * TODO: The result is not strictly follow the tuple format in the table.
+ * Only the row id is returned.
  */
 static TupleTableSlot*
 PGCAPIAccessCustomScan (CustomScanState* node)
 {
-    PGCAPIScanState*  ctss = (PGCAPIScanState*) node;
+    PGCAPIScanState*  capiss = (PGCAPIScanState*) node;
     HeapScanDesc    scan;
     TupleTableSlot* slot;
     char**       values;
-    values = (char**) palloc (2 * sizeof (char*));
-    values[0] = (char*) palloc (16 * sizeof (char));
-    values[1] = (char*) palloc (16 * sizeof (char));
-    sprintf (values[0], "Test 0");
-    sprintf (values[1], "0");
-    //sprintf(values[0], "0");
-    //sprintf(values[1], "Test 0");
 
-    if (tmp > 10) {
+    if (capiss->job_desc->curr_result_id >= capiss->job_desc->num_matched_pkt) {
         return NULL;
     }
 
-    EState*         estate = node->ss.ps.state;
-    ScanDirection   direction = estate->es_direction;
-    HeapTuple       tuple;
-    TupleDesc       tupdesc  = RelationGetDescr (ctss->css.ss.ss_currentRelation);
-    AttInMetadata*  attinmeta;
-    attinmeta =     TupleDescGetAttInMetadata (tupdesc);
-    tuple = BuildTupleFromCStrings (attinmeta, values);
-    ////int attr_len = 0;
+    values = (char**) palloc (2 * sizeof (char*));
+    values[0] = (char*) palloc (16 * sizeof (char));
+    values[1] = (char*) palloc (16 * sizeof (char));
 
-    if (!ctss->css.ss.ss_currentScanDesc) {
+    // TODO: need a real column data to be returned
+    sprintf (values[0], "Column data");
+    sprintf (values[1], "%d", ((uint32_t*)capiss->job_desc->results)[capiss->job_desc->curr_result_id]);
+    (capiss->job_desc->curr_result_id)++;
+
+    HeapTuple tuple = BuildTupleFromCStrings (capiss->attinmeta, values);
+
+    if (!capiss->css.ss.ss_currentScanDesc) {
         ReScanPGCAPIScan (node);
     }
 
-    scan = ctss->css.ss.ss_currentScanDesc;
-    //Assert (scan != NULL);
-
-    ///*
-    // * get the next tuple from the table
-    // */
-    //tuple = heap_getnext (scan, direction);
+    scan = capiss->css.ss.ss_currentScanDesc;
+    Assert (scan != NULL);
 
     if (!HeapTupleIsValid (tuple)) {
         return NULL;
     }
 
-    tmp++;
-    elog (INFO, "Tuple %d", tmp);
-    ////bytea* attr_ptr = DatumGetByteaP (get_attr (tuple->t_data, tupdesc, tuple->t_len, 1, &attr_len));
-
-    ////attr_len = VARSIZE (attr_ptr) - VARHDRSZ;
-    ////elog (DEBUG1, "attr len %d : %s", attr_len, VARDATA (attr_ptr));
-
-    slot = ctss->css.ss.ss_ScanTupleSlot;
+    slot = capiss->css.ss.ss_ScanTupleSlot;
     ExecStoreTuple (tuple, slot, scan->rs_cbuf, false);
-    //ExecStoreTuple (tuple, slot, InvalidBuffer, false);
 
     return slot;
 }
@@ -808,39 +502,50 @@ PGCAPIRecheckCustomScan (CustomScanState* node, TupleTableSlot* slot)
 static TupleTableSlot*
 ExecPGCAPIScan (CustomScanState* node)
 {
-    TupleTableSlot* ret = ExecScan (&node->ss,
-                                    (ExecScanAccessMtd) PGCAPIAccessCustomScan,
-                                    (ExecScanRecheckMtd) PGCAPIRecheckCustomScan);
-    return ret;
+    return ExecScan (&node->ss,
+                     (ExecScanAccessMtd) PGCAPIAccessCustomScan,
+                     (ExecScanRecheckMtd) PGCAPIRecheckCustomScan);
 }
 
 /*
- * PGCAPIEndCustomScan - A method of CustomScanState; that closes heap and
- * scan descriptor, and release other related resources.
+ * PGCAPIEndCustomScan
+ * Close all resources in this method.
  */
 static void
 EndPGCAPIScan (CustomScanState* node)
 {
-    PGCAPIScanState*  ctss = (PGCAPIScanState*)node;
+    PGCAPIScanState*  capiss = (PGCAPIScanState*)node;
 
-    if (ctss->css.ss.ss_currentScanDesc) {
-        heap_endscan (ctss->css.ss.ss_currentScanDesc);
+    // TODO: Only 4096 for the output?
+    char header_str[4096] = "";
+    char out_str[4096] = "";
+
+    if (capiss->css.ss.ss_currentScanDesc) {
+        heap_endscan (capiss->css.ss.ss_currentScanDesc);
     }
+
+    PERF_MEASURE (capi_regex_job_cleanup (capiss->job_desc), capiss->job_desc->t_cleanup);
+    print_result (capiss->job_desc, header_str, out_str);
+    char* result = pstrdup (header_str);
+    elog (INFO, "Header: %s", result);
+    result = pstrdup (out_str);
+    elog (INFO, "Result: %s", result);
+fail:
+    pfree (capiss->job_desc);
 }
 
 /*
- * ExplainPGCAPIScan - A method of CustomScanState; that shows extra info
- * on EXPLAIN command.
+ * ExplainPGCAPIScan
  */
 static void
-ExplainPGCAPIScan (CustomScanState* node, List* ancestors, ExplainState* es)
+ExplainPGCAPIScan (CustomScanState* node, shm_toc* ancestors, void* es)
 {
-    PGCAPIScanState*  ctss = (PGCAPIScanState*) node;
-    CustomScan*     cscan = (CustomScan*) ctss->css.ss.ps.plan;
+    PGCAPIScanState*  capiss = (PGCAPIScanState*) node;
+    CustomScan*     cscan = (CustomScan*) capiss->css.ss.ps.plan;
 
     /* logic copied from show_qual and show_expression */
     if (cscan->custom_exprs) {
-        bool    useprefix = es->verbose;
+        bool    useprefix = ((ExplainState*) es)->verbose;
         Node*   qual;
         List*   context;
         char*   exprstr;
@@ -849,9 +554,9 @@ ExplainPGCAPIScan (CustomScanState* node, List* ancestors, ExplainState* es)
         qual = (Node*) make_ands_explicit (cscan->custom_exprs);
 
         /* Set up deparsing context */
-        context = set_deparse_context_planstate (es->deparse_cxt,
+        context = set_deparse_context_planstate (((ExplainState*) es)->deparse_cxt,
                   (Node*) &node->ss.ps,
-                  ancestors);
+                  (List*) ancestors);
 
         /* Deparse the expression */
         exprstr = deparse_expression (qual, context, useprefix, false);
@@ -880,3 +585,4 @@ _PG_init (void)
     set_rel_pathlist_next = set_rel_pathlist_hook;
     set_rel_pathlist_hook = SetPGCAPIScanPath;
 }
+

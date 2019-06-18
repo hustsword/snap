@@ -712,6 +712,7 @@ int capi_regex_job_init (CAPIRegexJobDescriptor* job_desc)
     job_desc->stat_size          = 0;
     job_desc->pattern            = NULL;
     job_desc->results            = NULL;
+    job_desc->curr_result_id     = 0;
     job_desc->t_init             = 0;
     job_desc->t_init             = 0;
     job_desc->t_regex_patt       = 0;
@@ -997,10 +998,10 @@ bool capi_regex_check_relation (Relation rel)
     return retVal;
 }
 
-void print_result (CAPIRegexJobDescriptor* job_desc, char* out_str)
+void print_result (CAPIRegexJobDescriptor* job_desc, char* header_str, char* out_str)
 {
-    sprintf (out_str, "num_pkt,pkt_size,init,patt,pkt_cpy,pkt_other,hw_re_scan,harvest,cleanup,hw_perf(MB/s),num_matched_pkt\n");
-    sprintf (out_str, "%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%f,%ld\n",
+    sprintf (header_str, "num_pkt,pkt_size,init,patt,pkt_cpy,pkt_other,hw_re_scan,harvest,cleanup,hw_perf(MB/s),num_matched_pkt\n");
+    sprintf (out_str, "%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%f,%ld",
              job_desc->num_pkt,
              job_desc->pkt_size_wo_hw_hdr,
              job_desc->t_init,
