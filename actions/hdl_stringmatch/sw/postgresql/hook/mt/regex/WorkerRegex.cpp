@@ -172,7 +172,7 @@ void WorkerRegex::check_buf_done()
     if (m_interrupt) {
         std::cout << "Interrupt mode is not supported yet!" << std::endl;
     } else {
-        int count = 0;
+        //int count = 0;
 
         while (true) {
             // Start the job manager when the number of job desc reaches threshold

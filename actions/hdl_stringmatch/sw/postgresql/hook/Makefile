@@ -56,7 +56,7 @@ INCLUDES                 += -I$(POSTGRESQL_INCLUDE_SERVER) -I$(POSTGRESQL_INCLUD
 
 EXTRA_CFLGAS             += -Wall -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv
 EXTRA_CFLGAS             += -Wno-error -Wno-unused-parameter -Wno-sign-compare
-EXTRA_CFLGAS             += -Wno-return-local-addr -Wno-int-conversion
+EXTRA_CFLGAS             += -Wno-return-local-addr
 
 CPPFLAGS                 += -O3 $(EXTRA_CFLGAS) $(INCLUDES) -fPIC -D_GNU_SOURCE 
 LDFLAGS                  += $(EXTRA_CFLGAS) -fPIC -L$(POSTGRESQL_LIB) -Wl,--as-needed -Wl,-rpath,'$(POSTGRESQL_LIB)',--enable-new-dtags
