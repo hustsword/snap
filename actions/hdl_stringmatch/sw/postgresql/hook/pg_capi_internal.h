@@ -111,7 +111,7 @@ typedef struct CAPIRegexJobDescriptor_s {
 
 #define ERROR_LOG(_file, _func, _line, _rc) \
     do { \
-        print_error((_file), (_func), (_line), (_rc)); \
+        print_error((_file), (_func), (const char*) (_line), (_rc)); \
     } \
     while (0)
 
@@ -133,6 +133,7 @@ void print_time (uint64_t elapsed, uint64_t size);
 void print_time_text (const char* text, uint64_t elapsed, uint64_t size);
 void* alloc_mem (int align, size_t size);
 void free_mem (void* a);
+float perf_calc (uint64_t elapsed, uint64_t size);
 
 // Regex memory layout related functions
 void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr);
@@ -141,7 +142,7 @@ void* fill_one_pattern (const char* in_patt, void* in_patt_addr);
 // CAPI basic operations
 void action_write (struct snap_card* h, uint32_t addr, uint32_t data);
 uint32_t action_read (struct snap_card* h, uint32_t addr);
-int action_wait_idle (struct snap_card* h, int timeout, uint64_t* elapsed);
+int action_wait_idle (struct snap_card* h, int timeout);
 void soft_reset (struct snap_card* h);
 void print_control_status (struct snap_card* h);
 struct snap_action* get_action (struct snap_card* handle,

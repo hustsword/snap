@@ -54,6 +54,7 @@ OBJCOPY		= $(CROSS)objcopy
 OBJDUMP		= $(CROSS)objdump
 STRIP		= $(CROSS)strip
 NM		= $(CROSS)nm
+LINK		= $(CROSS)ln
 HELP2MAN	= help2man
 
 ifeq ($(V),0)
@@ -66,10 +67,12 @@ ifeq ($(V),1)
 MAKEFLAGS	+= --silent
 MAKE		+= -s
 CC		= printf "\t[CC]\t%s\n" `basename "$@"`; $(CROSS)gcc
+CXX		= printf "\t[CXX]\t%s\n" `basename "$@"`; $(CROSS)g++
 AS		= printf "\t[AS]\t%s\n" `basename "$@"`; $(CROSS)as
 AR		= printf "\t[AR]\t%s\n" `basename "$@"`; $(CROSS)ar
 LD		= printf "\t[LD]\t%s\n" `basename "$@"`; $(CROSS)ld
 OBJCOPY		= printf "\t[OBJCOPY]\t%s\n" `basename "$@"`; $(CROSS)objcopy
+LINK		= printf "\t[LINK]\t%s\n" `basename "$@"`; $(CROSS)ln
 else
 CLEAN		= echo -n
 endif

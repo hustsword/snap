@@ -192,7 +192,7 @@ PGCAPIQualFromExpr (Node* expr, int varno)
         }
 
         if (list_length (op->args) != 2) {
-            return false;    /* should not happen */
+            return NULL;    /* should not happen */
         }
 
         if (IsPGCAPIVar (arg1, varno)) {
@@ -305,7 +305,7 @@ SetPGCAPIScanPath (PlannerInfo* root, RelOptInfo* baserel,
          */
         required_outer = baserel->lateral_relids;
 
-        cpath = palloc0 (sizeof (CustomPath));
+        cpath = (CustomPath*) palloc0 (sizeof (CustomPath));
         cpath->path.type = T_CustomPath;
         cpath->path.pathtype = T_CustomScan;
         cpath->path.parent = baserel;
@@ -363,7 +363,7 @@ PlanPGCAPIScanPath (PlannerInfo* root,
 static Node*
 CreatePGCAPIScanState (CustomScan* custom_plan)
 {
-    PGCAPIScanState*  capiss = palloc0 (sizeof (PGCAPIScanState));
+    PGCAPIScanState*  capiss = (PGCAPIScanState*) palloc0 (sizeof (PGCAPIScanState));
 
     NodeSetTag (capiss, T_CustomScanState);
     capiss->css.flags = custom_plan->flags;
@@ -562,7 +562,7 @@ ExplainPGCAPIScan (CustomScanState* node, shm_toc* ancestors, void* es)
         exprstr = deparse_expression (qual, context, useprefix, false);
 
         /* And add to es->str */
-        ExplainPropertyText ("PGCAPI quals", exprstr, es);
+        ExplainPropertyText ("PGCAPI quals", exprstr, (ExplainState*) es);
     }
 }
 

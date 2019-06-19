@@ -26,11 +26,12 @@
 #include <getopt.h>
 #include <ctype.h>
 
-#include "pg_capi_internal.h"
 #include <snap_tools.h>
 #include <snap_s_regs.h>
 
 #include "fregex.h"
+#include "pg_capi_internal.h"
+#include "mt/interface/Interface.h"
 
 /*  defaults */
 #define STEP_DELAY      200
@@ -61,14 +62,6 @@ int64_t diff_time (struct timespec* t_beg, struct timespec* t_end)
     }
 
     return ((t_end-> tv_sec - t_beg-> tv_sec) * 1000000000L + t_end-> tv_nsec - t_beg-> tv_nsec);
-}
-
-uint64_t get_usec (void)
-{
-    struct timeval t;
-
-    gettimeofday (&t, NULL);
-    return t.tv_sec * 1000000 + t.tv_usec;
 }
 
 void print_time (uint64_t elapsed, uint64_t size)
@@ -149,7 +142,7 @@ void free_mem (void* a)
 
 void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
 {
-    unsigned char* pkt_base_addr = in_pkt_addr;
+    unsigned char* pkt_base_addr = (unsigned char*) in_pkt_addr;
     int pkt_id;
     uint32_t bytes_used = 0;
     uint16_t pkt_len = size;
@@ -214,7 +207,7 @@ void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
 
 void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
 {
-    unsigned char* patt_base_addr = in_patt_addr;
+    unsigned char* patt_base_addr = (unsigned char*) in_patt_addr;
     int config_len = 0;
     unsigned char config_bytes[PATTERN_WIDTH_BYTES];
     int x;
@@ -325,19 +318,15 @@ uint32_t action_read (struct snap_card* h, uint32_t addr)
 /*
  *  Start Action and wait for Idle.
  */
-int action_wait_idle (struct snap_card* h, int timeout, uint64_t* elapsed)
+int action_wait_idle (struct snap_card* h, int timeout)
 {
     int rc = ETIME;
-    uint64_t t_start;   /* time in usec */
-    uint64_t td = 0;    /* Diff time in usec */
 
     /* FIXME Use struct snap_action and not struct snap_card */
-    snap_action_start ((void*)h);
+    snap_action_start ((struct snap_action*)h);
 
     /* Wait for Action to go back to Idle */
-    t_start = get_usec();
-    rc = snap_action_completed ((void*)h, NULL, timeout);
-    td = get_usec() - t_start;
+    rc = snap_action_completed ((struct snap_action*)h, NULL, timeout);
 
     if (rc) {
         rc = 0;    /* Good */
@@ -345,7 +334,6 @@ int action_wait_idle (struct snap_card* h, int timeout, uint64_t* elapsed)
         elog (DEBUG1, "Error. Timeout while Waiting for Idle\n");
     }
 
-    *elapsed = td;
     return rc;
 }
 
@@ -536,14 +524,13 @@ int capi_regex_scan_internal (struct snap_card* dnc,
                               size_t stat_size)
 {
     int rc;
-    uint64_t td;
 
     rc = 0;
 
     action_regex (dnc, patt_src_base, pkt_src_base, stat_dest_base, num_matched_pkt,
                   patt_size, pkt_size, stat_size);
     elog (DEBUG3, "Wait for idle\n");
-    rc = action_wait_idle (dnc, timeout, &td);
+    rc = action_wait_idle (dnc, timeout);
     elog (DEBUG3, "Card in idle\n");
 
     if (0 != rc) {
@@ -582,7 +569,7 @@ void* capi_regex_compile_internal (const char* patt, size_t* size)
     //void* patt_src_base = palloc0 (max_alloc_size);
     void* patt_src = patt_src_base;
 
-    elog (DEBUG1, "PATTERN Source Address Start at 0X%016lX\n", (uint64_t)patt_src);
+    elog (DEBUG1, "PATTERN Source Address Start at 0X%016lX\n", (uint64_t) patt_src);
 
     if (patt == NULL) {
         elog (DEBUG1, "PATTERN pointer is NULL!\n");
@@ -595,18 +582,18 @@ void* capi_regex_compile_internal (const char* patt, size_t* size)
     for (int i = 0; i < 1; i++) {
         elog (DEBUG3, "%s\n", patt);
         patt_src = fill_one_pattern (patt, patt_src);
-        elog (DEBUG3, "Pattern Source Address 0X%016lX\n", (uint64_t)patt_src);
+        elog (DEBUG3, "Pattern Source Address 0X%016lX\n", (uint64_t) patt_src);
     }
 
-    elog (DEBUG1, "Total size of pattern buffer used: %ld\n", (uint64_t) (patt_src - patt_src_base));
+    elog (DEBUG1, "Total size of pattern buffer used: %ld\n", (uint64_t) ((uint64_t) patt_src - (uint64_t) patt_src_base));
 
     elog (DEBUG1, "---------- Pattern Buffer: %p\n", patt_src_base);
 
     if (verbose_level > 2) {
-        __hexdump (stdout, patt_src_base, (patt_src - patt_src_base));
+        __hexdump (stdout, patt_src_base, ((uint64_t) patt_src - (uint64_t) patt_src_base));
     }
 
-    (*size) = patt_src - patt_src_base;
+    (*size) = (uint64_t) patt_src - (uint64_t) patt_src_base;
 
     return patt_src_base;
 }
@@ -699,7 +686,7 @@ int capi_regex_job_init (CAPIRegexJobDescriptor* job_desc)
     // Init the job descriptor
     job_desc->card_no            = 0;
     job_desc->timeout            = ACTION_WAIT_TIME;
-    job_desc->attach_flags       = 0;
+    job_desc->attach_flags       = (snap_action_flag_t) 0;
     job_desc->act                = NULL;
     job_desc->patt_src_base      = NULL;
     job_desc->pkt_src_base       = NULL;
@@ -767,6 +754,18 @@ void* capi_regex_pkt_psql_internal (Relation rel, int attr_id, size_t* size, siz
     TupleDesc tupdesc  = RelationGetDescr (rel);
     struct timespec t_beg, t_end;
 
+    test_params params;
+    params.card_no = 0;
+    params.job_num = 16;
+    params.buf_num = 16;
+    params.memcopy_size = 1024;
+    params.timeout = 1000;
+    params.mode = INTERRUPT;
+    params.debug = false;
+    print_test_params (params);
+
+    start_regex_workers (params);
+
     for (int blk_num = 0; blk_num < num_blks; ++blk_num) {
 
         Buffer buf = ReadBufferExtended (rel, MAIN_FORKNUM, blk_num, RBM_NORMAL, NULL);
@@ -810,7 +809,7 @@ void* capi_regex_pkt_psql_internal (Relation rel, int attr_id, size_t* size, siz
                 pkt_src = fill_one_packet (VARDATA (attr_ptr), attr_len, pkt_src);
                 clock_gettime (CLOCK_REALTIME, &t_end);
                 (*t_pkt_cpy) += diff_time (&t_beg, &t_end);
-                elog (DEBUG3, "PACKET Source Address 0X%016lX\n", (uint64_t)pkt_src);
+                elog (DEBUG3, "PACKET Source Address 0X%016lX\n", (uint64_t) pkt_src);
                 (*num_pkt)++;
             }
         }
@@ -820,11 +819,11 @@ void* capi_regex_pkt_psql_internal (Relation rel, int attr_id, size_t* size, siz
     }
 
     if (verbose_level > 2) {
-        __hexdump (stdout, pkt_src_base, (pkt_src - pkt_src_base));
+        __hexdump (stdout, pkt_src_base, ((uint64_t) pkt_src - (uint64_t) pkt_src_base));
     }
 
-    (*size) = pkt_src - pkt_src_base;
-    elog (DEBUG1, "Total size of packet buffer used: %ld\n", (uint64_t) (pkt_src - pkt_src_base));
+    (*size) = (uint64_t) pkt_src - (uint64_t) pkt_src_base;
+    elog (DEBUG1, "Total size of packet buffer used: %ld\n", (uint64_t) ((uint64_t) pkt_src - (uint64_t) pkt_src_base));
     elog (DEBUG1, "Total number of packets to be processed: %zu\n", *num_pkt);
 
     return pkt_src_base;
@@ -936,7 +935,7 @@ int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc)
     uint32_t reg_data = action_read (job_desc->dn, ACTION_STATUS_H);
     elog (DEBUG1, "After draining, number of matched packets: %d\n", reg_data);
     job_desc->num_matched_pkt = reg_data;
-    job_desc->results = palloc (job_desc->num_matched_pkt * sizeof (uint32_t));
+    job_desc->results = (uint32_t*) palloc (job_desc->num_matched_pkt * sizeof (uint32_t));
 
     if (get_results (job_desc->results, job_desc->num_matched_pkt, job_desc->stat_dest_base)) {
         errno = ENODEV;
