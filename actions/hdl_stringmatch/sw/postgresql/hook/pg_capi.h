@@ -51,16 +51,25 @@
 #include "utils/ruleutils.h"
 #include "utils/spccache.h"
 #include "funcapi.h"
+#include "pg_capi_internal.h"
 
-/* missing declaration in pg_proc.h */
-#ifndef TIDGreaterOperator
-#define TIDGreaterOperator		2800
-#endif
-#ifndef TIDLessEqualOperator
-#define TIDLessEqualOperator	2801
-#endif
-#ifndef TIDGreaterEqualOperator
-#define TIDGreaterEqualOperator	2802
-#endif
+/*
+ * PGCAPIScanState - state object of PGCAPIscan on executor.
+ * Job descriptors and relation information is passed with this struct.
+ */
+typedef struct PGCAPIScanState_s {
+    CustomScanState          css;
+
+    // Relation related variables
+    List*                    PGCAPI_quals;
+    AttInMetadata*           attinmeta;
+
+    // Capi related variables and job descriptors
+    const char*              capi_regex_pattern;
+    int                      capi_regex_attr_id;
+    CAPIRegexJobDescriptor** capi_regex_job_descs;
+    int                      capi_regex_curr_job;
+    int                      capi_regex_num_jobs;
+} PGCAPIScanState;
 
 #endif  /* PG_CAPI_H */

@@ -35,15 +35,15 @@ public:
 
     // Constructor of the job base
     JobBase();
-    JobBase (int in_id, int in_buf_id);
-    JobBase (int in_id, int in_buf_id, HardwareManagerPtr in_hw_mgr);
-    JobBase (int in_id, int in_buf_id, HardwareManagerPtr in_hw_mgr, bool in_debug);
+    JobBase (int in_id, int in_thread_id);
+    JobBase (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mgr);
+    JobBase (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mgr, bool in_debug);
 
     // Destructor of the job base
     ~JobBase();
 
-    // Get the buffer id of this job
-    int get_buf_id();
+    // Get the thread id of this job
+    int get_thread_id();
 
     // Get the job id
     int get_id();
@@ -67,8 +67,8 @@ protected:
     // The ID of this job itself
     int m_id;
 
-    // The buffer id of this job (thread ID)
-    int m_buf_id;
+    // The thread id of this job (thread ID)
+    int m_thread_id;
 
     // The status of this job
     eStatus m_status;

@@ -17,34 +17,34 @@
 
 JobBase::JobBase()
     : m_id (0),
-      m_buf_id (0),
+      m_thread_id (0),
       m_status (UNKNOWN),
       m_hw_mgr (NULL),
       m_debug (false)
 {
 }
 
-JobBase::JobBase (int in_id, int in_buf_id)
+JobBase::JobBase (int in_id, int in_thread_id)
     : m_id (in_id),
-      m_buf_id (in_buf_id),
+      m_thread_id (in_thread_id),
       m_status (UNKNOWN),
       m_hw_mgr (NULL),
       m_debug (false)
 {
 }
 
-JobBase::JobBase (int in_id, int in_buf_id, HardwareManagerPtr in_hw_mgr)
+JobBase::JobBase (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mgr)
     : m_id (in_id),
-      m_buf_id (in_buf_id),
+      m_thread_id (in_thread_id),
       m_status (UNKNOWN),
       m_hw_mgr (in_hw_mgr),
       m_debug (false)
 {
 }
 
-JobBase::JobBase (int in_id, int in_buf_id, HardwareManagerPtr in_hw_mgr, bool in_debug)
+JobBase::JobBase (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mgr, bool in_debug)
     : m_id (in_id),
-      m_buf_id (in_buf_id),
+      m_thread_id (in_thread_id),
       m_status (UNKNOWN),
       m_hw_mgr (in_hw_mgr),
       m_debug (in_debug)
@@ -55,9 +55,9 @@ JobBase::~JobBase()
 {
 }
 
-int JobBase::get_buf_id()
+int JobBase::get_thread_id()
 {
-    return m_buf_id;
+    return m_thread_id;
 }
 
 int JobBase::get_id()
@@ -83,7 +83,7 @@ HardwareManagerPtr JobBase::get_hw_mgr()
 void JobBase::logging (boost::format & in_fmt)
 {
     if (m_debug) {
-        std::cout << boost::format ("BUF[%d] - JOB[%d]: ") % m_buf_id % m_id
+        std::cout << boost::format ("THREAD[%d] - JOB[%d]: ") % m_thread_id % m_id
                   << in_fmt << std::endl;
     }
 }

@@ -981,6 +981,7 @@ int main (int argc, char* argv[])
 
     VERBOSE0 ("======== HARDWARE RUN ========\n");
     start_time = get_usec();
+    VERBOSE0 ("======== HARDWARE RUN #0 ========\n");
     rc = sm_scan (dn, timeout,
                   patt_src_base,
                   pkt_src_base,
@@ -994,6 +995,39 @@ int main (int argc, char* argv[])
     print_time (elapsed_time, pkt_size_for_sw);
 
     VERBOSE0 ("Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
+
+    start_time = get_usec();
+    VERBOSE0 ("======== HARDWARE RUN #1 ========\n");
+    rc = sm_scan (dn, timeout,
+                  patt_src_base,
+                  pkt_src_base,
+                  stat_dest_base,
+                  &num_matched_pkt,
+                  patt_size,
+                  pkt_size,
+                  stat_size);
+    elapsed_time = get_usec() - start_time;
+    // pkt_size_for_sw is the real size without hardware specific 64B header
+    print_time (elapsed_time, pkt_size_for_sw);
+
+    VERBOSE0 ("Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
+
+    start_time = get_usec();
+    VERBOSE0 ("======== HARDWARE RUN #2 ========\n");
+    rc = sm_scan (dn, timeout,
+                  patt_src_base,
+                  pkt_src_base,
+                  stat_dest_base,
+                  &num_matched_pkt,
+                  patt_size,
+                  pkt_size,
+                  stat_size);
+    elapsed_time = get_usec() - start_time;
+    // pkt_size_for_sw is the real size without hardware specific 64B header
+    print_time (elapsed_time, pkt_size_for_sw);
+
+    VERBOSE0 ("Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
+
     VERBOSE0 ("======== HARDWARE DONE========\n");
 
     // Wait for transaction to be done.

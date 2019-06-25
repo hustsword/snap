@@ -19,73 +19,85 @@
 
 #include <iostream>
 #include "WorkerBase.h"
-#include "JobDescriptor.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include "pg_capi_internal.h"
+#ifdef __cplusplus
+}
+#endif
 
 class WorkerRegex : public WorkerBase
 {
 public:
     // Constructor of the worker base
-    WorkerRegex (HardwareManagerPtr in_hw_mgr, bool in_debug);
+    WorkerRegex (HardwareManagerPtr in_hw_mgr,
+                 Relation in_relation,
+                 int in_attr_id,
+                 bool in_debug);
 
     // Destructor of the worker base
     ~WorkerRegex();
 
-    // Check if all buffers have done their job
-    virtual void check_buf_done();
+    // Check if all threads have done their job
+    virtual void check_thread_done();
+
+    // Check if everything is ready for start threads
+    virtual int check_start();
 
     // Set if we are going to use interrupt or polling
     void set_mode (bool in_interrupt);
 
-    // Update the job descriptor tail and count
-    void append_job_desc (void* in_job_desc);
+    // Compile the regex pattern
+    int regex_compile (const char* in_patt);
 
-    // Print the job descriptor list
-    void dump_job_desc();
+    // Get the pattern buffer pointer
+    void* get_pattern_buffer();
 
-    // Check the result
-    int check();
+    // Get the size of the pattern buffer
+    size_t get_pattern_buffer_size();
 
-    // Set the job descriptor start threshold
-    void set_job_start_threshold (int in_threshold);
+    // Get pionter to the relation
+    Relation get_relation();
 
-    // Set up the completion queue
-    int setup_completion_queue (int in_size);
+    // Get the attribute ID to be scanned
+    int get_attr_id();
 
-    // Check if the result in completion queue is expected
-    int check_completion_queue ();
+    // Get the number of buffers (blocks) for different thread
+    int get_num_blks_per_thread (int in_thread_id, int* out_start_blk_id);
+
+    // Clean up any threads created for this worker
+    void cleanup();
+
+    // Read all buffers of this relation
+    void read_buffers();
+
+    // Release all buffers of this relation
+    void release_buffers();
+
+    // A container to hold all buffer pointers of this relation,
+    // make it public so it can be referenced with minimum cost.
+    Buffer* m_buffers;
 
 private:
-    // Use interrupt or poll to check buffer done?
+    // Use interrupt or poll to check thread done?
     bool m_interrupt;
 
-    // The mutex to guard job descriptors adding from buffers
-    boost::mutex m_job_desc_mutex;
+    // Pointer to regex pattern buffer
+    void* m_patt_src_base;
 
-    // The pointer to the head and tail of job descriptor list
-    // (the first and last job descriptor in the list)
-    // Update to this pointer should be guarded by mutex (m_job_desc_mutex)
-    void* m_job_desc_head;
-    void* m_job_desc_tail;
+    // Size of the regex pattern buffer
+    size_t m_patt_size;
 
-    // The pointer to completion queue
-    void* m_completion_queue_ptr;
+    // The relation of this work
+    Relation m_relation;
 
-    // The size of completion queue (in bytes)
-    int m_completion_queue_size;
+    // The attribute ID to be scanned
+    int m_attr_id;
 
-    // Total count of job descriptors
-    int m_job_desc_count;
-
-    // The threshold to start hardware job manager
-    // When the m_job_desc_count is larger than this threshold,
-    // hardware job manager will be started
-    int m_job_start_threshold;
-
-    // The flag to indicate the job manager has been started
-    bool m_job_started;
-
-    // Debug flag
-    bool m_debug;
+    // Total number of buffers (blocks) in the relation
+    int m_num_blks;
 };
 
 typedef boost::shared_ptr<WorkerRegex> WorkerRegexPtr;

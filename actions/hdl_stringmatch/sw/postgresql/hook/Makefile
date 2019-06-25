@@ -14,19 +14,6 @@
 # limitations under the License.
 #
 
-#
-# Generate HDL version of the HLS sources
-#
-# The generated HDL depends on the chip which is used and
-# therefore must match what is being used to build the
-# toplevel SNAP bitstream.
-#
-# FIXME Pass part_number and other parameters from toplevel
-#      build-system as required.
-#
-
-# This is solution specific. Check if we can replace this by generics too.
-
 # Finding $SNAP_ROOT
 ifndef SNAP_ROOT
 # check if we are in sw folder of an action (three directories below snap root)
@@ -52,7 +39,7 @@ UTILS                     = ../../../string-match-fpga/utils
 INCLUDES                  = -I. -I./ -I../
 INCLUDES                 += -I$(UTILS) 
 INCLUDES                 += -I$(SNAP_ROOT)/software/include
-INCLUDES                 += -I$(POSTGRESQL_INCLUDE_SERVER) -I$(POSTGRESQL_INCLUDE)/internal 
+INCLUDES                 += -I$(POSTGRESQL_INCLUDE_SERVER) -I$(POSTGRESQL_INCLUDE)/internal
 
 EXTRA_CFLGAS             += -Wall -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv
 EXTRA_CFLGAS             += -Wno-error -Wno-unused-parameter -Wno-sign-compare
@@ -71,6 +58,7 @@ MT_CPPOBJS := $(call TOBUILDDIR,$(patsubst %.cpp,%.o,$(MT_CPPSRCS)))
 MT_CPPFLAGS := --std=c++11
 MT_INCLUDES := -I. -I../ -I./mt -I./mt/base -I./mt/utils -I$(SNAP_ROOT)/software/include
 MT_INCLUDES += -I./mt/regex -I./mt/interface
+MT_INCLUDES += -I$(POSTGRESQL_INCLUDE_SERVER) -I$(POSTGRESQL_INCLUDE)/internal
 MT_COMPILEFLAGS := -W -Wall -Wno-multichar -Wno-unused-parameter -Wno-unused-function -Werror-implicit-function-declaration
 MT_OPTFLAGS := -O3
 CPPFLAGS += $(MT_INCLUDES)
@@ -94,6 +82,7 @@ $(MT_CPPOBJS): $(BUILDDIR)/%.o: %.cpp
 
 # Create the symbol link for util srcs
 $(UTILS_CPPLINKS): $(UTILS)/fregex.cpp $(UTILS)/regex_config.cpp
+	@if [ -L $@ ]; then unlink $@; fi
 	$(LINK) -s $(UTILS)/$@ $@
 
 # Build util related CPP objs

@@ -33,21 +33,6 @@
 #include "pg_capi_internal.h"
 #include "mt/interface/Interface.h"
 
-/*  defaults */
-#define STEP_DELAY      200
-#define DEFAULT_MEMCPY_BLOCK    4096
-#define DEFAULT_MEMCPY_ITER 1
-#define ACTION_WAIT_TIME    10   /* Default in sec */
-//#define MAX_NUM_PKT 502400
-//#define MAX_NUM_PKT 4096
-#define MIN_NUM_PKT 4096
-#define MAX_NUM_PATT 1024
-
-#define MEGAB       (1024*1024ull)
-#define GIGAB       (1024 * MEGAB)
-
-uint32_t PATTERN_ID = 0;
-uint32_t PACKET_ID = 0;
 int verbose_level = 0;
 
 void print_error (const char* file, const char* func, const char* line, int rc)
@@ -120,38 +105,27 @@ void* alloc_mem (int align, size_t size)
     void* a;
     size_t size2 = size + align;
 
-    elog (DEBUG1, "%s Enter Align: %d Size: %zu\n", __func__, align, size);
-
     if (posix_memalign ((void**)&a, 4096, size2) != 0) {
-        perror ("FAILED: posix_memalign()");
+        //perror ("FAILED: posix_memalign()");
         return NULL;
     }
 
-    elog (DEBUG1, "%s Exit %p\n", __func__, a);
     return a;
 }
 
 void free_mem (void* a)
 {
-    elog (DEBUG1, "Free Mem %p\n", a);
-
     if (a) {
         free (a);
     }
 }
 
-void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
+void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_pkt_id)
 {
     unsigned char* pkt_base_addr = (unsigned char*) in_pkt_addr;
-    int pkt_id;
+    int pkt_id = in_pkt_id;
     uint32_t bytes_used = 0;
     uint16_t pkt_len = size;
-
-    PACKET_ID++;
-    // The TAG ID
-    pkt_id = PACKET_ID;
-
-    elog (DEBUG2, "PKT[%d] %s len %d\n", pkt_id, in_pkt, pkt_len);
 
     // The frame header
     for (int i = 0; i < 4; i++) {
@@ -166,11 +140,6 @@ void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
     pkt_base_addr[bytes_used] |= ((pkt_len >> 8) & 0xF);
     bytes_used ++;
 
-    // Skip the reserved bytes
-    //for (int i = 0; i < 54; i++) {
-    //    pkt_base_addr[bytes_used] = 0;
-    //    bytes_used++;
-    //}
     memset (pkt_base_addr + bytes_used, 0, 54);
     bytes_used += 54;
 
@@ -179,11 +148,6 @@ void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
         bytes_used++;
     }
 
-    // The payload
-    //for (int i = 0; i < pkt_len; i++) {
-    //    pkt_base_addr[bytes_used] = in_pkt[i];
-    //    bytes_used++;
-    //}
     memcpy (pkt_base_addr + bytes_used, in_pkt, pkt_len);
     bytes_used += pkt_len;
 
@@ -205,23 +169,19 @@ void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
     return pkt_base_addr + bytes_used;
 }
 
-void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
+void* fill_one_pattern (const char* in_patt, void* in_patt_addr, int in_patt_id)
 {
     unsigned char* patt_base_addr = (unsigned char*) in_patt_addr;
     int config_len = 0;
     unsigned char config_bytes[PATTERN_WIDTH_BYTES];
     int x;
-    uint32_t pattern_id;
+    uint32_t pattern_id = in_patt_id;
     uint16_t patt_byte_cnt;
     uint32_t bytes_used = 0;
 
     for (x = 0; x < PATTERN_WIDTH_BYTES; x++) {
         config_bytes[x] = 0;
     }
-
-    // Generate pattern ID
-    PATTERN_ID ++;
-    pattern_id = PATTERN_ID;
 
     elog (DEBUG1, "PATT[%d] %s\n", pattern_id, in_patt);
 
@@ -234,9 +194,6 @@ void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
                        &config_len,
                        0);
 
-    elog (DEBUG2, "Config length (bits)  %d\n", config_len * 8);
-    elog (DEBUG2, "Config length (bytes) %d\n", config_len);
-
     for (int i = 0; i < 4; i++) {
         patt_base_addr[bytes_used] = 0x5A;
         bytes_used++;
@@ -247,11 +204,6 @@ void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
     bytes_used ++;
     patt_base_addr[bytes_used] = (patt_byte_cnt >> 8) & 0x7;
     bytes_used ++;
-
-    //for (int i = 0; i < 54; i++) {
-    //    patt_base_addr[bytes_used] = 0x00;
-    //    bytes_used ++;
-    //}
 
     memset (patt_base_addr + bytes_used, 0, 54);
     bytes_used += 54;
@@ -264,10 +216,6 @@ void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
 
     memcpy (patt_base_addr + bytes_used, config_bytes, config_len);
     bytes_used += config_len;
-    //for (int i = 0; i < config_len; i++) {
-    //    patt_base_addr[bytes_used] = config_bytes[i];
-    //    bytes_used ++;
-    //}
 
     // Padding to 64 bytes alignment
     bytes_used --;
@@ -358,7 +306,7 @@ void soft_reset (struct snap_card* h)
     // Status[4] to reset
     action_write (h, ACTION_CONTROL_L, 0x00000010);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
-    elog (DEBUG2, " Write ACTION_CONTROL for soft reset! \n");
+    elog (INFO, " Write ACTION_CONTROL for soft reset!");
     action_write (h, ACTION_CONTROL_L, 0x00000000);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
 }
@@ -374,64 +322,49 @@ void action_regex (struct snap_card* h,
 {
     uint32_t reg_data;
 
-    elog (DEBUG2, " ------ String Match Start -------- \n");
-    elog (DEBUG2, " PATTERN SOURCE ADDR: %p -- SIZE: %d\n", patt_src_base, (int)patt_size);
-    elog (DEBUG2, " PACKET  SOURCE ADDR: %p -- SIZE: %d\n", pkt_src_base, (int)pkt_size);
-    elog (DEBUG2, " STAT    DEST   ADDR: %p -- SIZE(max): %d\n", stat_dest_base, (int)stat_size);
-
-    elog (DEBUG2, " Start register config! \n");
     print_control_status (h);
 
     action_write (h, ACTION_PATT_INIT_ADDR_L,
                   (uint32_t) (((uint64_t) patt_src_base) & 0xffffffff));
     action_write (h, ACTION_PATT_INIT_ADDR_H,
                   (uint32_t) ((((uint64_t) patt_src_base) >> 32) & 0xffffffff));
-    elog (DEBUG2, " Write ACTION_PATT_INIT_ADDR done! \n");
 
     action_write (h, ACTION_PKT_INIT_ADDR_L,
                   (uint32_t) (((uint64_t) pkt_src_base) & 0xffffffff));
     action_write (h, ACTION_PKT_INIT_ADDR_H,
                   (uint32_t) ((((uint64_t) pkt_src_base) >> 32) & 0xffffffff));
-    elog (DEBUG2, " Write ACTION_PKT_INIT_ADDR done! \n");
 
     action_write (h, ACTION_PATT_CARD_DDR_ADDR_L, 0);
     action_write (h, ACTION_PATT_CARD_DDR_ADDR_H, 0);
-    elog (DEBUG2, " Write ACTION_PATT_CARD_DDR_ADDR done! \n");
 
     action_write (h, ACTION_STAT_INIT_ADDR_L,
                   (uint32_t) (((uint64_t) stat_dest_base) & 0xffffffff));
     action_write (h, ACTION_STAT_INIT_ADDR_H,
                   (uint32_t) ((((uint64_t) stat_dest_base) >> 32) & 0xffffffff));
-    elog (DEBUG2, " Write ACTION_STAT_INIT_ADDR done! \n");
 
     action_write (h, ACTION_PATT_TOTAL_NUM_L,
                   (uint32_t) (((uint64_t) patt_size) & 0xffffffff));
     action_write (h, ACTION_PATT_TOTAL_NUM_H,
                   (uint32_t) ((((uint64_t) patt_size) >> 32) & 0xffffffff));
-    elog (DEBUG2, " Write ACTION_PATT_TOTAL_NUM done! \n");
 
     action_write (h, ACTION_PKT_TOTAL_NUM_L,
                   (uint32_t) (((uint64_t) pkt_size) & 0xffffffff));
     action_write (h, ACTION_PKT_TOTAL_NUM_H,
                   (uint32_t) ((((uint64_t) pkt_size) >> 32) & 0xffffffff));
-    elog (DEBUG2, " Write ACTION_PKT_TOTAL_NUM done! \n");
 
     action_write (h, ACTION_STAT_TOTAL_SIZE_L,
                   (uint32_t) (((uint64_t) stat_size) & 0xffffffff));
     action_write (h, ACTION_STAT_TOTAL_SIZE_H,
                   (uint32_t) ((((uint64_t) stat_size) >> 32) & 0xffffffff));
-    elog (DEBUG2, " Write ACTION_STAT_TOTAL_SIZE done! \n");
 
     // Start copying the pattern from host memory to card
     action_write (h, ACTION_CONTROL_L, 0x00000001);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
-    elog (DEBUG2, " Write ACTION_CONTROL for pattern copying! \n");
 
     print_control_status (h);
 
     do {
         reg_data = action_read (h, ACTION_STATUS_L);
-        elog (DEBUG3, "Pattern Phase: polling Status reg with 0X%X\n", reg_data);
 
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
@@ -449,27 +382,21 @@ void action_regex (struct snap_card* h,
     // Start working control[2:1] = 11
     action_write (h, ACTION_CONTROL_L, 0x00000006);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
-    elog (DEBUG1, " Write ACTION_CONTROL for working! \n");
 
     do {
         reg_data = action_read (h, ACTION_STATUS_L);
-        elog (DEBUG1, "Packet Phase: polling Status reg with 0X%X\n", reg_data);
 
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
-            elog (DEBUG1, "Error code got 0X%X\n", ((reg_data & 0x00FFFF00) >> 8));
             exit (EXIT_FAILURE);
         }
 
         // Status[0]
         if ((reg_data & 0x00000010) != 0) {
-            elog (DEBUG1, "Memory space for stat used up!\n");
             exit (EXIT_FAILURE);
         }
 
         if ((reg_data & 0x00000006) == 6) {
-            elog (DEBUG1, "Work done!\n");
-
             break;
         }
     } while (1);
@@ -477,38 +404,31 @@ void action_regex (struct snap_card* h,
     // Stop working
     action_write (h, ACTION_CONTROL_L, 0x00000000);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
-    elog (DEBUG2, " Write ACTION_CONTROL for stop working! \n");
 
     // Flush rest data
     action_write (h, ACTION_CONTROL_L, 0x00000008);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
-    elog (DEBUG2, " Write ACTION_CONTROL for stat flushing! \n");
 
     do {
         reg_data = action_read (h, ACTION_STATUS_L);
 
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
-            elog (DEBUG1, "Error code got 0X%X\n", ((reg_data & 0x00FFFF00) >> 8));
             exit (EXIT_FAILURE);
         }
 
         // Status[3]
         if ((reg_data & 0x00000008) == 8) {
-            elog (DEBUG2, "Stat flush done!\n");
             reg_data = action_read (h, ACTION_STATUS_H);
-            elog (DEBUG1, "Number of matched packets: %d\n", reg_data);
             *num_matched_pkt = reg_data;
             break;
         }
 
-        elog (DEBUG3, "Polling Status reg with 0X%X\n", reg_data);
     } while (1);
 
     // Stop flushing
     action_write (h, ACTION_CONTROL_L, 0x00000000);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
-    elog (DEBUG2, " Write ACTION_CONTROL for stop working! \n");
 
     return;
 }
@@ -529,9 +449,7 @@ int capi_regex_scan_internal (struct snap_card* dnc,
 
     action_regex (dnc, patt_src_base, pkt_src_base, stat_dest_base, num_matched_pkt,
                   patt_size, pkt_size, stat_size);
-    elog (DEBUG3, "Wait for idle\n");
     rc = action_wait_idle (dnc, timeout);
-    elog (DEBUG3, "Card in idle\n");
 
     if (0 != rc) {
         return rc;
@@ -581,7 +499,7 @@ void* capi_regex_compile_internal (const char* patt, size_t* size)
     // TODO: for 64X1, only 1 pattern is needed.
     for (int i = 0; i < 1; i++) {
         elog (DEBUG3, "%s\n", patt);
-        patt_src = fill_one_pattern (patt, patt_src);
+        patt_src = fill_one_pattern (patt, patt_src, i);
         elog (DEBUG3, "Pattern Source Address 0X%016lX\n", (uint64_t) patt_src);
     }
 
@@ -677,55 +595,76 @@ char* get_attr (HeapTupleHeader tuphdr,
     return (char*) (tupdata + off);
 }
 
-int capi_regex_job_init (CAPIRegexJobDescriptor* job_desc)
+int capi_regex_context_init (CAPIContext* context)
 {
-    if (job_desc == NULL) {
+    if (context == NULL) {
         return -1;
     }
 
     // Init the job descriptor
-    job_desc->card_no            = 0;
-    job_desc->timeout            = ACTION_WAIT_TIME;
-    job_desc->attach_flags       = (snap_action_flag_t) 0;
-    job_desc->act                = NULL;
-    job_desc->patt_src_base      = NULL;
-    job_desc->pkt_src_base       = NULL;
-    job_desc->stat_dest_base     = NULL;
-    job_desc->num_pkt            = 0;
-    job_desc->num_matched_pkt    = 0;
-    job_desc->pkt_size           = 0;
-    job_desc->patt_size          = 0;
-    job_desc->pkt_size_wo_hw_hdr = 0;
-    job_desc->stat_size          = 0;
-    job_desc->pattern            = NULL;
-    job_desc->results            = NULL;
-    job_desc->curr_result_id     = 0;
-    job_desc->t_init             = 0;
-    job_desc->t_init             = 0;
-    job_desc->t_regex_patt       = 0;
-    job_desc->t_regex_pkt        = 0;
-    job_desc->t_regex_scan       = 0;
-    job_desc->t_regex_harvest    = 0;
-    job_desc->t_cleanup          = 0;
+    context->card_no      = 0;
+    context->timeout      = ACTION_WAIT_TIME;
+    context->attach_flags = (snap_action_flag_t) 0;
+    context->act          = NULL;
 
     // Prepare the card and action
-    elog (DEBUG2, "Open Card: %d\n", job_desc->card_no);
-    sprintf (job_desc->device, "/dev/cxl/afu%d.0s", job_desc->card_no);
-    job_desc->dn = snap_card_alloc_dev (job_desc->device, SNAP_VENDOR_ID_IBM, SNAP_DEVICE_ID_SNAP);
+    elog (INFO, "Open Card: %d", context->card_no);
+    sprintf (context->device, "/dev/cxl/afu%d.0s", context->card_no);
+    context->dn = snap_card_alloc_dev (context->device, SNAP_VENDOR_ID_IBM, SNAP_DEVICE_ID_SNAP);
 
-    if (NULL == job_desc->dn) {
+    if (NULL == context->dn) {
         ereport (ERROR,
                  (errcode (ERRCODE_INVALID_PARAMETER_VALUE),
                   errmsg ("Cannot allocate CARD!")));
         return -1;
     }
 
-    // Reset the hardware
-    soft_reset (job_desc->dn);
+    elog (INFO, "Start to get action.");
+    context->act = get_action (context->dn, context->attach_flags, 5 * context->timeout);
+    elog (INFO, "Finish get action.");
 
-    elog (DEBUG1, "Start to get action.\n");
-    job_desc->act = get_action (job_desc->dn, job_desc->attach_flags, 5 * job_desc->timeout);
-    elog (DEBUG1, "Finish get action.\n");
+    // Reset the hardware
+    soft_reset (context->dn);
+
+    return 0;
+}
+
+int capi_regex_job_init (CAPIRegexJobDescriptor* job_desc,
+                         CAPIContext* context)
+{
+    if (NULL == job_desc) {
+        return -1;
+    }
+
+    if (NULL == context) {
+        return -1;
+    }
+
+    // Init the job descriptor
+    job_desc->context               = context;
+    job_desc->patt_src_base         = NULL;
+    job_desc->pkt_src_base          = NULL;
+    job_desc->stat_dest_base        = NULL;
+    job_desc->num_pkt               = 0;
+    job_desc->num_matched_pkt       = 0;
+    job_desc->pkt_size              = 0;
+    job_desc->patt_size             = 0;
+    job_desc->pkt_size_wo_hw_hdr    = 0;
+    job_desc->stat_size             = 0;
+    job_desc->pattern               = NULL;
+    job_desc->results               = NULL;
+    job_desc->curr_result_id        = 0;
+    job_desc->start_blk_id          = 0;
+    job_desc->num_blks              = 0;
+    job_desc->t_init                = 0;
+    job_desc->t_init                = 0;
+    job_desc->t_regex_patt          = 0;
+    job_desc->t_regex_pkt           = 0;
+    job_desc->t_regex_scan          = 0;
+    job_desc->t_regex_harvest       = 0;
+    job_desc->t_cleanup             = 0;
+
+    job_desc->next_desc             = NULL;
 
     return 0;
 }
@@ -745,134 +684,14 @@ int capi_regex_compile (CAPIRegexJobDescriptor* job_desc, const char* pattern)
     return 0;
 }
 
-void* capi_regex_pkt_psql_internal (Relation rel, int attr_id, size_t* size, size_t* size_wo_hw_hdr,
-                                    size_t* num_pkt, int64_t* t_pkt_cpy)
-{
-    void* pkt_src_base = NULL;
-    void* pkt_src      = NULL;
-    int num_blks       = RelationGetNumberOfBlocksInFork (rel, MAIN_FORKNUM);
-    TupleDesc tupdesc  = RelationGetDescr (rel);
-    struct timespec t_beg, t_end;
-
-    test_params params;
-    params.card_no = 0;
-    params.job_num = 16;
-    params.buf_num = 16;
-    params.memcopy_size = 1024;
-    params.timeout = 1000;
-    params.mode = INTERRUPT;
-    params.debug = false;
-    print_test_params (params);
-
-    start_regex_workers (params);
-
-    for (int blk_num = 0; blk_num < num_blks; ++blk_num) {
-
-        Buffer buf = ReadBufferExtended (rel, MAIN_FORKNUM, blk_num, RBM_NORMAL, NULL);
-        LockBuffer (buf, BUFFER_LOCK_SHARE);
-
-        Page page = (Page) BufferGetPage (buf);
-        int num_lines = PageGetMaxOffsetNumber (page);
-
-        // Calculate the size of the packet buffer
-        // TODO: assume every block has the same number of lines ...
-        if (blk_num == 0) {
-            int row_count = num_blks * num_lines;
-            // The max size that should be alloc
-            size_t max_alloc_size = (row_count < MIN_NUM_PKT ? MIN_NUM_PKT : row_count) * (64 + 2048);
-
-            pkt_src_base = alloc_mem (64, max_alloc_size);
-            pkt_src = pkt_src_base;
-
-            elog (DEBUG1, "PACKET Source Address Start at 0X%016lX\n", (uint64_t)pkt_src);
-        }
-
-        for (int line_num = 0; line_num <= num_lines; ++line_num) {
-            ItemId id = PageGetItemId (page, line_num);
-            uint16 lp_offset = ItemIdGetOffset (id);
-            uint16 lp_len = ItemIdGetLength (id);
-            HeapTupleHeader tuphdr = (HeapTupleHeader) PageGetItem (page, id);
-
-            if (ItemIdHasStorage (id) &&
-                lp_len >= MinHeapTupleSize &&
-                lp_offset == MAXALIGN (lp_offset)) {
-
-                int attr_len = 0;
-                bytea* attr_ptr = DatumGetByteaP (get_attr (tuphdr, tupdesc, lp_len, attr_id, &attr_len));
-
-                attr_len = VARSIZE (attr_ptr) - VARHDRSZ;
-
-                elog (DEBUG3, "PACKET line read with length %d :\n", attr_len);
-                elog (DEBUG3, "%s\n", VARDATA (attr_ptr));
-                (*size_wo_hw_hdr) += attr_len;
-                clock_gettime (CLOCK_REALTIME, &t_beg);
-                pkt_src = fill_one_packet (VARDATA (attr_ptr), attr_len, pkt_src);
-                clock_gettime (CLOCK_REALTIME, &t_end);
-                (*t_pkt_cpy) += diff_time (&t_beg, &t_end);
-                elog (DEBUG3, "PACKET Source Address 0X%016lX\n", (uint64_t) pkt_src);
-                (*num_pkt)++;
-            }
-        }
-
-        LockBuffer (buf, BUFFER_LOCK_UNLOCK);
-        ReleaseBuffer (buf);
-    }
-
-    if (verbose_level > 2) {
-        __hexdump (stdout, pkt_src_base, ((uint64_t) pkt_src - (uint64_t) pkt_src_base));
-    }
-
-    (*size) = (uint64_t) pkt_src - (uint64_t) pkt_src_base;
-    elog (DEBUG1, "Total size of packet buffer used: %ld\n", (uint64_t) ((uint64_t) pkt_src - (uint64_t) pkt_src_base));
-    elog (DEBUG1, "Total number of packets to be processed: %zu\n", *num_pkt);
-
-    return pkt_src_base;
-}
-
-int capi_regex_pkt_psql (CAPIRegexJobDescriptor* job_desc, Relation rel, int attr_id)
-{
-    if (job_desc == NULL) {
-        return -1;
-    }
-
-    job_desc->pkt_src_base = capi_regex_pkt_psql_internal (rel,
-                             attr_id,
-                             & (job_desc->pkt_size),
-                             & (job_desc->pkt_size_wo_hw_hdr),
-                             & (job_desc->num_pkt),
-                             & (job_desc->t_regex_pkt_copy));
-
-    // Allocate the result buffer per the number of packets in the packet buffer
-    // TODO: To reserve twice more spaces in case hardware goes into panic (i.e., writing to more spaces than expected)
-    // TODO: hardware issue?
-    int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * (job_desc->num_pkt) * 2;
-    int stat_size = (real_stat_size % 4096 == 0) ? real_stat_size : real_stat_size + (4096 - (real_stat_size % 4096));
-
-    // At least 4K for output buffer.
-    if (stat_size == 0) {
-        stat_size = 4096;
-    }
-
-    job_desc->stat_dest_base = alloc_mem (64, stat_size);
-    job_desc->stat_size = stat_size;
-
-    if (job_desc->pkt_size == 0 ||
-        job_desc->pkt_src_base == NULL ||
-        job_desc->stat_dest_base == NULL) {
-        return -1;
-    }
-
-    return 0;
-}
-
 int capi_regex_scan (CAPIRegexJobDescriptor* job_desc)
 {
     if (job_desc == NULL) {
         return -1;
     }
 
-    if (capi_regex_scan_internal (job_desc->dn,
-                                  job_desc->timeout,
+    if (capi_regex_scan_internal (job_desc->context->dn,
+                                  job_desc->context->timeout,
                                   job_desc->patt_src_base,
                                   job_desc->pkt_src_base,
                                   job_desc->stat_dest_base,
@@ -896,19 +715,14 @@ int get_results (void* result, size_t num_matched_pkt, void* stat_dest_base)
     uint32_t pkt_id = 0;
 
     if (result == NULL) {
-        elog (DEBUG1, "Invalid result pointer.\n");
-        return 1;
+        return -1;
     }
-
-    elog (DEBUG1, "---- Results (HW: hardware) ----\n");
-    elog (DEBUG1, "PKT(HW) PATT(HW) OFFSET(HW)\n");
 
     for (i = 0; i < (int)num_matched_pkt; i++) {
         for (j = 4; j < 8; j++) {
             pkt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 4) * 8);
         }
 
-        elog (DEBUG1, "MATCHED PKT: %d\n", pkt_id);
         ((uint32_t*)result)[i] = pkt_id;
 
         pkt_id = 0;
@@ -927,19 +741,16 @@ int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc)
 
     // Wait for transaction to be done.
     do {
-        //elog (DEBUG3, " Draining %i! \n", count);
-        action_read (job_desc->dn, ACTION_STATUS_L);
+        action_read (job_desc->context->dn, ACTION_STATUS_L);
         count++;
     } while (count < 2);
 
-    uint32_t reg_data = action_read (job_desc->dn, ACTION_STATUS_H);
-    elog (DEBUG1, "After draining, number of matched packets: %d\n", reg_data);
+    uint32_t reg_data = action_read (job_desc->context->dn, ACTION_STATUS_H);
     job_desc->num_matched_pkt = reg_data;
     job_desc->results = (uint32_t*) palloc (job_desc->num_matched_pkt * sizeof (uint32_t));
 
     if (get_results (job_desc->results, job_desc->num_matched_pkt, job_desc->stat_dest_base)) {
         errno = ENODEV;
-        elog (DEBUG1, "ERROR: failed to get results.\n");
         return -1;
     }
 
@@ -952,15 +763,20 @@ int capi_regex_job_cleanup (CAPIRegexJobDescriptor* job_desc)
         return -1;
     }
 
-    snap_detach_action (job_desc->act);
-    // Unmap AFU MMIO registers, if previously mapped
-    snap_card_free (job_desc->dn);
-    elog (DEBUG2, "Free Card Handle: %p\n", job_desc->dn);
+    // TODO: card will be freed in hardware manager
+    //snap_detach_action (job_desc->context->act);
+    //// Unmap AFU MMIO registers, if previously mapped
+    //snap_card_free (job_desc->context->dn);
+    //elog (DEBUG2, "Free Card Handle: %p\n", job_desc->context->dn);
 
-    free_mem (job_desc->patt_src_base);
+    // TODO: patt buffer will be freed in worker
+    //free_mem (job_desc->patt_src_base);
     free_mem (job_desc->pkt_src_base);
     free_mem (job_desc->stat_dest_base);
-    pfree (job_desc->results);
+
+    if (job_desc->results) {
+        pfree (job_desc->results);
+    }
 
     return 0;
 }

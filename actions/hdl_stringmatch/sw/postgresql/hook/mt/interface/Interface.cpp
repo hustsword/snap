@@ -17,35 +17,80 @@
 #include "boost/make_shared.hpp"
 #include "boost/shared_ptr.hpp"
 #include "boost/chrono.hpp"
-#include "Interface.h"
 #include "HardwareManager.h"
 #include "WorkerRegex.h"
-#include "BufRegex.h"
+#include "ThreadRegex.h"
 #include "JobRegex.h"
+#include "Interface.h"
 
 using namespace boost::chrono;
 
-int start_regex_workers (test_params in_params)
+int start_regex_workers (PGCAPIScanState* in_capiss)
 {
-    std::cout << "Running with job manager" << std::endl;
+    elog (INFO, "Running on regex worker");
 
-    HardwareManagerPtr hw_mgr =  boost::make_shared<HardwareManager> (in_params.card_no, 0, 1000);
-    WorkerRegexPtr worker = boost::make_shared<WorkerRegex> (hw_mgr, in_params.debug);
-    worker->set_mode (INTERRUPT == in_params.mode);
-    worker->set_job_start_threshold (in_params.buf_num * in_params.job_num);
+    if (NULL == in_capiss) {
+        elog (ERROR, "Invalid CAPI Scan State pointer");
+        return -1;
+    }
+
+    HardwareManagerPtr hw_mgr =  boost::make_shared<HardwareManager> (0, 0, 1000);
+
+    WorkerRegexPtr worker = boost::make_shared<WorkerRegex> (hw_mgr,
+                            in_capiss->css.ss.ss_currentRelation,
+                            in_capiss->capi_regex_attr_id,
+                            false);
+    worker->set_mode (false);
+
+    elog (INFO, "Init hardware");
+    ERROR_CHECK (hw_mgr->init());
+    elog (INFO, "Compile pattern");
+    ERROR_CHECK (worker->regex_compile (in_capiss->capi_regex_pattern));
+
+    elog (INFO, "Create %d job(s) for this worker", in_capiss->capi_regex_num_jobs);
+
+    // Create threads
+    for (int i = 0; i < in_capiss->capi_regex_num_jobs; i++) {
+        ThreadRegexPtr thd = boost::make_shared<ThreadRegex> (i, 1000);
+
+        // Create 1 job for each thread
+        JobRegexPtr job = boost::make_shared<JobRegex> (0, i, hw_mgr, false);
+        job->set_job_desc (in_capiss->capi_regex_job_descs[i]);
+        job->set_worker (worker);
+
+        thd->add_job (job);
+
+        // Add thread to worker
+        worker->add_thread (thd);
+    }
+
+    elog (INFO, "Finish setting up jobs.");
+
+    do {
+        high_resolution_clock::time_point t_start = high_resolution_clock::now();
+        worker->read_buffers();
+        high_resolution_clock::time_point t_end0 = high_resolution_clock::now();
+        auto duration0 = duration_cast<microseconds> (t_end0 - t_start).count();
+        // Start work
+        worker->start();
+        high_resolution_clock::time_point t_end1 = high_resolution_clock::now();
+        auto duration1 = duration_cast<microseconds> (t_end1 - t_end0).count();
+        // Cleanup objects created for this procedure
+        hw_mgr->cleanup();
+        worker->cleanup();
+        high_resolution_clock::time_point t_end2 = high_resolution_clock::now();
+        auto duration2 = duration_cast<microseconds> (t_end2 - t_end1).count();
+
+        elog (INFO, "Read buffers finished after %lu microseconds (us)", (uint64_t) duration0);
+        elog (INFO, "Work finished after %lu microseconds (us)", (uint64_t) duration1);
+        elog (INFO, "Cleanup finished after %lu microseconds (us)", (uint64_t) duration2);
+
+        elog (INFO, "Worker done!");
+    } while (0);
 
     return 0;
-}
 
-void print_test_params (test_params in_params)
-{
-    const char* mode_str[] = {"POLL", "INTERRUPT", "INVALID"};
-    printf ("card_no:\t%d\n", in_params.card_no);
-    printf ("job_num:\t%d\n", in_params.job_num);
-    printf ("buf_num:\t%d\n", in_params.buf_num);
-    printf ("memcopy_size:\t%d\n", in_params.memcopy_size);
-    printf ("timeout:\t%d\n", in_params.timeout);
-    printf ("mode:\t%s\n", mode_str[in_params.mode]);
-    printf ("debug:\t%d\n", in_params.debug);
+fail:
+    return -1;
 }
 

@@ -19,7 +19,7 @@
 
 #include <iostream>
 #include <vector>
-#include "BufBase.h"
+#include "ThreadBase.h"
 
 class WorkerBase
 {
@@ -30,23 +30,26 @@ public:
     // Destructor of the worker base
     ~WorkerBase();
 
-    // Add a buf to the queue
-    int add_buf (BufPtr in_buf);
+    // Add a thread to the queue
+    int add_thread (ThreadPtr in_thread);
 
-    // Delete a buf from the queue
-    void delete_buf (int buf_id);
+    // Delete a thread from the queue
+    void delete_thread (int in_thread_id);
 
-    // Start all bufs in m_bufs
+    // Start all threads in m_threads
     void start();
 
-    // Check if all buffers have done their job
-    virtual void check_buf_done() = 0;
+    // Check if all threads have done their job
+    virtual void check_thread_done() = 0;
+
+    // Check if everything is ready for start threads
+    virtual int check_start() = 0;
 
 protected:
-    // Queue of the buffers
-    std::vector<BufPtr> m_bufs;
+    // Queue of the threads
+    std::vector<ThreadPtr> m_threads;
 
-    // Thread to check if buffers are done their job
+    // Thread to check if threads are done their job
     boost::shared_ptr<boost::thread> m_check_thread;
 
     // The hardware manager

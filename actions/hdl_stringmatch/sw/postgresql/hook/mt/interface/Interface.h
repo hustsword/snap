@@ -20,20 +20,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "pg_capi.h"
 enum test_mode {POLL = 0, INTERRUPT, INVALID};
-typedef struct {
-    int card_no;
-    int job_num;
-    int buf_num;
-    uint32_t memcopy_size;
-    int timeout;
-    enum test_mode mode;
-    bool debug;
-} test_params;
-
-void print_test_params (test_params in_params);
-
-int start_regex_workers (test_params in_test_params);
+int start_regex_workers (PGCAPIScanState* in_capiss);
 #ifdef __cplusplus
 }
 #endif

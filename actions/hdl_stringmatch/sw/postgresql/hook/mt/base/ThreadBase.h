@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef BUFBASE_H_h
-#define BUFBASE_H_h
+#ifndef THREADBASE_H_h
+#define THREADBASE_H_h
 
 #include <iostream>
 #include <deque>
@@ -24,21 +24,21 @@
 #include "JobBase.h"
 #include "HardwareManager.h"
 
-class BufBase
+class ThreadBase
 {
 public:
-    // Constructor of buffer base
-    BufBase();
-    BufBase (int in_id);
-    BufBase (int in_id, int in_timeout);
+    // Constructor of thread base
+    ThreadBase();
+    ThreadBase (int in_id);
+    ThreadBase (int in_id, int in_timeout);
 
-    // Destructor of buffer base
-    virtual ~BufBase();
+    // Destructor of thread base
+    virtual ~ThreadBase();
 
-    // Get ID of this buffer
+    // Get ID of this thread
     int get_id();
 
-    // Set ID of this buffer
+    // Set ID of this thread
     void set_id (int in_id);
 
     // Add a job to the queue
@@ -72,12 +72,12 @@ public:
     int get_num_remaining_jobs();
 
     // The mutex used to sync between threads
-    // (each buf would start a thread to work with all the jobs in queue))
-    // Make it static to share across all instances of BufBase
+    // (each thread would start a thread to work with all the jobs in queue))
+    // Make it static to share across all instances of ThreadBase
     static boost::mutex m_global_mutex;
 
 protected:
-    // The queue to hold all jobs of this buffer
+    // The queue to hold all jobs of this thread
     std::deque<JobPtr> m_jobs;
 
     // The pointer to the thread instance
@@ -89,19 +89,19 @@ protected:
     // The condition variable used to sync between different calls within the object
     boost::condition_variable_any m_cond;
 
-    // ID of this buffer
+    // ID of this thread
     int m_id;
 
     // The timeout value before waiting an job to finish
     int m_timeout;
 
-    // If this buffer has stopped work
+    // If this thread has stopped work
     bool m_stopped;
 
     // Index to indicate the position of current jobs
     int m_current_job_idx;
 };
 
-typedef boost::shared_ptr<BufBase> BufPtr;
+typedef boost::shared_ptr<ThreadBase> ThreadPtr;
 
 #endif

@@ -47,7 +47,20 @@
 #include "utils/snapmgr.h"
 #include "utils/lsyscache.h"
 
-typedef struct CAPIRegexJobDescriptor_s {
+/*  defaults */
+#define STEP_DELAY      200
+#define DEFAULT_MEMCPY_BLOCK    4096
+#define DEFAULT_MEMCPY_ITER 1
+#define ACTION_WAIT_TIME    10   /* Default in sec */
+//#define MAX_NUM_PKT 502400
+//#define MAX_NUM_PKT 4096
+#define MIN_NUM_PKT 4096
+#define MAX_NUM_PATT 1024
+
+#define MEGAB       (1024*1024ull)
+#define GIGAB       (1024 * MEGAB)
+
+typedef struct CAPIContext_s {
     // CAPI device name
     char device[64];
     // CAPI-SNAP card handler
@@ -60,6 +73,11 @@ typedef struct CAPIRegexJobDescriptor_s {
     snap_action_flag_t attach_flags;
     // Action handler
     struct snap_action* act;
+} CAPIContext;
+
+typedef struct CAPIRegexJobDescriptor_s {
+    // Pointer to the context
+    CAPIContext* context;
     // Pointer to pattern buffer
     void* patt_src_base;
     // Pointer to packet buffer
@@ -89,6 +107,18 @@ typedef struct CAPIRegexJobDescriptor_s {
     // Each id corresponds one entry in the results buffer.
     int curr_result_id;
 
+    // The ID of the first block for this job
+    int start_blk_id;
+
+    // Number of blocks (postgresql blocks) for this job
+    int num_blks;
+
+    // The ID of the first tuple for this job
+    int start_tuple_id;
+
+    // Number of tuples (postgresql tuples) for this job
+    size_t num_tuples;
+
     // Perf statistics (in nano seconds);
     int64_t t_init;
     int64_t t_regex_patt; // Pattern compile time
@@ -97,6 +127,9 @@ typedef struct CAPIRegexJobDescriptor_s {
     int64_t t_regex_scan;
     int64_t t_regex_harvest;
     int64_t t_cleanup;
+
+    // Pointer to next descriptor
+    void* next_desc;
 } CAPIRegexJobDescriptor;
 
 #define PERF_MEASURE(_func, out) \
@@ -136,8 +169,8 @@ void free_mem (void* a);
 float perf_calc (uint64_t elapsed, uint64_t size);
 
 // Regex memory layout related functions
-void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr);
-void* fill_one_pattern (const char* in_patt, void* in_patt_addr);
+void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_pkt_id);
+void* fill_one_pattern (const char* in_patt, void* in_patt_addr, int in_patt_id);
 
 // CAPI basic operations
 void action_write (struct snap_card* h, uint32_t addr, uint32_t data);
@@ -168,11 +201,20 @@ int capi_regex_scan_internal (struct snap_card* dnc,
                               size_t pkt_size,
                               size_t stat_size);
 void* capi_regex_compile_internal (const char* patt, size_t* size);
-int capi_regex_job_init (CAPIRegexJobDescriptor* job_desc);
+int capi_regex_context_init (CAPIContext* context);
+int capi_regex_job_init (CAPIRegexJobDescriptor* job_desc,
+                         CAPIContext* context);
 int capi_regex_compile (CAPIRegexJobDescriptor* job_desc, const char* pattern);
-void* capi_regex_pkt_psql_internal (Relation rel, int attr_id, size_t* size, size_t* size_wo_hw_hdr,
-                                    size_t* num_pkt, int64_t* t_pkt_cpy);
-int capi_regex_pkt_psql (CAPIRegexJobDescriptor* job_desc, Relation rel, int attr_id);
+//void* capi_regex_pkt_psql_internal (Relation rel,
+//                                    int attr_id,
+//                                    int start_blk_id,
+//                                    int num_blks,
+//                                    size_t* size,
+//                                    size_t* size_wo_hw_hdr,
+//                                    size_t* num_pkt,
+//                                    int64_t* t_pkt_cpy);
+//int capi_regex_pkt_psql (CAPIRegexJobDescriptor* job_desc,
+//                         Relation rel, int attr_id);
 int capi_regex_scan (CAPIRegexJobDescriptor* job_desc);
 int get_results (void* result, size_t num_matched_pkt, void* stat_dest_base);
 int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc);

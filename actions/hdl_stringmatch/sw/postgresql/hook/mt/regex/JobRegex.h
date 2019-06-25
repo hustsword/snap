@@ -32,33 +32,15 @@ public:
 
     // Constructor of the job base
     JobRegex();
-    JobRegex (int in_id, int in_buf_id);
-    JobRegex (int in_id, int in_buf_id, HardwareManagerPtr in_hw_mgr);
-    JobRegex (int in_id, int in_buf_id, HardwareManagerPtr in_hw_mgr, bool in_debug);
+    JobRegex (int in_id, int in_thread_id);
+    JobRegex (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mgr);
+    JobRegex (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mgr, bool in_debug);
 
     // Destructor of the job base
     ~JobRegex();
 
-    // Set the address of the source buffer
-    void set_src (void* in_src);
-
-    // Set the address of the destination buffer
-    void set_dest (void* in_dest);
-
-    // Set the size of the memory copy
-    void set_size (size_t in_size);
-
     // Run this job
     virtual int run();
-
-    // Init the memory before copying
-    int mem_init();
-
-    // Perform the memory copy
-    int mem_copy();
-
-    // Check the memory result
-    int mem_check();
 
     // Set pointer to worker
     void set_worker (WorkerRegexPtr in_worker);
@@ -66,24 +48,42 @@ public:
     // Get pointer to worker
     WorkerRegexPtr get_worker();
 
-    // Allocate memory buffers
-    int allocate (size_t in_size);
+    // Initialize the job
+    int init();
+
+    // Prepare the packet buffer
+    int packet();
+
+    // Perform the regex scan
+    int scan();
+
+    // Get the result
+    int result();
+
+    // Set the job descriptor
+    void set_job_desc (CAPIRegexJobDescriptor* in_job_desc);
 
 private:
-    // The address of the source buffer
-    void* m_src;
-
-    // The address of the destination buffer
-    void* m_dest;
-
-    // The copy size;
-    size_t m_size;
-
     // Pointer to worker for adding job descriptors
     WorkerRegexPtr m_worker;
 
-    // Helper function to alloc aligned memory buffers
-    void* aalloc (int align, int size);
+    // The Job descritpor which contains all information for a regex job
+    CAPIRegexJobDescriptor* m_job_desc;
+
+    // Internal functions to handle relation buffers
+    void* capi_regex_pkt_psql_internal (Relation rel,
+                                        int attr_id,
+                                        int start_blk_id,
+                                        int num_blks,
+                                        size_t* size,
+                                        size_t* size_wo_hw_hdr,
+                                        size_t* num_pkt,
+                                        int64_t* t_pkt_cpy);
+
+    // Handle the packet preparation
+    int capi_regex_pkt_psql (CAPIRegexJobDescriptor* job_desc,
+                             Relation rel, int attr_id);
+
 };
 
 typedef boost::shared_ptr<JobRegex> JobRegexPtr;

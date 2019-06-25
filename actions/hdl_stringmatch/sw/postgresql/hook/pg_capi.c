@@ -15,7 +15,7 @@
  */
 
 #include "pg_capi.h"
-#include "pg_capi_internal.h"
+#include "./mt/interface/Interface.h"
 
 /*
  * Take https://github.com/kaigai/ctidscan.git as example
@@ -23,31 +23,11 @@
 
 PG_MODULE_MAGIC;
 
-// TODO: extern global variable for capi-regex, consider to remove. 
-extern uint32_t PATTERN_ID;
-extern uint32_t PACKET_ID;
-
-/*
- * PGCAPIScanState - state object of PGCAPIscan on executor.
- * Job descriptors and relation information is passed with this struct.
- */
-typedef struct {
-    CustomScanState         css;
-
-    // Relation related variables
-    List*                   PGCAPI_quals;
-    AttInMetadata*          attinmeta;
-
-    // Capi related variables and job descriptors
-    const char*             capi_regex_pattern;
-    int                     capi_regex_attr_id;
-    CAPIRegexJobDescriptor* job_desc;
-} PGCAPIScanState;
-
 /*
  * Static variables
  */
 static bool enable_PGCAPIscan;
+static int pgcapi_num_jobs;
 static set_rel_pathlist_hook_type set_rel_pathlist_next = NULL;
 
 /* function declarations */
@@ -69,7 +49,7 @@ static Plan* PlanPGCAPIScanPath (PlannerInfo* root,
 static Node* CreatePGCAPIScanState (CustomScan* custom_plan);
 
 /*
- * CustomScanExecMethods 
+ * CustomScanExecMethods
  * All customer scan related methods are defined here.
  */
 static void BeginPGCAPIScan (CustomScanState* node, EState* estate, int eflags);
@@ -78,9 +58,8 @@ static TupleTableSlot* ExecPGCAPIScan (CustomScanState* node);
 static void EndPGCAPIScan (CustomScanState* node);
 static void ExplainPGCAPIScan (CustomScanState* node, shm_toc* ancestors, void* es);
 
-/* 
- * static table of custom-scan callbacks 
- *
+/*
+ * static table of custom-scan callbacks
  */
 static CustomPathMethods    PGCAPIscan_path_methods = {
     "PGCAPIscan",               /* CustomName */
@@ -119,55 +98,6 @@ static CustomExecMethods    PGCAPIscan_exec_methods = {
      IsA((node), Var) &&                                                \
      ((Var *) (node))->varno == (rtindex) &&                            \
      ((Var *) (node))->varlevelsup == 0)
-
-/*
- * The regular expression matching procedure on CAPI
- */
-static void
-regex_capi (CustomScanState* node)
-{
-    PGCAPIScanState*  capiss = (PGCAPIScanState*) node;
-
-    const char* i_pattern = capiss->capi_regex_pattern;
-    const AttrNumber i_attr_id = (capiss->capi_regex_attr_id - 1);
-
-    if (NULL == i_pattern) {
-        elog (ERROR, "Invalid pattern pointer for CAPI task!");
-    }
-
-    if (i_attr_id < 0) {
-        elog (ERROR, "Invalid attribute id for CAPI task!");
-    }
-
-    if (NULL == capiss->job_desc) {
-        elog (ERROR, "Invalid job descriptorfor CAPI task!");
-    }
-
-    Relation rel = capiss->css.ss.ss_currentRelation;
-
-    elog (INFO, "regex_capi start");
-
-    PATTERN_ID = 0;
-    PACKET_ID = 0;
-
-    struct timespec t_beg, t_end;
-    clock_gettime (CLOCK_REALTIME, &t_beg);
-
-    if (!capi_regex_check_relation (rel)) {
-        elog (ERROR, "regex_capi cannot use the relation %s\n", RelationGetRelationName (rel));
-    } else {
-        PERF_MEASURE (capi_regex_job_init       (capiss->job_desc),                 capiss->job_desc->t_init);
-        PERF_MEASURE (capi_regex_compile        (capiss->job_desc, i_pattern),      capiss->job_desc->t_regex_patt);
-        PERF_MEASURE (capi_regex_pkt_psql       (capiss->job_desc, rel, i_attr_id), capiss->job_desc->t_regex_pkt);
-        PERF_MEASURE (capi_regex_scan           (capiss->job_desc),                 capiss->job_desc->t_regex_scan);
-        PERF_MEASURE (capi_regex_result_harvest (capiss->job_desc),                 capiss->job_desc->t_regex_harvest);
-    }
-
-fail:
-    clock_gettime (CLOCK_REALTIME, &t_end);
-    print_time_text ("|The total run time|", diff_time (&t_beg, &t_end) / 1000, capiss->job_desc->pkt_size_wo_hw_hdr);
-    elog (INFO, "regex_capi done");
-}
 
 /*
  * PGCAPIQualFromExpr
@@ -372,7 +302,15 @@ CreatePGCAPIScanState (CustomScan* custom_plan)
     // Initialize CAPI job descriptor and related variables
     capiss->capi_regex_pattern = NULL;
     capiss->capi_regex_attr_id = -1;
-    capiss->job_desc = palloc0 (sizeof (CAPIRegexJobDescriptor));
+    capiss->capi_regex_job_descs = (CAPIRegexJobDescriptor**) palloc0 (sizeof (CAPIRegexJobDescriptor*) * 16);
+
+    capiss->capi_regex_num_jobs = pgcapi_num_jobs;
+
+    for (int i = 0; i < capiss->capi_regex_num_jobs; i++) {
+        capiss->capi_regex_job_descs[i] = (CAPIRegexJobDescriptor*) palloc0 (sizeof (CAPIRegexJobDescriptor));
+    }
+
+    capiss->capi_regex_curr_job = 0;
 
     return (Node*)&capiss->css;
 }
@@ -401,7 +339,7 @@ BeginPGCAPIScan (CustomScanState* node, EState* estate, int eflags)
         if (nodeTag (arg1) == T_Var) {
             AttrNumber t_attr_id = ((Var*) (arg1))->varattno;
             elog (INFO, "Arg1 attr no: %d", t_attr_id);
-            capiss->capi_regex_attr_id = t_attr_id;
+            capiss->capi_regex_attr_id = t_attr_id - 1;
         }
 
         if (nodeTag (arg2) == T_Const) {
@@ -413,9 +351,10 @@ BeginPGCAPIScan (CustomScanState* node, EState* estate, int eflags)
         }
     }
 
-    // Start the CAPI regular expression procedure.
-    regex_capi (node);
+    // Start multiple threads to perform regex scan in parallel
+    ERROR_CHECK (start_regex_workers (capiss));
 
+fail:
     // Need to set this qualification variable to NULL so that
     // in ExecScan phase the result is not filtered out.
     (&node->ss)->ps.qual = NULL;
@@ -457,8 +396,25 @@ PGCAPIAccessCustomScan (CustomScanState* node)
     TupleTableSlot* slot;
     char**       values;
 
-    if (capiss->job_desc->curr_result_id >= capiss->job_desc->num_matched_pkt) {
+new_job:
+
+    if (capiss->capi_regex_curr_job >= capiss->capi_regex_num_jobs) {
         return NULL;
+    }
+
+    int curr_job_id = capiss->capi_regex_curr_job;
+    CAPIRegexJobDescriptor* job_desc = capiss->capi_regex_job_descs[curr_job_id];
+
+    //elog (INFO, "Harvesting on job %d (total jobs %d) result %d (total results %d)",
+    //        capiss->capi_regex_curr_job, capiss->capi_regex_num_jobs,
+    //        job_desc->curr_result_id, (int)job_desc->num_matched_pkt);
+
+    if (job_desc->curr_result_id >= ((int)job_desc->num_matched_pkt - 1)) {
+        (capiss->capi_regex_curr_job)++;
+    }
+
+    if (job_desc->curr_result_id >= job_desc->num_matched_pkt) {
+        goto new_job;
     }
 
     values = (char**) palloc (2 * sizeof (char*));
@@ -467,8 +423,8 @@ PGCAPIAccessCustomScan (CustomScanState* node)
 
     // TODO: need a real column data to be returned
     sprintf (values[0], "Column data");
-    sprintf (values[1], "%d", ((uint32_t*)capiss->job_desc->results)[capiss->job_desc->curr_result_id]);
-    (capiss->job_desc->curr_result_id)++;
+    sprintf (values[1], "%d", ((uint32_t*)job_desc->results)[job_desc->curr_result_id]);
+    (job_desc->curr_result_id)++;
 
     HeapTuple tuple = BuildTupleFromCStrings (capiss->attinmeta, values);
 
@@ -516,22 +472,18 @@ EndPGCAPIScan (CustomScanState* node)
 {
     PGCAPIScanState*  capiss = (PGCAPIScanState*)node;
 
-    // TODO: Only 4096 for the output?
-    char header_str[4096] = "";
-    char out_str[4096] = "";
+    // Clean up the jobs
+    for (int i = 0; i < capiss->capi_regex_num_jobs; i++) {
+        //elog (INFO, "Free packet buffer @ %#lX", (uint64_t)capiss->capi_regex_job_descs[i]->pkt_src_base);
+        capi_regex_job_cleanup (capiss->capi_regex_job_descs[i]);
+        pfree (capiss->capi_regex_job_descs[i]);
+    }
+
+    pfree (capiss->capi_regex_job_descs);
 
     if (capiss->css.ss.ss_currentScanDesc) {
         heap_endscan (capiss->css.ss.ss_currentScanDesc);
     }
-
-    PERF_MEASURE (capi_regex_job_cleanup (capiss->job_desc), capiss->job_desc->t_cleanup);
-    print_result (capiss->job_desc, header_str, out_str);
-    char* result = pstrdup (header_str);
-    elog (INFO, "Header: %s", result);
-    result = pstrdup (out_str);
-    elog (INFO, "Result: %s", result);
-fail:
-    pfree (capiss->job_desc);
 }
 
 /*
@@ -580,6 +532,18 @@ _PG_init (void)
                               PGC_USERSET,
                               GUC_NOT_IN_SAMPLE,
                               NULL, NULL, NULL);
+
+    DefineCustomIntVariable ("PGCAPIscan.num_jobs",
+                             "Number of jobs to perform CAPI scan",
+                             NULL,
+                             &pgcapi_num_jobs,
+                             1,
+                             1, 128,
+                             PGC_SUSET,
+                             GUC_UNIT,
+                             NULL,
+                             NULL,
+                             NULL);
 
     /* registration of the hook to add alternative path */
     set_rel_pathlist_next = set_rel_pathlist_hook;

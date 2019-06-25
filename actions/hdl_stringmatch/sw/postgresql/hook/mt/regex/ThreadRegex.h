@@ -13,24 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef THREADREGEX_H_h
+#define THREADREGEX_H_h
 
-#ifndef JOBDESCRIPTOR_H_h
-#define JOBDESCRIPTOR_H_h
-// Descriptor used by hardware job manager
-typedef struct {
-    uint32_t header;         // 4
-    uint32_t copy_length;    // 8
-    uint64_t mem_src;        // 16
-    uint64_t mem_dest;       // 24
-    uint64_t next_desc;      // 32
-    uint32_t user_config_len;// 36
-    uint32_t user_config_0;  // 40
-    uint32_t user_config_1;  // 44
-    uint32_t user_config_2;  // 48
-    uint32_t user_config_3;  // 52
-    uint32_t user_config_4;  // 56
-    uint32_t user_config_5;  // 60
-    uint32_t user_config_6;  // 64
-} JobDescriptor;
+#include <iostream>
+#include <vector>
+#include <boost/shared_ptr.hpp>
+#include <boost/thread.hpp>
+#include "ThreadBase.h"
+#include "HardwareManager.h"
+
+class ThreadRegex : public ThreadBase
+{
+public:
+    // Constructor of thread regex
+    ThreadRegex();
+    ThreadRegex (int in_id);
+    ThreadRegex (int in_id, int in_timeout);
+
+    // Destructor of thread regex
+    ~ThreadRegex();
+
+    // Work with the jobs
+    virtual void work_with_job (JobPtr in_job);
+
+private:
+};
+
+typedef boost::shared_ptr<ThreadRegex> ThreadRegexPtr;
 
 #endif

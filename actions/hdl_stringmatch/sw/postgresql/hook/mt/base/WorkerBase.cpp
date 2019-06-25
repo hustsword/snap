@@ -27,51 +27,41 @@ WorkerBase::WorkerBase (HardwareManagerPtr in_hw_mgr)
 
 WorkerBase::~WorkerBase()
 {
+    m_threads.clear();
 }
 
-int WorkerBase::add_buf (BufPtr in_buf)
+int WorkerBase::add_thread (ThreadPtr in_thread)
 {
-    m_bufs.push_back (in_buf);
+    m_threads.push_back (in_thread);
 
-    return m_bufs.size() - 1;
+    return m_threads.size() - 1;
 }
 
-void WorkerBase::delete_buf (int buf_id)
+void WorkerBase::delete_thread (int in_thread_id)
 {
-    if (buf_id >= (int)m_bufs.size()) {
+    if (in_thread_id >= (int)m_threads.size()) {
         return;
     }
 
-    m_bufs.erase (m_bufs.begin() + buf_id);
+    m_threads.erase (m_threads.begin() + in_thread_id);
 }
 
 void WorkerBase::start()
 {
-    //if (m_job_manager_en) {
-    //    m_hw_mgr->reg_write (ACTION_GLOBAL_CONTROL, 0X00000100);
-    //} else {
-    //    m_hw_mgr->reg_write (ACTION_GLOBAL_CONTROL, 0X00000000);
-    //}
-
-    //// Clear the interrupt status
-    //uint32_t reg_data = m_hw_mgr->reg_read (ACTION_GLOBAL_INTERRUPT_MASK);
-    //m_hw_mgr->reg_write (ACTION_GLOBAL_INTERRUPT_CTRL, reg_data);
-    //reg_data = m_hw_mgr->reg_read (ACTION_GLOBAL_INTERRUPT_MASK);
-    //m_hw_mgr->reg_write (ACTION_GLOBAL_INTERRUPT_CTRL, reg_data);
-    //reg_data = m_hw_mgr->reg_read (ACTION_GLOBAL_INTERRUPT_MASK);
-    //m_hw_mgr->reg_write (ACTION_GLOBAL_INTERRUPT_CTRL, reg_data);
-    //reg_data = m_hw_mgr->reg_read (ACTION_GLOBAL_INTERRUPT_MASK);
-    //m_hw_mgr->reg_write (ACTION_GLOBAL_INTERRUPT_CTRL, reg_data);
-
-    for (int i = 0; i < (int)m_bufs.size(); i++) {
-        m_bufs[i]->start();
+    if (check_start()) {
+        elog (ERROR, "Unable to start worker because check_start failed.");
+        return;
     }
 
-    m_check_thread = boost::make_shared<boost::thread> (&WorkerBase::check_buf_done, this);
-
-    for (int i = 0; i < (int)m_bufs.size(); i++) {
-        m_bufs[i]->join();
+    for (int i = 0; i < (int)m_threads.size(); i++) {
+        m_threads[i]->start();
     }
 
-    m_check_thread->join();
+    //m_check_thread = boost::make_shared<boost::thread> (&WorkerBase::check_thread_done, this);
+
+    for (int i = 0; i < (int)m_threads.size(); i++) {
+        m_threads[i]->join();
+    }
+
+    //m_check_thread->join();
 }

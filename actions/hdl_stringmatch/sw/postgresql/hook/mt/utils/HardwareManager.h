@@ -23,6 +23,14 @@
 #include <boost/shared_ptr.hpp>
 #include <libsnap.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include "pg_capi_internal.h"
+#ifdef __cplusplus
+}
+#endif
+
 typedef snap_card CAPICard;
 typedef snap_action CAPIAction;
 
@@ -51,6 +59,9 @@ public:
     // Wait interrupt
     int wait_interrupt();
 
+    // Get the CAPI context
+    CAPIContext* get_context();
+
 private:
     // The card number
     int m_card_num;
@@ -63,6 +74,9 @@ private:
 
     // The flags to attach the action
     snap_action_flag_t m_attach_flags;
+
+    // The struct to hold all CAPI card related handlers
+    CAPIContext* m_context;
 
     // Timeout value before waiting the action attached
     int m_timeout_sec;
