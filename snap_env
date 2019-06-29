@@ -211,6 +211,8 @@ while [ -z "$SETUP_DONE" ]; do
     if [ -z "$RESP" ]; then
        echo "export USER_DEFINED_DESIGN=TRUE" >> $snap_env_sh
     fi
+  elif [ -n "$HDL_ENG8" ]; then
+    AR='${SNAP_ROOT}/actions/hdl_eng8'
   elif [ -n "$HDL_HELLOWORLD" ]; then
     AR='${SNAP_ROOT}/actions/hdl_helloworld'
   elif [ -n "$HDL_NVME_EXAMPLE" ]; then

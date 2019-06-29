@@ -42,13 +42,14 @@ BUILDDIR = ./obj
 TOBUILDDIR = $(addprefix $(BUILDDIR)/,$(1))
 MKDIR = if [ ! -d $(dir $@) ]; then mkdir -p $(dir $@); fi
 
-CPPFLAGS += -I./mt
 MT_CPPSRCS := $(shell find ./mt -name "*.cpp")
 MT_CPPOBJS := $(call TOBUILDDIR,$(patsubst %.cpp,%.o,$(MT_CPPSRCS)))
 MT_CPPFLAGS := --std=c++11
-MT_INCLUDES := -I. -I./mt -I../../../software/include
+MT_INCLUDES := -I. -I./mt -I./mt/base -I./mt/memcopy -I./mt/test -I./mt/utils -I../../../software/include
+MT_INCLUDES += -I./mt/memcopy_jm
 MT_COMPILEFLAGS := -W -Wall -Wno-multichar -Wno-unused-parameter -Wno-unused-function -Werror-implicit-function-declaration
 MT_OPTFLAGS := -O3
+CPPFLAGS += $(MT_INCLUDES)
 
 all: all_build
 
@@ -59,13 +60,14 @@ $(MT_CPPOBJS): $(BUILDDIR)/%.o: %.cpp
 #config:
 #	./action_config.sh
 
-hdl_helloworld_objs += $(MT_CPPOBJS)
-hdl_helloworld: $(hdl_helloworld_objs)
+hdl_eng8_objs += $(MT_CPPOBJS)
+hdl_eng8: $(hdl_eng8_objs)
 
-projs += hdl_helloworld
+projs += hdl_eng8
+projs += init
 
-#hdl_helloworld: hdl_helloworld.o something_else.o
-hdl_helloworld: hdl_helloworld.o $(MT_CPPOBJS)
+#hdl_eng8: hdl_eng8.o something_else.o
+hdl_eng8: hdl_eng8.o $(MT_CPPOBJS)
 	$(CXX) $(LDFLAGS) $($(@)_LDFLAGS) --std=c++11 -lboost_thread -lboost_system -lpthread -lboost_chrono $@.o $($(@)_objs) $($(@)_libs) $(LDLIBS) -o $@
 
 # If you have the host code outside of the default snap directory structure, 

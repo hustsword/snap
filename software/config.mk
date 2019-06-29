@@ -46,6 +46,7 @@ MAKE		+= -s
 endif
 
 CC		= $(CROSS)gcc
+CXX		= $(CROSS)g++
 AS		= $(CROSS)as
 LD		= $(CROSS)ld
 AR		= $(CROSS)ar
