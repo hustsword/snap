@@ -37,6 +37,17 @@ ThreadRegex::~ThreadRegex()
 {
 }
 
+int ThreadRegex::init()
+{
+    for (size_t i = 0; i < m_jobs.size(); i++) {
+        if (m_jobs[i]->init()) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
 void ThreadRegex::work_with_job (JobPtr in_job)
 {
     JobRegexPtr job = boost::dynamic_pointer_cast<JobRegex> (in_job);
@@ -54,5 +65,12 @@ void ThreadRegex::work_with_job (JobPtr in_job)
     } while (0);
 
     return;
+}
+
+void ThreadRegex::cleanup()
+{
+    for (size_t i = 0; i < m_jobs.size(); i++) {
+        m_jobs[i]->cleanup();
+    }
 }
 

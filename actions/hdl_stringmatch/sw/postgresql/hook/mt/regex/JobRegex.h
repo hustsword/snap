@@ -49,7 +49,7 @@ public:
     WorkerRegexPtr get_worker();
 
     // Initialize the job
-    int init();
+    virtual int init();
 
     // Prepare the packet buffer
     int packet();
@@ -59,6 +59,12 @@ public:
 
     // Get the result
     int result();
+
+    // Cleanup allocated memories
+    virtual void cleanup();
+
+    // Allocate packet buffer and stat buffer
+    int allocate_packet_buffer ();
 
     // Set the job descriptor
     void set_job_desc (CAPIRegexJobDescriptor* in_job_desc);
@@ -71,10 +77,12 @@ private:
     CAPIRegexJobDescriptor* m_job_desc;
 
     // Internal functions to handle relation buffers
-    void* capi_regex_pkt_psql_internal (Relation rel,
+    //void* capi_regex_pkt_psql_internal (Relation rel,
+    int capi_regex_pkt_psql_internal (Relation rel,
                                         int attr_id,
                                         int start_blk_id,
                                         int num_blks,
+                                        void* pkt_src_base,
                                         size_t* size,
                                         size_t* size_wo_hw_hdr,
                                         size_t* num_pkt,
@@ -83,6 +91,13 @@ private:
     // Handle the packet preparation
     int capi_regex_pkt_psql (CAPIRegexJobDescriptor* job_desc,
                              Relation rel, int attr_id);
+
+    // Aligned variant of palloc0
+    void* aligned_palloc0 (size_t in_size);
+
+    // An array to hold all allocated pointers,
+    // need this array to remember which pionter needs to be freed.
+    std::vector<void*> m_allocated_ptrs;
 
 };
 

@@ -27,11 +27,10 @@ WorkerRegex::WorkerRegex (HardwareManagerPtr in_hw_mgr, Relation in_relation, in
       m_patt_size (0),
       m_relation (in_relation),
       m_attr_id (in_attr_id),
-      m_num_blks (0)
+      m_num_blks (0),
+      m_num_tuples (0)
 {
     m_job_manager_en = false;
-
-    elog (INFO, "Total number of blocks: %d", m_num_blks);
 
     if (m_attr_id < 0) {
         elog (ERROR, "Invalid attribute ID %d", m_attr_id);
@@ -45,6 +44,17 @@ WorkerRegex::~WorkerRegex()
 void WorkerRegex::set_mode (bool in_interrupt)
 {
     m_interrupt = in_interrupt;
+}
+
+int WorkerRegex::init()
+{
+    for (size_t i = 0; i < m_threads.size(); i++) {
+        if (m_threads[i]->init()) {
+            return -1;
+        }
+    }
+
+    return 0;
 }
 
 void WorkerRegex::check_thread_done()
@@ -158,13 +168,45 @@ int WorkerRegex::get_num_blks_per_thread (int in_thread_id, int* out_start_blk_i
     return num_blks_per_thread;
 }
 
-void WorkerRegex::cleanup()
+size_t WorkerRegex::get_num_tuples_per_thread (int in_thread_id)
 {
-    if (m_patt_src_base) {
-        free_mem (m_patt_src_base);
+    int num_threads = m_threads.size();
+    int num_tuples_per_thread = 0;
+
+    if (m_num_tuples <= 0) {
+        return -1;
     }
 
+    if (num_threads <= 0) {
+        return -1;
+    }
+
+    int tuples_per_thread = m_num_tuples / num_threads;
+    int tuples_last_thread = m_num_tuples % num_threads;
+
+    if (0 == tuples_per_thread) {
+        // TODO: if number of total blocks is less than number of threads, get panic.
+        // Need to revisit this behavior.
+        return -1;
+    }
+
+    num_tuples_per_thread = tuples_per_thread;
+
+    if (in_thread_id == (num_threads - 1)) {
+        num_tuples_per_thread += tuples_last_thread;
+    }
+
+    return num_tuples_per_thread;
+}
+
+void WorkerRegex::cleanup()
+{
+    free_mem (m_patt_src_base);
     release_buffers();
+
+    for (size_t i = 0; i < m_threads.size(); i++) {
+        m_threads[i]->cleanup();
+    }
 }
 
 void WorkerRegex::read_buffers()
@@ -175,10 +217,16 @@ void WorkerRegex::read_buffers()
 
     for (int blk_num = 0; blk_num < m_num_blks; ++blk_num) {
         Buffer buf = ReadBufferExtended (m_relation, MAIN_FORKNUM, blk_num, RBM_NORMAL, NULL);
+
+        Page page = (Page) BufferGetPage (buf);
+        int num_lines = PageGetMaxOffsetNumber (page);
+        m_num_tuples += num_lines;
+
         m_buffers[blk_num] = buf;
     }
 
     elog (INFO, "Read %d buffers from relation", m_num_blks);
+    elog (INFO, "Read %zu tuples from relation", m_num_tuples);
 }
 
 void WorkerRegex::release_buffers()

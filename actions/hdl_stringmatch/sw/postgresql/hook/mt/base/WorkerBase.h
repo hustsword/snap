@@ -35,6 +35,9 @@ public:
 
     // Delete a thread from the queue
     void delete_thread (int in_thread_id);
+    
+    // Initialize each thread
+    virtual int init() = 0;
 
     // Start all threads in m_threads
     void start();
@@ -44,6 +47,9 @@ public:
 
     // Check if everything is ready for start threads
     virtual int check_start() = 0;
+
+    // Cleanup necessary resources
+    virtual void cleanup() = 0;
 
 protected:
     // Queue of the threads

@@ -27,7 +27,7 @@ using namespace boost::chrono;
 
 int start_regex_workers (PGCAPIScanState* in_capiss)
 {
-    elog (INFO, "Running on regex worker");
+    elog (DEBUG1, "Running on regex worker");
 
     if (NULL == in_capiss) {
         elog (ERROR, "Invalid CAPI Scan State pointer");
@@ -42,9 +42,9 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
                             false);
     worker->set_mode (false);
 
-    elog (INFO, "Init hardware");
+    elog (DEBUG1, "Init hardware");
     ERROR_CHECK (hw_mgr->init());
-    elog (INFO, "Compile pattern");
+    elog (DEBUG1, "Compile pattern");
     ERROR_CHECK (worker->regex_compile (in_capiss->capi_regex_pattern));
 
     elog (INFO, "Create %d job(s) for this worker", in_capiss->capi_regex_num_jobs);
@@ -64,15 +64,21 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
         worker->add_thread (thd);
     }
 
-    elog (INFO, "Finish setting up jobs.");
+    elog (DEBUG1, "Finish setting up jobs.");
 
     do {
+        // Read relation buffers
         high_resolution_clock::time_point t_start = high_resolution_clock::now();
         worker->read_buffers();
+        //if (worker->init()) {
+        //    elog (ERROR, "Failed to initialize worker");
+        //    return -1;
+        //}
         high_resolution_clock::time_point t_end0 = high_resolution_clock::now();
         auto duration0 = duration_cast<microseconds> (t_end0 - t_start).count();
-        // Start work
+        // Start work, multithreading starts from here
         worker->start();
+        // Multithreading ends at here
         high_resolution_clock::time_point t_end1 = high_resolution_clock::now();
         auto duration1 = duration_cast<microseconds> (t_end1 - t_end0).count();
         // Cleanup objects created for this procedure
@@ -85,7 +91,7 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
         elog (INFO, "Work finished after %lu microseconds (us)", (uint64_t) duration1);
         elog (INFO, "Cleanup finished after %lu microseconds (us)", (uint64_t) duration2);
 
-        elog (INFO, "Worker done!");
+        elog (DEBUG1, "Worker done!");
     } while (0);
 
     return 0;

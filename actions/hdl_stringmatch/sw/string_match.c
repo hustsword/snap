@@ -757,64 +757,64 @@ static void* sm_scan_file (const char* file_path, size_t* size, size_t* size_for
     return pkt_src_base;
 }
 
-static int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no_chk_offset)
-{
-    int i = 0, j = 0;
-    uint16_t offset = 0;
-    uint32_t pkt_id = 0;
-    uint32_t patt_id = 0;
-    int rc = 0;
-
-    if ((int)num_matched_pkt != regex_ref_get_num_matched_pkt()) {
-        VERBOSE0 ("ERROR! Num matched packets mismatch\n");
-        VERBOSE0 ("EXPECTED: %d\n", regex_ref_get_num_matched_pkt());
-        VERBOSE0 ("ACTUAL: %d\n", (int)num_matched_pkt);
-        rc = 1;
-    }
-
-    VERBOSE1 ("---- Results (HW: hardware, SW: software) ----\n");
-    VERBOSE1 ("PKT(HW) PATT(HW) OFFSET(HW) PKT(SW) PATT(SW) OFFSET(SW)\n");
-
-    for (i = 0; i < (int)num_matched_pkt; i++) {
-        for (j = 0; j < 4; j++) {
-            patt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << j * 8);
-        }
-
-        for (j = 4; j < 8; j++) {
-            pkt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 4) * 8);
-        }
-
-        for (j = 8; j < 10; j++) {
-            offset |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 2) * 8);
-        }
-
-        sm_stat ref_stat = regex_ref_get_result (pkt_id);
-
-        //VERBOSE1("%9d\t%8d\t%9d\t%9d\t%8d\t%9d", pkt_id, patt_id, offset,
-        //        ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
-
-        if ((ref_stat.packet_id != pkt_id) ||
-            (ref_stat.pattern_id != patt_id) ||
-            ((ref_stat.offset != offset) && (no_chk_offset == 0))) {
-            VERBOSE1 ("%7d\t%6d\t%7d\t%7d\t%6d\t%9d", pkt_id, patt_id, offset,
-                      ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
-
-            VERBOSE1 (" MISMATCH!\n");
-            rc = 1;
-        } else {
-            VERBOSE1 ("%7d\t%6d\t%7d\t%7d\t%6d\t%7d", pkt_id, patt_id, offset,
-                      ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
-
-            VERBOSE1 ("    MATCHED!\n");
-        }
-
-        patt_id = 0;
-        pkt_id = 0;
-        offset = 0;
-    }
-
-    return rc;
-}
+//static int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no_chk_offset)
+//{
+//    int i = 0, j = 0;
+//    uint16_t offset = 0;
+//    uint32_t pkt_id = 0;
+//    uint32_t patt_id = 0;
+//    int rc = 0;
+//
+//    if ((int)num_matched_pkt != regex_ref_get_num_matched_pkt()) {
+//        VERBOSE0 ("ERROR! Num matched packets mismatch\n");
+//        VERBOSE0 ("EXPECTED: %d\n", regex_ref_get_num_matched_pkt());
+//        VERBOSE0 ("ACTUAL: %d\n", (int)num_matched_pkt);
+//        rc = 1;
+//    }
+//
+//    VERBOSE1 ("---- Results (HW: hardware, SW: software) ----\n");
+//    VERBOSE1 ("PKT(HW) PATT(HW) OFFSET(HW) PKT(SW) PATT(SW) OFFSET(SW)\n");
+//
+//    for (i = 0; i < (int)num_matched_pkt; i++) {
+//        for (j = 0; j < 4; j++) {
+//            patt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << j * 8);
+//        }
+//
+//        for (j = 4; j < 8; j++) {
+//            pkt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 4) * 8);
+//        }
+//
+//        for (j = 8; j < 10; j++) {
+//            offset |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 2) * 8);
+//        }
+//
+//        sm_stat ref_stat = regex_ref_get_result (pkt_id);
+//
+//        //VERBOSE1("%9d\t%8d\t%9d\t%9d\t%8d\t%9d", pkt_id, patt_id, offset,
+//        //        ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
+//
+//        if ((ref_stat.packet_id != pkt_id) ||
+//            (ref_stat.pattern_id != patt_id) ||
+//            ((ref_stat.offset != offset) && (no_chk_offset == 0))) {
+//            VERBOSE1 ("%7d\t%6d\t%7d\t%7d\t%6d\t%9d", pkt_id, patt_id, offset,
+//                      ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
+//
+//            VERBOSE1 (" MISMATCH!\n");
+//            rc = 1;
+//        } else {
+//            VERBOSE1 ("%7d\t%6d\t%7d\t%7d\t%6d\t%7d", pkt_id, patt_id, offset,
+//                      ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
+//
+//            VERBOSE1 ("    MATCHED!\n");
+//        }
+//
+//        patt_id = 0;
+//        pkt_id = 0;
+//        offset = 0;
+//    }
+//
+//    return rc;
+//}
 
 int main (int argc, char* argv[])
 {
@@ -825,20 +825,27 @@ int main (int argc, char* argv[])
     int rc = 1;
     uint64_t cir;
     int timeout = ACTION_WAIT_TIME;
-    int no_chk_offset = 0;
+    //int no_chk_offset = 0;
     snap_action_flag_t attach_flags = 0;
     struct snap_action* act = NULL;
     unsigned long ioctl_data;
     void* patt_src_base = NULL;
     void* pkt_src_base = NULL;
-    void* stat_dest_base = NULL;
+    void* pkt_src_base_0 = NULL;
+    void* pkt_src_base_1 = NULL;
+    void* pkt_src_base_2 = NULL;
+    void* pkt_src_base_3 = NULL;
+    void* stat_dest_base_0 = NULL;
+    void* stat_dest_base_1 = NULL;
+    void* stat_dest_base_2 = NULL;
+    void* stat_dest_base_3 = NULL;
     size_t num_matched_pkt = 0;
     size_t pkt_size = 0;
     size_t patt_size = 0;
     size_t pkt_size_for_sw = 0;
     uint64_t start_time;
     uint64_t elapsed_time;
-    uint32_t reg_data;
+    //uint32_t reg_data;
 
     while (1) {
         int option_index = 0;
@@ -888,7 +895,7 @@ int main (int argc, char* argv[])
             break;
 
         case 'f':      /* don't check offset */
-            no_chk_offset = 1;
+            //no_chk_offset = 1;
             break;
 
         default:
@@ -949,7 +956,7 @@ int main (int argc, char* argv[])
     VERBOSE0 ("======== SOFTWARE RUN ========\n");
     // The software run.
     start_time = get_usec();
-    regex_ref_run_match();
+    //regex_ref_run_match();
     elapsed_time = get_usec() - start_time;
     VERBOSE0 ("Software run finished with size %d.\n", (int) pkt_size_for_sw);
     print_time (elapsed_time, pkt_size_for_sw);
@@ -965,7 +972,8 @@ int main (int argc, char* argv[])
     VERBOSE0 ("Finish get action.\n");
 
     // Alloc state output buffer, aligned to 4K
-    int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt();
+    //int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt();
+    int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * ((pkt_size / 1024) * 2);
     int stat_size = (real_stat_size % 4096 == 0) ? real_stat_size : real_stat_size + (4096 - (real_stat_size % 4096));
 
     // At least 4K for output buffer.
@@ -973,99 +981,142 @@ int main (int argc, char* argv[])
         stat_size = 4096;
     }
 
-    stat_dest_base = alloc_mem (64, stat_size);
-    memset (stat_dest_base, 0, stat_size);
-
     // Reset the hardware
     soft_reset (dn);
 
-    VERBOSE0 ("======== HARDWARE RUN ========\n");
-    start_time = get_usec();
-    VERBOSE0 ("======== HARDWARE RUN #0 ========\n");
-    rc = sm_scan (dn, timeout,
-                  patt_src_base,
-                  pkt_src_base,
-                  stat_dest_base,
-                  &num_matched_pkt,
-                  patt_size,
-                  pkt_size,
-                  stat_size);
-    elapsed_time = get_usec() - start_time;
-    // pkt_size_for_sw is the real size without hardware specific 64B header
-    print_time (elapsed_time, pkt_size_for_sw);
+    for (int i = 0; i < 100; i++) {
+        pkt_src_base_0 = alloc_mem (64, pkt_size);
+        memcpy (pkt_src_base_0, pkt_src_base, pkt_size);
+        pkt_src_base_1 = alloc_mem (64, pkt_size);
+        memcpy (pkt_src_base_1, pkt_src_base, pkt_size);
+        pkt_src_base_2 = alloc_mem (64, pkt_size);
+        memcpy (pkt_src_base_2, pkt_src_base, pkt_size);
+        pkt_src_base_3 = alloc_mem (64, pkt_size);
+        memcpy (pkt_src_base_3, pkt_src_base, pkt_size);
 
-    VERBOSE0 ("Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
+        stat_dest_base_0 = alloc_mem (64, stat_size);
+        memset (stat_dest_base_0, 0, stat_size);
+        stat_dest_base_1 = alloc_mem (64, stat_size);
+        memset (stat_dest_base_1, 0, stat_size);
+        stat_dest_base_2 = alloc_mem (64, stat_size);
+        memset (stat_dest_base_2, 0, stat_size);
+        stat_dest_base_3 = alloc_mem (64, stat_size);
+        memset (stat_dest_base_3, 0, stat_size);
 
-    start_time = get_usec();
-    VERBOSE0 ("======== HARDWARE RUN #1 ========\n");
-    rc = sm_scan (dn, timeout,
-                  patt_src_base,
-                  pkt_src_base,
-                  stat_dest_base,
-                  &num_matched_pkt,
-                  patt_size,
-                  pkt_size,
-                  stat_size);
-    elapsed_time = get_usec() - start_time;
-    // pkt_size_for_sw is the real size without hardware specific 64B header
-    print_time (elapsed_time, pkt_size_for_sw);
 
-    VERBOSE0 ("Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
+        VERBOSE1 ("======== HARDWARE RUN ========\n");
+        start_time = get_usec();
+        VERBOSE1 ("======== HARDWARE RUN #0 ========\n");
+        rc = sm_scan (dn, timeout,
+                      patt_src_base,
+                      pkt_src_base_0,
+                      stat_dest_base_0,
+                      &num_matched_pkt,
+                      patt_size,
+                      pkt_size,
+                      stat_size);
+        elapsed_time = get_usec() - start_time;
+        // pkt_size_for_sw is the real size without hardware specific 64B header
+        print_time (elapsed_time, pkt_size_for_sw);
 
-    start_time = get_usec();
-    VERBOSE0 ("======== HARDWARE RUN #2 ========\n");
-    rc = sm_scan (dn, timeout,
-                  patt_src_base,
-                  pkt_src_base,
-                  stat_dest_base,
-                  &num_matched_pkt,
-                  patt_size,
-                  pkt_size,
-                  stat_size);
-    elapsed_time = get_usec() - start_time;
-    // pkt_size_for_sw is the real size without hardware specific 64B header
-    print_time (elapsed_time, pkt_size_for_sw);
+        VERBOSE1 ("Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
 
-    VERBOSE0 ("Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
+        start_time = get_usec();
+        VERBOSE1 ("======== HARDWARE RUN #1 ========\n");
+        rc = sm_scan (dn, timeout,
+                      patt_src_base,
+                      pkt_src_base_1,
+                      stat_dest_base_1,
+                      &num_matched_pkt,
+                      patt_size,
+                      pkt_size,
+                      stat_size);
+        elapsed_time = get_usec() - start_time;
+        // pkt_size_for_sw is the real size without hardware specific 64B header
+        print_time (elapsed_time, pkt_size_for_sw);
 
-    VERBOSE0 ("======== HARDWARE DONE========\n");
+        VERBOSE1 ("Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
 
-    // Wait for transaction to be done.
-    int count = 0;
+        start_time = get_usec();
+        VERBOSE1 ("======== HARDWARE RUN #2 ========\n");
+        rc = sm_scan (dn, timeout,
+                      patt_src_base,
+                      pkt_src_base_2,
+                      stat_dest_base_2,
+                      &num_matched_pkt,
+                      patt_size,
+                      pkt_size,
+                      stat_size);
+        elapsed_time = get_usec() - start_time;
+        // pkt_size_for_sw is the real size without hardware specific 64B header
+        print_time (elapsed_time, pkt_size_for_sw);
 
-    do {
-        VERBOSE3 (" Draining %i! \n", count);
-        action_read (dn, ACTION_STATUS_L);
-        count++;
-    } while (count < 1000);
+        VERBOSE1 ("Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
 
-    reg_data = action_read (dn, ACTION_STATUS_H);
-    VERBOSE0 ("After draining, number of matched packets: %d\n", reg_data);
-    num_matched_pkt = reg_data;
+        start_time = get_usec();
+        VERBOSE1 ("======== HARDWARE RUN #3 ========\n");
+        rc = sm_scan (dn, timeout,
+                      patt_src_base,
+                      pkt_src_base_3,
+                      stat_dest_base_3,
+                      &num_matched_pkt,
+                      patt_size,
+                      pkt_size,
+                      stat_size);
+        elapsed_time = get_usec() - start_time;
+        // pkt_size_for_sw is the real size without hardware specific 64B header
+        print_time (elapsed_time, pkt_size_for_sw);
 
-    if (verbose_level > 2) {
-        __hexdump (stdout, stat_dest_base, (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt());
+        VERBOSE1 ("Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
+
+        VERBOSE1 ("======== HARDWARE DONE========\n");
+
+        //// Wait for transaction to be done.
+        //int count = 0;
+
+        //do {
+        //    VERBOSE3 (" Draining %i! \n", count);
+        //    action_read (dn, ACTION_STATUS_L);
+        //    count++;
+        //} while (count < 2);
+
+        //reg_data = action_read (dn, ACTION_STATUS_H);
+        //VERBOSE0 ("After draining, number of matched packets: %d\n", reg_data);
+        //num_matched_pkt = reg_data;
+
+        if (verbose_level > 2) {
+            __hexdump (stdout, stat_dest_base_0, (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt());
+        }
+
+        //rc = compare_results (num_matched_pkt, stat_dest_base, no_chk_offset);
+
+        //if (rc) {
+        //    VERBOSE0 ("Miscompare detected between hardware and software ref model.\n");
+        //} else {
+        //    VERBOSE0 ("\nTest PASSED!\n\n");
+        //}
+
+        VERBOSE0 ("Cleanup memories");
+        start_time = get_usec();
+        free_mem (pkt_src_base_0);
+        free_mem (pkt_src_base_1);
+        free_mem (pkt_src_base_2);
+        free_mem (pkt_src_base_3);
+        free_mem (stat_dest_base_0);
+        free_mem (stat_dest_base_1);
+        free_mem (stat_dest_base_2);
+        free_mem (stat_dest_base_3);
+        elapsed_time = get_usec() - start_time;
+        print_time (elapsed_time, 0);
     }
 
-    rc = compare_results (num_matched_pkt, stat_dest_base, no_chk_offset);
-
-    if (rc) {
-        VERBOSE0 ("Miscompare detected between hardware and software ref model.\n");
-    } else {
-        VERBOSE0 ("\nTest PASSED!\n\n");
-    }
-
+    free_mem (pkt_src_base);
+    free_mem (patt_src_base);
     snap_detach_action (act);
-
-__exit1:
     // Unmap AFU MMIO registers, if previously mapped
     VERBOSE2 ("Free Card Handle: %p\n", dn);
     snap_card_free (dn);
-
-    free_mem (patt_src_base);
-    free_mem (pkt_src_base);
-    free_mem (stat_dest_base);
-
+__exit1:
     VERBOSE1 ("End of Test rc: %d\n", rc);
     return rc;
 }

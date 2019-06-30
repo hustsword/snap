@@ -40,6 +40,9 @@ public:
     // Destructor of the worker base
     ~WorkerRegex();
 
+    // Initialize each thread in this worker
+    virtual int init();
+
     // Check if all threads have done their job
     virtual void check_thread_done();
 
@@ -67,8 +70,12 @@ public:
     // Get the number of buffers (blocks) for different thread
     int get_num_blks_per_thread (int in_thread_id, int* out_start_blk_id);
 
+    // Get the number of tuples for different thread
+    // TODO: assume tuples are evenly distributed across buffers
+    size_t get_num_tuples_per_thread (int in_thread_id);
+
     // Clean up any threads created for this worker
-    void cleanup();
+    virtual void cleanup();
 
     // Read all buffers of this relation
     void read_buffers();
@@ -98,6 +105,9 @@ private:
 
     // Total number of buffers (blocks) in the relation
     int m_num_blks;
+
+    // Total number of tuples in the relation
+    size_t m_num_tuples;
 };
 
 typedef boost::shared_ptr<WorkerRegex> WorkerRegexPtr;
