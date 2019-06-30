@@ -125,12 +125,23 @@ int JobRegex::init()
     m_job_desc->patt_size = m_worker->get_pattern_buffer_size();
 
     int start_blk_id = 0;
-    int num_blks = 0;
-    num_blks = m_worker->get_num_blks_per_thread (m_thread_id, &start_blk_id);
+    int num_blks = m_worker->get_num_blks_per_thread (m_thread_id, &start_blk_id);
 
     // Get the blocks for this job
-    m_job_desc->start_blk_id = start_blk_id;
     m_job_desc->num_blks = num_blks;
+    m_job_desc->start_blk_id = start_blk_id;
+
+    if (0 == num_blks) {
+        elog (ERROR, "Number of blocks is invalid for thread %d job %d",
+              m_thread_id, m_id);
+        return -1;
+    }
+
+    // Allocate packet buffer
+    if (allocate_packet_buffer()) {
+        elog (ERROR, "Failed to allocate packet buffer");
+        return -1;
+    }
 
     return 0;
 }
@@ -176,26 +187,71 @@ void JobRegex::set_job_desc (CAPIRegexJobDescriptor* in_job_desc)
     m_job_desc = in_job_desc;
 }
 
-void* JobRegex::capi_regex_pkt_psql_internal (Relation rel, int attr_id,
+void JobRegex::cleanup()
+{
+    for (size_t i = 0; i < m_allocated_ptrs.size(); i++) {
+        pfree (m_allocated_ptrs[i]);
+    }
+}
+
+int JobRegex::allocate_packet_buffer()
+{
+    if (m_job_desc == NULL) {
+        return -1;
+    }
+
+    // TODO: is there a way to know exactly how many tuples we have before iterating all buffers?
+    uint64_t row_count = m_worker->get_num_tuples_per_thread (m_thread_id);
+
+    // The max size that should be alloc
+    // TODO: assume maximum size in packet buffer for tuples is 2048 bytes
+    size_t row_size = 2048 + 64;
+    size_t max_alloc_size = (row_count < MIN_NUM_PKT ? MIN_NUM_PKT : row_count) * row_size;
+
+    m_job_desc->pkt_src_base = alloc_mem (64, max_alloc_size);
+    //m_job_desc->pkt_src_base = aligned_palloc0 (max_alloc_size);
+    m_job_desc->max_alloc_pkt_size = max_alloc_size;
+    //pkt_src = pkt_src_base;
+
+    if (m_job_desc->pkt_src_base == NULL) {
+        elog (ERROR, "Failed to allocate packet buffer for thread %d job %d", m_thread_id, m_id);
+        return -1;
+    }
+
+    return 0;
+}
+
+//void* JobRegex::capi_regex_pkt_psql_internal (Relation rel, int attr_id,
+int JobRegex::capi_regex_pkt_psql_internal (Relation rel, int attr_id,
         int start_blk_id, int num_blks,
+        void* pkt_src_base,
         size_t* size, size_t* size_wo_hw_hdr,
         size_t* num_pkt, int64_t* t_pkt_cpy)
 {
-    void* pkt_src_base = NULL;
-    void* pkt_src      = NULL;
+    if (NULL == pkt_src_base) {
+        return -1;
+    }
+
+    //void* pkt_src_base = NULL;
+    //void* pkt_src      = NULL;
+    void* pkt_src      = pkt_src_base;
     TupleDesc tupdesc  = RelationGetDescr (rel);
 
-    uint64_t row_count = 512000ULL;
+    //// TODO: is there a way to know exactly how many tuples we have before iterating all buffers?
+    //uint64_t row_count = m_worker->get_num_tuples_per_thread (m_thread_id);
 
-    // The max size that should be alloc
-    size_t max_alloc_size = (row_count < MIN_NUM_PKT ? MIN_NUM_PKT : row_count) * (64 + 2048);
+    //// The max size that should be alloc
+    //// TODO: assume maximum size in packet buffer for tuples is 2048 bytes
+    //size_t row_size = 2048 + 64;
+    //size_t max_alloc_size = (row_count < MIN_NUM_PKT ? MIN_NUM_PKT : row_count) * row_size;
 
-    pkt_src_base = alloc_mem (64, max_alloc_size);
-    pkt_src = pkt_src_base;
+    ////pkt_src_base = alloc_mem (64, max_alloc_size);
+    //pkt_src_base = aligned_palloc0 (max_alloc_size);
+    //pkt_src = pkt_src_base;
 
-    if (NULL == pkt_src_base) {
-        elog (ERROR, "Failed to allocate packet buffer for size: %zu", max_alloc_size);
-    }
+    //if (NULL == pkt_src_base) {
+    //    elog (ERROR, "Failed to allocate packet buffer for size: %zu", max_alloc_size);
+    //}
 
     Buffer buf = InvalidBuffer;
     int first_blk_num_lines = 0;
@@ -240,26 +296,44 @@ void* JobRegex::capi_regex_pkt_psql_internal (Relation rel, int attr_id,
 
     (*size) = (uint64_t) pkt_src - (uint64_t) pkt_src_base;
 
-    return pkt_src_base;
+    //return pkt_src_base;
+    return 0;
 }
 
 int JobRegex::capi_regex_pkt_psql (CAPIRegexJobDescriptor* job_desc, Relation rel, int attr_id)
 {
-    if (job_desc == NULL) {
+    if (NULL == job_desc) {
+        return -1;
+    }
+
+    if (NULL == job_desc->pkt_src_base) {
+        elog (ERROR, "Invalid packet buffer");
         return -1;
     }
 
     int real_stat_size;
     int stat_size;
 
-    job_desc->pkt_src_base = capi_regex_pkt_psql_internal (rel,
-                             attr_id,
-                             job_desc->start_blk_id,
-                             job_desc->num_blks,
-                             & (job_desc->pkt_size),
-                             & (job_desc->pkt_size_wo_hw_hdr),
-                             & (job_desc->num_pkt),
-                             & (job_desc->t_regex_pkt_copy));
+    //
+    //job_desc->pkt_src_base = capi_regex_pkt_psql_internal (rel,
+    if (capi_regex_pkt_psql_internal (rel,
+                                      attr_id,
+                                      job_desc->start_blk_id,
+                                      job_desc->num_blks,
+                                      job_desc->pkt_src_base,
+                                      & (job_desc->pkt_size),
+                                      & (job_desc->pkt_size_wo_hw_hdr),
+                                      & (job_desc->num_pkt),
+                                      & (job_desc->t_regex_pkt_copy))) {
+        elog (ERROR, "Failed to run capi_regex_pkt_psql_internal");
+        return -1;
+    }
+
+    if (job_desc->pkt_size > job_desc->max_alloc_pkt_size) {
+        elog (ERROR, "In packet preparation, the real number of packet buffer (%zu)"
+              " is larger than estimated (%zu)", job_desc->pkt_size, job_desc->max_alloc_pkt_size);
+        return -1;
+    }
 
     // Allocate the result buffer per the number of packets in the packet buffer
     // TODO: To reserve twice more spaces in case hardware goes into panic (i.e., writing to more spaces than expected)
@@ -272,17 +346,34 @@ int JobRegex::capi_regex_pkt_psql (CAPIRegexJobDescriptor* job_desc, Relation re
         stat_size = 4096;
     }
 
-
     job_desc->stat_dest_base = alloc_mem (64, stat_size);
+    //job_desc->stat_dest_base = aligned_palloc0 (stat_size);
     job_desc->stat_size = stat_size;
 
+    if (NULL == job_desc->stat_dest_base) {
+        elog (ERROR, "Unable to allocate stat buffer!");
+        return -1;
+    }
 
-    if (job_desc->pkt_size == 0 ||
-        job_desc->pkt_src_base == NULL ||
-        job_desc->stat_dest_base == NULL) {
+    if (job_desc->pkt_size == 0) {
+        elog (ERROR, "Packet size is zero, something wrong!");
         return -1;
     }
 
     return 0;
 }
 
+void* JobRegex::aligned_palloc0 (size_t in_size)
+{
+    // TODO: Performance of using postgresql's memory allocation version is not good for CAPI,
+    //       Need to figure out a better way of handling memory allocation/deallocation.
+    //       For now, use posix_memalign instead.
+    // 4096 bytes aligned allocation
+    //void* ptr = palloc0 (in_size + 4096);
+    void* ptr = MemoryContextAllocHuge (CurrentMemoryContext, (in_size + 4096));
+    MemSetAligned (ptr, 0, in_size + 4096);
+    void* aligned_ptr = (void*) (((uint64_t)ptr + 4096) & 0xFFFFFFFFFFFFF000ULL);
+    m_allocated_ptrs.push_back (ptr);
+
+    return aligned_ptr;
+}

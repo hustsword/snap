@@ -47,6 +47,9 @@ public:
     // Delete a job from the queue
     void delete_job (int job_id);
 
+    // Initialize each job in this thread
+    virtual int init() = 0;
+
     // Start the thread, preparing for work
     int start();
 
@@ -75,6 +78,9 @@ public:
     // (each thread would start a thread to work with all the jobs in queue))
     // Make it static to share across all instances of ThreadBase
     static boost::mutex m_global_mutex;
+
+    // Cleanup necessary resources
+    virtual void cleanup () = 0;
 
 protected:
     // The queue to hold all jobs of this thread

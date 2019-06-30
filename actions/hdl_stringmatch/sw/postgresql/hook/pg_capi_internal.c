@@ -58,11 +58,11 @@ void print_time (uint64_t elapsed, uint64_t size)
     if (elapsed > 10000) {
         t = (int)elapsed / 1000;
         ft = (1000 / (float)t) * fsize;
-        elog (DEBUG1, " end after %d msec (%0.3f MB/sec)\n", t, ft);
+        elog (INFO, " end after %d msec (%0.3f MB/sec)\n", t, ft);
     } else {
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
-        elog (DEBUG1, " end after %d usec (%0.3f MB/sec)\n", t, ft);
+        elog (INFO, " end after %d usec (%0.3f MB/sec)\n", t, ft);
     }
 }
 
@@ -75,11 +75,21 @@ void print_time_text (const char* text, uint64_t elapsed, uint64_t size)
     if (elapsed > 10000) {
         t = (int)elapsed / 1000;
         ft = (1000 / (float)t) * fsize;
-        elog (DEBUG1, "%s run time: %d msec (%0.3f MB/sec)\n", text, t, ft);
+
+        if (0 == size) {
+            elog (INFO, "%s run time: %d msec \n", text, t);
+        } else {
+            elog (INFO, "%s run time: %d msec (%0.3f MB/sec)\n", text, t, ft);
+        }
     } else {
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
-        elog (DEBUG1, "%s run time:  %d usec (%0.3f MB/sec)\n", text, t, ft);
+
+        if (0 == size) {
+            elog (INFO, "%s run time:  %d usec\n", text, t);
+        } else {
+            elog (INFO, "%s run time:  %d usec (%0.3f MB/sec)\n", text, t, ft);
+        }
     }
 }
 
@@ -306,7 +316,7 @@ void soft_reset (struct snap_card* h)
     // Status[4] to reset
     action_write (h, ACTION_CONTROL_L, 0x00000010);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
-    elog (INFO, " Write ACTION_CONTROL for soft reset!");
+    elog (DEBUG1, " Write ACTION_CONTROL for soft reset!");
     action_write (h, ACTION_CONTROL_L, 0x00000000);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
 }
@@ -608,7 +618,7 @@ int capi_regex_context_init (CAPIContext* context)
     context->act          = NULL;
 
     // Prepare the card and action
-    elog (INFO, "Open Card: %d", context->card_no);
+    elog (DEBUG1, "Open Card: %d", context->card_no);
     sprintf (context->device, "/dev/cxl/afu%d.0s", context->card_no);
     context->dn = snap_card_alloc_dev (context->device, SNAP_VENDOR_ID_IBM, SNAP_DEVICE_ID_SNAP);
 
@@ -619,9 +629,9 @@ int capi_regex_context_init (CAPIContext* context)
         return -1;
     }
 
-    elog (INFO, "Start to get action.");
+    elog (DEBUG1, "Start to get action.");
     context->act = get_action (context->dn, context->attach_flags, 5 * context->timeout);
-    elog (INFO, "Finish get action.");
+    elog (DEBUG1, "Finish get action.");
 
     // Reset the hardware
     soft_reset (context->dn);
@@ -648,6 +658,7 @@ int capi_regex_job_init (CAPIRegexJobDescriptor* job_desc,
     job_desc->num_pkt               = 0;
     job_desc->num_matched_pkt       = 0;
     job_desc->pkt_size              = 0;
+    job_desc->max_alloc_pkt_size    = 0;
     job_desc->patt_size             = 0;
     job_desc->pkt_size_wo_hw_hdr    = 0;
     job_desc->stat_size             = 0;
@@ -771,8 +782,10 @@ int capi_regex_job_cleanup (CAPIRegexJobDescriptor* job_desc)
 
     // TODO: patt buffer will be freed in worker
     //free_mem (job_desc->patt_src_base);
-    free_mem (job_desc->pkt_src_base);
-    free_mem (job_desc->stat_dest_base);
+    // TODO: packet buffer will be freed in job
+    //free_mem (job_desc->pkt_src_base);
+    // TODO: dest buffer will be freed in job
+    //free_mem (job_desc->stat_dest_base);
 
     if (job_desc->results) {
         pfree (job_desc->results);

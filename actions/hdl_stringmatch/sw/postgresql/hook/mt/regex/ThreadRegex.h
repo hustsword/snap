@@ -34,8 +34,14 @@ public:
     // Destructor of thread regex
     ~ThreadRegex();
 
+    // Initialize each jobs in this thread
+    virtual int init();
+
     // Work with the jobs
     virtual void work_with_job (JobPtr in_job);
+
+    // Cleanup
+    virtual void cleanup();
 
 private:
 };

@@ -54,6 +54,9 @@ public:
     // Set the status to done
     void done();
 
+    // Initialize this job
+    virtual int init() = 0;
+
     // Run this job
     virtual int run() = 0;
 
@@ -62,6 +65,9 @@ public:
 
     // The logging method
     void logging (boost::format & in_fmt);
+
+    // Cleanup necessary resources
+    virtual void cleanup () = 0;
 
 protected:
     // The ID of this job itself

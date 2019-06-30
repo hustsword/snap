@@ -90,6 +90,8 @@ typedef struct CAPIRegexJobDescriptor_s {
     size_t num_matched_pkt;
     // Size of the packet buffer
     size_t pkt_size;
+    // Maximum allocated size of the packet buffer
+    size_t max_alloc_pkt_size;
     // Size of the pattern buffer
     size_t patt_size;
     // Size of the packet buffer - hardware headers

@@ -338,15 +338,15 @@ BeginPGCAPIScan (CustomScanState* node, EState* estate, int eflags)
 
         if (nodeTag (arg1) == T_Var) {
             AttrNumber t_attr_id = ((Var*) (arg1))->varattno;
-            elog (INFO, "Arg1 attr no: %d", t_attr_id);
+            elog (DEBUG1, "Arg1 attr no: %d", t_attr_id);
             capiss->capi_regex_attr_id = t_attr_id - 1;
         }
 
         if (nodeTag (arg2) == T_Const) {
             Const* t_const = (Const*) arg2;
             bytea* t_ptr = DatumGetByteaP (t_const->constvalue);
-            elog (INFO, "Arg2 Size: %lu", VARSIZE_ANY_EXHDR (t_ptr));
-            elog (INFO, "Arg2: %s", VARDATA (t_ptr));
+            elog (DEBUG1, "Arg2 Size: %lu", VARSIZE_ANY_EXHDR (t_ptr));
+            elog (DEBUG1, "Arg2: %s", VARDATA (t_ptr));
             capiss->capi_regex_pattern = VARDATA (t_ptr);
         }
     }
@@ -472,18 +472,28 @@ EndPGCAPIScan (CustomScanState* node)
 {
     PGCAPIScanState*  capiss = (PGCAPIScanState*)node;
 
+    struct timespec t_beg, t_end_0, t_end_1;
+    clock_gettime (CLOCK_REALTIME, &t_beg);
+
     // Clean up the jobs
     for (int i = 0; i < capiss->capi_regex_num_jobs; i++) {
-        //elog (INFO, "Free packet buffer @ %#lX", (uint64_t)capiss->capi_regex_job_descs[i]->pkt_src_base);
         capi_regex_job_cleanup (capiss->capi_regex_job_descs[i]);
         pfree (capiss->capi_regex_job_descs[i]);
     }
 
     pfree (capiss->capi_regex_job_descs);
 
+    clock_gettime (CLOCK_REALTIME, &t_end_0);
+    uint64_t diff_0 = diff_time (&t_beg, &t_end_0);
+    print_time_text ("|EndPGCAPIScan 0|", diff_0 / 1000, 0);
+
     if (capiss->css.ss.ss_currentScanDesc) {
         heap_endscan (capiss->css.ss.ss_currentScanDesc);
     }
+
+    clock_gettime (CLOCK_REALTIME, &t_end_1);
+    uint64_t diff_1 = diff_time (&t_end_0, &t_end_1);
+    print_time_text ("|EndPGCAPIScan 1|", diff_1 / 1000, 0);
 }
 
 /*

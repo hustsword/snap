@@ -71,6 +71,8 @@ uint32_t HardwareManager::reg_read (uint32_t in_addr)
 
 void HardwareManager::cleanup()
 {
+    soft_reset (m_capi_card);
+
     snap_detach_action (m_capi_action);
     snap_card_free (m_capi_card);
 
