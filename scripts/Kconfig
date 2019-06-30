@@ -216,6 +216,9 @@ choice
         config HDL_STRINGMATCH
             bool "HDL STRING MATCH - regular expression acceleration"
 
+        config HDL_DATABASE
+            bool "HDL DATABASE - database (PostgreSQL) acceleration"
+
         config HDL_NVDLA
             bool "HDL NVDLA - NVidia Deep Learning Accelerator"
 

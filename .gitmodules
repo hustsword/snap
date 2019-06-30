@@ -12,3 +12,7 @@
 [submodule "actions/hdl_stringmatch/string-match-fpga"]
 	path = actions/hdl_stringmatch/string-match-fpga
 	url = git@github.ibm.com:shgoupf/string-match-fpga.git
+[submodule "actions/hdl_database/string-match-fpga"]
+	path = actions/hdl_database/string-match-fpga
+	url = git@github.ibm.com:shgoupf/string-match-fpga.git
+	branch = 64x1_opt

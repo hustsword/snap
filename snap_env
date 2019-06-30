@@ -205,6 +205,8 @@ while [ -z "$SETUP_DONE" ]; do
     AR='${SNAP_ROOT}/actions/hdl_example'
   elif [ -n "$HDL_NVDLA" ]; then
     AR='${SNAP_ROOT}/actions/hdl_nvdla'
+  elif [ -n "$HDL_DATABASE" ]; then
+    AR='${SNAP_ROOT}/actions/hdl_database'
   elif [ -n "$HDL_STRINGMATCH" ]; then
     AR='${SNAP_ROOT}/actions/hdl_stringmatch'
     RESP=`grep USER_DEFINED_DESIGN $snap_env_sh`
