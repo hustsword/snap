@@ -9,7 +9,8 @@ set fpga_part  	[lindex $argv 1]
 set aip_dir 	$action_root/ip/framework
 set log_dir     $action_root/../../hardware/logs
 set log_file    $log_dir/create_database_framework_ip.log
-set src_dir 	$aip_dir/framework_ip_prj/framework_prj.srcs/sources_1/ip
+set src_dir 	$aip_dir/framework_ip_prj/framework_ip_prj.srcs/sources_1/ip
+
 
 ## Create a new Vivado IP Project
 puts "\[CREATE_DATABASE_FRAMEWORK_IPs..........\] start [clock format [clock seconds] -format {%T %a %b %d/ %Y}]"

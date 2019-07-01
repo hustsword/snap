@@ -30,7 +30,7 @@
 #include <snap_tools.h>
 #include <snap_s_regs.h>
 
-#include "string_match.h"
+#include "db_direct.h"
 #include "utils/fregex.h"
 #include "regex_ref.h"
 
@@ -403,7 +403,7 @@ static void soft_reset (struct snap_card* h)
     action_write (h, ACTION_CONTROL_H, 0x00000000);
 }
 
-static void action_sm (struct snap_card* h,
+static void action_regex (struct snap_card* h,
                        void* patt_src_base,
                        void* pkt_src_base,
                        void* stat_dest_base,
@@ -416,7 +416,7 @@ static void action_sm (struct snap_card* h,
     //uint64_t start_time;
     //uint64_t elapsed_time;
 
-    VERBOSE2 (" ------ String Match Start -------- \n");
+    VERBOSE2 (" ------ Regular Expression Start -------- \n");
     VERBOSE2 (" PATTERN SOURCE ADDR: %p -- SIZE: %d\n", patt_src_base, (int)patt_size);
     VERBOSE2 (" PACKET  SOURCE ADDR: %p -- SIZE: %d\n", pkt_src_base, (int)pkt_size);
     VERBOSE2 (" STAT    DEST   ADDR: %p -- SIZE(max): %d\n", stat_dest_base, (int)stat_size);
@@ -597,7 +597,7 @@ static int sm_scan (struct snap_card* dnc,
 
     rc = 0;
 
-    action_sm (dnc, patt_src_base, pkt_src_base, stat_dest_base, num_matched_pkt,
+    action_regex (dnc, patt_src_base, pkt_src_base, stat_dest_base, num_matched_pkt,
                patt_size, pkt_size, stat_size);
     VERBOSE3 ("Wait for idle\n");
     rc = action_wait_idle (dnc, timeout, &td);
@@ -615,11 +615,11 @@ static struct snap_action* get_action (struct snap_card* handle,
 {
     struct snap_action* act;
 
-    act = snap_attach_action (handle, ACTION_TYPE_STRING_MATCH,
+    act = snap_attach_action (handle, ACTION_TYPE_DATABASE,
                               flags, timeout);
 
     if (NULL == act) {
-        VERBOSE0 ("Error: Can not attach Action: %x\n", ACTION_TYPE_STRING_MATCH);
+        VERBOSE0 ("Error: Can not attach Action: %x\n", ACTION_TYPE_DATABASE);
         VERBOSE0 ("       Try to run snap_main tool\n");
     }
 
@@ -628,7 +628,7 @@ static struct snap_action* get_action (struct snap_card* handle,
 
 static void usage (const char* prog)
 {
-    VERBOSE0 ("SNAP String Match (Regular Expression Match) Tool.\n"
+    VERBOSE0 ("CAPI Database Acceleration Direct Test.\n"
               "    Use Option -p and -q for pattern and packet\n"
               "    e.g. %s -p <packet file> -q <pattern file> [-vv] [-I]\n",
               prog);

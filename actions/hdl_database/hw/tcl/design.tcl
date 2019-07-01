@@ -1,4 +1,5 @@
 set action_hw $::env(ACTION_ROOT)/hw
+set action_ip_dir $::env(ACTION_ROOT)/ip
 set regex_verilog_dir  $::env(ACTION_ROOT)/hw/engines/regex/
 set regex_ipdir $::env(ACTION_ROOT)/ip/engines/regex/
 
@@ -19,7 +20,7 @@ foreach usr_ip [list \
                 $regex_ipdir/ram_512i_512o_dual_64          \
                ] {
   foreach usr_ip_xci [exec find $usr_ip -name *.xci] {
-    puts "                        importing user IP $usr_ip_xci (in string_match core)"
+    puts "                        importing IP $usr_ip_xci (in regex core)"
     add_files -norecurse $usr_ip_xci >> $log_file
     set_property generate_synth_checkpoint false  [ get_files $usr_ip_xci] >> $log_file
     generate_target {instantiation_template}      [ get_files $usr_ip_xci] >> $log_file
@@ -31,3 +32,12 @@ foreach usr_ip [list \
 # Set the action_string_match.v file to systemverilog mode for $clog2()
 # support
 set_property file_type SystemVerilog [get_files string_match_core_top.v]
+
+# Framework and Regex IP
+foreach ip_xci [exec find $action_ip_dir -name *.xci] {
+  set ip_name [exec basename $ip_xci .xci]
+  puts "                        importing IP $ip_name (in framework)"
+  add_files -norecurse $ip_xci -force >> $log_file
+  export_ip_user_files -of_objects  [get_files "$ip_xci"] -no_script -sync -force >> $log_file
+}
+

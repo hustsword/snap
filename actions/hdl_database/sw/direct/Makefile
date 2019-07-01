@@ -61,12 +61,12 @@ regex_ref.o: regex_ref.cpp
 re_match.o: utils/re_match.c
 	$(CXX) -c $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) $< -o $@
 	
-string_match_objs += fregex.o regex_config.o regex_ref.o re_match.o
-string_match: $(string_match_objs)
+db_direct_objs += fregex.o regex_config.o regex_ref.o re_match.o
+db_direct: $(db_direct_objs)
 
-projs += string_match
+projs += db_direct
 
-string_match: fregex.o regex_config.o string_match.o regex_ref.o re_match.o
+db_direct: fregex.o regex_config.o db_direct.o regex_ref.o re_match.o
 	$(CXX) $(LDFLAGS) $($(@)_LDFLAGS) $@.o $($(@)_objs) $($(@)_libs) $(LDLIBS) -o $@
 
 # If you have the host code outside of the default snap directory structure, 

@@ -6,11 +6,11 @@
 #ifndef F_CONSTANTS
 #define F_CONSTANTS
 
-/* Header file for SNAP Framework STRING_MATCH code */
-#define ACTION_TYPE_STRING_MATCH     0x00000001	/* Action Type */
+/* Header file for SNAP Framework DATABASE DIRECT code */
+#define ACTION_TYPE_DATABASE     0x00000003	/* Action Type */
 
-#define ACTION_STATUS_L                0x30
-#define ACTION_STATUS_H                0x34
+#define ACTION_STATUS_L                0x230
+#define ACTION_STATUS_H                0x234
 #define ACTION_STATUS_MEMCPY_DONE      0       
 #define ACTION_STATUS_PKT_DATA_USED_UP 1       
 #define ACTION_STATUS_STAT_DATA_COMP   2       
@@ -21,29 +21,29 @@
 #define ACTION_STATUS_TOTAL_NUM_START  32
 #define ACTION_STATUS_TOTAL_NUM_END    63
 
-#define ACTION_CONTROL_L               0x38
-#define ACTION_CONTROL_H               0x3C
+#define ACTION_CONTROL_L               0x238
+#define ACTION_CONTROL_H               0x23C
 #define ACTION_CONTROL_PATT_START      0       
 #define ACTION_CONTROL_PKT_PATT_EN     1
 #define ACTION_CONTROL_STAT_EN         2       
 #define ACTION_CONTROL_FLUSH           3       
 
-#define ACTION_PKT_INIT_ADDR_L         0x40
-#define ACTION_PKT_INIT_ADDR_H         0x44
-#define ACTION_PATT_INIT_ADDR_L        0x48
-#define ACTION_PATT_INIT_ADDR_H        0x4C
-#define ACTION_PATT_CARD_DDR_ADDR_L    0x50
-#define ACTION_PATT_CARD_DDR_ADDR_H    0x54
-#define ACTION_STAT_INIT_ADDR_L        0x58
-#define ACTION_STAT_INIT_ADDR_H        0x5C
-#define ACTION_PKT_TOTAL_NUM_L         0x60
-#define ACTION_PKT_TOTAL_NUM_H         0x64
-#define ACTION_PATT_TOTAL_NUM_L        0x68
-#define ACTION_PATT_TOTAL_NUM_H        0x6C
-#define ACTION_STAT_TOTAL_SIZE_L       0x70
-#define ACTION_STAT_TOTAL_SIZE_H       0x74
-#define ACTION_DEBUG0_L                0x80
-#define ACTION_DEBUG0_H                0x84
+#define ACTION_PKT_INIT_ADDR_L         0x240
+#define ACTION_PKT_INIT_ADDR_H         0x244
+#define ACTION_PATT_INIT_ADDR_L        0x248
+#define ACTION_PATT_INIT_ADDR_H        0x24C
+#define ACTION_PATT_CARD_DDR_ADDR_L    0x250
+#define ACTION_PATT_CARD_DDR_ADDR_H    0x254
+#define ACTION_STAT_INIT_ADDR_L        0x258
+#define ACTION_STAT_INIT_ADDR_H        0x25C
+#define ACTION_PKT_TOTAL_NUM_L         0x260
+#define ACTION_PKT_TOTAL_NUM_H         0x264
+#define ACTION_PATT_TOTAL_NUM_L        0x268
+#define ACTION_PATT_TOTAL_NUM_H        0x26C
+#define ACTION_STAT_TOTAL_SIZE_L       0x270
+#define ACTION_STAT_TOTAL_SIZE_H       0x274
+#define ACTION_DEBUG0_L                0x280
+#define ACTION_DEBUG0_H                0x284
 
 #define INPUT_PACKET_STAT_WIDTH         48
 #define INPUT_BATCH_WIDTH               1024

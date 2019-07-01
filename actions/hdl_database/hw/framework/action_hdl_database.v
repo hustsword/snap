@@ -4,6 +4,7 @@
 //Don't touch the interface to connect to action-_wrapper!
 module action_hdl_database # (
     parameter KERNEL_NUM = 8,
+    parameter ACTION_ID_WIDTH = 4,
     // Parameters of Axi Master Bus Interface AXI_CARD_MEM0 ; to DDR memory
     parameter C_M_AXI_CARD_MEM0_ID_WIDTH     = 4,
     parameter C_M_AXI_CARD_MEM0_ADDR_WIDTH   = 33,

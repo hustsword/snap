@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-subdirs += sw/direct hw
+subdirs += sw/direct hw clean
 
 all: $(subdirs)
 
