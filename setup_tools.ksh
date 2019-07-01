@@ -1,16 +1,16 @@
-#!/bin/bash
-#if [ -z $CTEPATH ]; then
-#    echo "Please set your CTEPATH"
-#    echo "export CTEPATH=<your ctepath>"
-#    exit 1
-#fi
+!/bin/bash
+if [ -z $CTEPATH ]; then
+    echo "Please set your CTEPATH"
+    echo "export CTEPATH=<your ctepath>"
+    exit 1
+fi
 
-#export XILINX_VIVADO=$CTEPATH/tools/xilinx/2018.3.1/Vivado/2018.3
-export XILINX_VIVADO=/tools/Xilinx/Vivado/2019.1
+export XILINX_VIVADO=$CTEPATH/tools/xilinx/2018.3.1/Vivado/2018.3
+#export XILINX_VIVADO=/tools/Xilinx/Vivado/2019.1
 export XILINXD_LICENSE_FILE=2100@pokwinlic1.pok.ibm.com
 
-#export CDS_INST_DIR=$CTEPATH/tools/cds/Xcelium/18.03.010
-export CDS_INST_DIR=/tools/cadence/installs/XCELIUM1903.008
+export CDS_INST_DIR=$CTEPATH/tools/cds/Xcelium/18.03.010
+#export CDS_INST_DIR=/tools/cadence/installs/XCELIUM1903.008
 export CDS_LIC_FILE=5295@poklnxlic04.pok.ibm.com:\
 1716@rchlic1.rchland.ibm.com:\
 1716@rchlic2.rchland.ibm.com:\
