@@ -38,9 +38,18 @@ STRING_MATCH_VERILOG=../string-match-fpga/verilog
 if [ -z $STRING_MATCH_VERILOG ]; then
     echo "WARNING!!! Please set STRING_MATCH_VERILOG to the path of string match verilog"
 else
+    if [ ! -d ./engines ]; then
+        mkdir engines
+    fi
+
     cd engines
     ln -s ../$STRING_MATCH_VERILOG regex 
     cd ../../
+
+    if [ ! -d ./ip/engines ]; then
+        mkdir -p ./ip/engines
+    fi
+
     cd ip/engines
     ln -s ../../hw/$STRING_MATCH_VERILOG/../fpga_ip regex
     cd ../../hw/

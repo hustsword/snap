@@ -20,7 +20,8 @@ foreach usr_ip [list \
                 $regex_ipdir/ram_512i_512o_dual_64          \
                ] {
   foreach usr_ip_xci [exec find $usr_ip -name *.xci] {
-    puts "                        importing IP $usr_ip_xci (in regex core)"
+    set ip_name [exec basename $usr_ip_xci .xci]
+    puts "                        importing IP $ip_name (in regex core)"
     add_files -norecurse $usr_ip_xci >> $log_file
     set_property generate_synth_checkpoint false  [ get_files $usr_ip_xci] >> $log_file
     generate_target {instantiation_template}      [ get_files $usr_ip_xci] >> $log_file

@@ -44,6 +44,7 @@ module axi_lite_global_slave #(
                       input             job_start             ,
                       output reg        real_done             ,
                       input      [31:0] i_action_type         ,
+                      input      [31:0] i_action_version      ,
                       output reg [KERNEL_NUM-1:0]       kernel_start,
                       input      [KERNEL_NUM-1:0]       kernel_complete,
                       output     [KERNEL_NUM-1:0]       kernel_complete_posedge,
@@ -115,7 +116,8 @@ module axi_lite_global_slave #(
            ADDR_CMPL_ADDR_HI                 = 32'h68,
            ADDR_CMPL_ADDR_LO                 = 32'h6C,
            ADDR_CMPL_SIZE                    = 32'h70,
-           ADDR_SNAP_ACTION_TYPE             = 32'h10;
+           ADDR_SNAP_ACTION_TYPE             = 32'h10,
+           ADDR_SNAP_ACTION_VERSION          = 32'h14;
 
 /***********************************************************************
 *                          interrupt generation                        *
@@ -338,6 +340,7 @@ assign REG_interrupt_mask_rd = REG_interrupt_mask;
        ADDR_GLOBAL_INTR_CONTROL  : s_axi_rdata <= REG_interrupt_control_rd;
        ADDR_GLOBAL_INTR_MASK     : s_axi_rdata <= REG_interrupt_mask_rd;
        ADDR_SNAP_ACTION_TYPE     : s_axi_rdata <= i_action_type;
+       ADDR_SNAP_ACTION_VERSION  : s_axi_rdata <= i_action_version;
        ADDR_GLOBAL_CONTROL       : s_axi_rdata <= REG_global_control;
        ADDR_INIT_ADDR_HI         : s_axi_rdata <= REG_init_addr_hi;
        ADDR_INIT_ADDR_LO         : s_axi_rdata <= REG_init_addr_lo;
