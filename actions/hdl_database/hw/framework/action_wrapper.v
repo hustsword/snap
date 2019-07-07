@@ -21,7 +21,7 @@
 `timescale 1ns/1ps
 
 (* KEEP_HIERARCHY = "yes" *) module action_wrapper #(
-    parameter KERNEL_NUM = 8,
+    parameter KERNEL_NUM = 12,
     // Parameters of Axi Master Bus Interface AXI_CARD_MEM0 ; to DDR memory
     parameter C_M_AXI_CARD_MEM0_ID_WIDTH     = 4,
     parameter C_M_AXI_CARD_MEM0_ADDR_WIDTH   = 33,
@@ -65,8 +65,8 @@
     parameter PATTERN_NUM_SL                 = 1,
     parameter NUM_OF_PU                      = 1,
     parameter NUM_BUFFER_SL                  = 1,
-    parameter NUM_BUFFER_TL                  = 8,
-    parameter NUM_BUFFER_4THL                = 8,
+    parameter NUM_BUFFER_TL                  = 1,
+    parameter NUM_BUFFER_4THL                = 1,
     parameter NUM_STRING_MATCH_PIPELINE      = 8,
     parameter NUM_PIPELINE_IN_A_GROUP        = 1,
     parameter NUM_OF_PIPELINE_GROUP          = 8 

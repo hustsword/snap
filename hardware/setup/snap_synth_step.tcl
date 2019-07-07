@@ -60,6 +60,10 @@ if { [catch "$command > $logfile" errMsg] } {
   }
   exit 42
 } else {
-  write_checkpoint   -force $dcp_dir/${step}.dcp          >> $logfile
-  report_utilization -file  $rpt_dir/${step}_utilization.rpt -quiet
+    create_pblock pblock_c0
+    add_cells_to_pblock [get_pblocks pblock_c0] [get_cells -quiet [list c0/U0/GND c0/U0/IBUF_inst c0/U0/VCC c0/U0/capi_bis/GND c0/U0/capi_bis/STARTUPE3_inst c0/U0/capi_bis/VCC c0/U0/capi_bis/axihwicap c0/U0/capi_bis/crc/GND c0/U0/capi_bis/crc/ICAPE3_inst c0/U0/capi_bis/crc/VCC c0/U0/capi_bis/crc/dff_detectsm_q c0/U0/capi_bis/crc/sem_core_inst c0/U0/capi_bis/dff_dummy_q c0/U0/capi_bis/f c0/U0/capi_bis/pcihip0_i_137 c0/U0/capi_bis/pcihip0_i_138 c0/U0/capi_bis/pcihip0_i_139 c0/U0/capi_bis/pcihip0_i_140 c0/U0/capi_bis/pcihip0_i_141 c0/U0/capi_bis/pcihip0_i_183 c0/U0/capi_bis/pcihip0_i_184 c0/U0/capi_bis/pcihip0_i_185 c0/U0/capi_bis/pcihip0_i_186 c0/U0/capi_bis/pcihip0_i_187 c0/U0/capi_bis/pcihip0_i_188 c0/U0/capi_bis/pcihip0_i_189 c0/U0/capi_bis/pcihip0_i_190 c0/U0/capi_bis/pcihip0_i_191 c0/U0/capi_bis/pcihip0_i_192 c0/U0/capi_bis/pcihip0_i_193 c0/U0/capi_bis/pcihip0_i_194 c0/U0/capi_bis/pcihip0_i_195 c0/U0/capi_bis/pcihip0_i_196 c0/U0/capi_bis/v c0/U0/capi_fpga_reset c0/U0/dff_icap_clk_ce c0/U0/p c0/U0/pcihip0 c0/U0/pll0 c0/U0/refclk_ibuf]]
+    resize_pblock [get_pblocks pblock_c0] -add {CLOCKREGION_X4Y5:CLOCKREGION_X5Y8}
+
+    write_checkpoint   -force $dcp_dir/${step}.dcp          >> $logfile
+    report_utilization -file  $rpt_dir/${step}_utilization.rpt -quiet
 }

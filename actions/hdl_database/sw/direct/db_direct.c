@@ -978,7 +978,7 @@ int main (int argc, char* argv[])
     }
 
     // Iterate through 8 engines
-    for (int eng_id = 0; eng_id < 8; eng_id++) {
+    for (int eng_id = 0; eng_id < 12; eng_id++) {
         // Reset the hardware
         soft_reset (dn, eng_id);
 
@@ -1014,7 +1014,7 @@ int main (int argc, char* argv[])
             VERBOSE3 (" Draining %i! \n", count);
             action_read (dn, REG(ACTION_STATUS_L, eng_id));
             count++;
-        } while (count < 2);
+        } while (count < 10);
 
         reg_data = action_read (dn, REG(ACTION_STATUS_H, eng_id));
         VERBOSE0 ("After draining, number of matched packets: %d\n", reg_data);

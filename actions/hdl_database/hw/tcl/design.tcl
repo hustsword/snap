@@ -3,7 +3,7 @@ set action_ip_dir $::env(ACTION_ROOT)/ip
 set regex_verilog_dir  $::env(ACTION_ROOT)/hw/engines/regex/
 set regex_ipdir $::env(ACTION_ROOT)/ip/engines/regex/
 
-add_files -scan_for_includes -norecurse $action_hw
+add_files -scan_for_includes -norecurse $action_hw/framework
 add_files -scan_for_includes -norecurse $regex_verilog_dir/snap_adapter
 add_files -scan_for_includes -norecurse $regex_verilog_dir/core
 
