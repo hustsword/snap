@@ -58,20 +58,20 @@ int HardwareManager::init()
     return 0;
 }
 
-void HardwareManager::reg_write (uint32_t in_addr, uint32_t in_data)
+void HardwareManager::reg_write (uint32_t in_addr, uint32_t in_data, int in_eng_id)
 {
-    action_write (m_capi_card, in_addr, in_data);
+    action_write (m_capi_card, in_addr, in_data, in_eng_id);
     return;
 }
 
-uint32_t HardwareManager::reg_read (uint32_t in_addr)
+uint32_t HardwareManager::reg_read (uint32_t in_addr, int in_eng_id)
 {
-    return action_read (m_capi_card, in_addr);
+    return action_read (m_capi_card, in_addr, in_eng_id);
 }
 
 void HardwareManager::cleanup()
 {
-    soft_reset (m_capi_card);
+    //soft_reset (m_capi_card);
 
     snap_detach_action (m_capi_action);
     snap_card_free (m_capi_card);
@@ -97,5 +97,10 @@ int HardwareManager::wait_interrupt()
 CAPIContext* HardwareManager::get_context()
 {
     return m_context;
+}
+
+void HardwareManager::reset_engine (int in_eng_id)
+{
+    soft_reset (m_capi_card, in_eng_id);
 }
 

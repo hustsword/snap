@@ -48,10 +48,10 @@ public:
     int init();
 
     // Read the register
-    uint32_t reg_read (uint32_t in_addr);
+    uint32_t reg_read (uint32_t in_addr, int in_eng_id);
 
     // Write the register
-    void reg_write (uint32_t in_addr, uint32_t in_data);
+    void reg_write (uint32_t in_addr, uint32_t in_data, int in_eng_id);
 
     // Clean up the hardware related resources
     void cleanup();
@@ -61,6 +61,9 @@ public:
 
     // Get the CAPI context
     CAPIContext* get_context();
+
+    // Reset the engine
+    void reset_engine (int in_eng_id);
 
 private:
     // The card number

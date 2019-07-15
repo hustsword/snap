@@ -6,8 +6,12 @@
 #ifndef __F_CONSTANTS__
 #define __F_CONSTANTS__
 
-/* Header file for SNAP Framework STRING_MATCH code */
-#define ACTION_TYPE_STRING_MATCH     0x00000001	/* Action Type */
+/* Header file for SNAP Framework DATABASE code */
+#define ACTION_TYPE_DATABASE     0x00000003	/* Action Type */
+#define ACTION_REG_BASE                0x200
+#define ACTION_REG_ENG_RANGE           0x100
+
+#define REG(_reg,_id) ((ACTION_REG_BASE + (_id * ACTION_REG_ENG_RANGE)) + _reg)
 
 #define ACTION_STATUS_L                0x30
 #define ACTION_STATUS_H                0x34

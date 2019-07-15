@@ -73,7 +73,7 @@ int JobRegex::run()
 
     do {
         // TODO: Only 1 job is allowed to access hardware at a time.
-        boost::lock_guard<boost::mutex> lock (ThreadBase::m_global_mutex);
+        //boost::lock_guard<boost::mutex> lock (ThreadBase::m_global_mutex);
 
         if (scan()) {
             elog (ERROR, "Failed to perform regex scanning");
@@ -142,6 +142,12 @@ int JobRegex::init()
         elog (ERROR, "Failed to allocate packet buffer");
         return -1;
     }
+
+    // Assign the thread id to this job descriptor
+    m_job_desc->thread_id = m_thread_id;
+
+    // Reset the engine
+    m_hw_mgr->reset_engine (m_thread_id);
 
     return 0;
 }
