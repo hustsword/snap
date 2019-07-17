@@ -34,6 +34,11 @@
 #include "utils/fregex.h"
 #include "regex_ref.h"
 
+#include "boost/make_shared.hpp"
+#include "boost/shared_ptr.hpp"
+#include "boost/chrono.hpp"
+#include <boost/thread/thread.hpp>
+
 /*  defaults */
 #define STEP_DELAY      200
 #define DEFAULT_MEMCPY_BLOCK    4096
@@ -43,6 +48,8 @@
 
 #define MEGAB       (1024*1024ull)
 #define GIGAB       (1024 * MEGAB)
+
+#define NUM_THREADS 12
 
 #define VERBOSE0(fmt, ...) do {         \
         printf(fmt, ## __VA_ARGS__);    \
@@ -818,6 +825,35 @@ static int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no
     return rc;
 }
 
+void thread_work (snap_card* dn, 
+                  int        eng_id, 
+                  int&       rc, 
+                  int        timeout, 
+                  void*      patt_src_base, 
+                  void*      pkt_src_base_0, 
+                  void*      stat_dest_base_0, 
+                  size_t*    num_matched_pkt, 
+                  size_t     patt_size, 
+                  int        stat_size)
+{
+    // reset the hardware
+    soft_reset (dn, eng_id);
+
+    rc = regex_scan (dn, timeout,
+                      patt_src_base,
+                      pkt_src_base_0,
+                      stat_dest_base_0,
+                      num_matched_pkt,
+                      patt_size,
+                      pkt_size,
+                      stat_size,
+                      eng_id);
+
+    boost::this_thread::interruption_point();
+
+    return;
+}
+
 int main (int argc, char* argv[])
 {
     char device[64];
@@ -976,11 +1012,9 @@ int main (int argc, char* argv[])
     if (stat_size == 0) {
         stat_size = 4096;
     }
-
-    // Iterate through 8 engines
-    for (int eng_id = 0; eng_id < 12; eng_id++) {
-        // Reset the hardware
-        soft_reset (dn, eng_id);
+    
+    // Iterate through 12 engines
+    for (int eng_id = 0; eng_id < NUM_THREADS; eng_id++) {
 
         pkt_src_base_0 = alloc_mem (64, pkt_size);
         memcpy (pkt_src_base_0, pkt_src_base, pkt_size);
@@ -991,15 +1025,17 @@ int main (int argc, char* argv[])
         VERBOSE1 ("======== HARDWARE RUN ========\n");
         start_time = get_usec();
         VERBOSE1 ("======== HARDWARE RUN on Engine #%d ========\n", eng_id);
-        rc = regex_scan (dn, timeout,
-                      patt_src_base,
-                      pkt_src_base_0,
-                      stat_dest_base_0,
-                      &num_matched_pkt,
-                      patt_size,
-                      pkt_size,
-                      stat_size,
-                      eng_id);
+        boost::shared_ptr<boost::thread> thd = boost::make_shared<boost::thread> (thread_work,
+                                                                                  dn,
+                                                                                  eng_id,
+                                                                                  rc,
+                                                                                  timeout,
+                                                                                  patt_src_base,
+                                                                                  pkt_src_base_0,
+                                                                                  stat_dest_base_0,
+                                                                                  &num_matched_pkt,
+                                                                                  patt_size,
+                                                                                  stat_size);
         elapsed_time = get_usec() - start_time;
         // pkt_size_for_sw is the real size without hardware specific 64B header
         print_time (elapsed_time, pkt_size_for_sw);
