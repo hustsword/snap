@@ -373,6 +373,15 @@ choice
 		select ENABLE_ACTION_CLK_DERATE
 endchoice
 
+config NUM_OF_DATABASE_KERNELS
+        depends on HDL_DATABASE
+	prompt "Number of database kernels"
+	int
+	default 1
+	range 1 14
+	help
+	  Number of kernels (engines) in database acceleration.
+
 choice
 	bool "NVDLA configuration"
 	default NV_SMALL

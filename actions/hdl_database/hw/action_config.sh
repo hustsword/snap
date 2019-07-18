@@ -20,9 +20,11 @@
 ############################################################################
 echo "                        action config says ACTION_ROOT is $ACTION_ROOT"
 echo "                        action config says FPGACHIP is $FPGACHIP"
+echo "                        action config says there are $NUM_OF_DATABASE_KERNELS kernels used in this action"
 
 REGEX_DESIGN=engines/regex
 REGEX_IP=../ip/engines/regex
+HDL_PP=$ACTION_ROOT/../../scripts/utils/hdl_pp/
 
 if [ -L $REGEX_DESIGN ]; then
     unlink $REGEX_DESIGN 
@@ -30,6 +32,11 @@ fi
 
 if [ -L $REGEX_IP ]; then
     unlink $REGEX_IP
+fi
+
+if [ -z $NUM_OF_DATABASE_KERNELS ]; then
+    echo "No number of database kernels specified, check your snap_config!"
+    exit 1
 fi
 
 STRING_MATCH_VERILOG=../string-match-fpga/verilog
@@ -55,6 +62,20 @@ else
     cd ../../hw/
 fi
 
+if [ ! -f ./defs.h ]; then
+    touch defs.h
+    echo "                        Generating defs.h"
+    echo "#define NUM_KERNELS ${NUM_OF_DATABASE_KERNELS}" > defs.h
+fi
+
+for i in $(find -name \*.v_source); do
+    vcp=${i%.v_source}.vcp
+    v=${i%.v_source}.v
+    echo "                         Processing $i"
+    $HDL_PP/vcp -i $i -o $vcp -imacros ./defs.h -cpp /bin/cpp
+    perl -I $HDL_PP/plugins -Meperl $HDL_PP/eperl -o $v $vcp
+done                         
+
 # Create the IP for regex engine
 if [ ! -d $STRING_MATCH_VERILOG/../fpga_ip/managed_ip_project ]; then
     echo "                        Call all_ip_gen.pl to generate regex IPs"
@@ -64,6 +85,6 @@ fi
 # Create IP for the framework
 if [ ! -d $ACTION_ROOT/ip/framework/framework_ip_prj ]; then
     echo "                        Call create_framework_ip.tcl to generate framework IPs"
-    vivado -mode batch -source $ACTION_ROOT/ip/tcl/create_framework_ip.tcl -notrace -nojournal -tclargs $ACTION_ROOT $FPGACHIP
+    vivado -mode batch -source $ACTION_ROOT/ip/tcl/create_framework_ip.tcl -notrace -nojournal -tclargs $ACTION_ROOT $FPGACHIP $NUM_OF_DATABASE_KERNELS
 fi
 

@@ -842,6 +842,11 @@ int main (int argc, char* argv[])
     uint64_t start_time;
     uint64_t elapsed_time;
     uint32_t reg_data;
+    uint32_t hw_version = 0;
+    int num_engines = 0;
+    int num_pkt_pipes = 0;
+    int num_patt_pipes = 0;
+    int revision = 0;
 
     while (1) {
         int option_index = 0;
@@ -967,6 +972,16 @@ int main (int argc, char* argv[])
 
     VERBOSE0 ("Finish get action.\n");
 
+    hw_version = action_read (dn, SNAP_ACTION_VERS_REG);
+    VERBOSE0 ("hw_version: %#x\n", hw_version);
+
+    num_patt_pipes = ( int) ( ( hw_version & 0xFF000000) >> 24);
+    num_pkt_pipes =  ( int) ( ( hw_version & 0x00FF0000) >> 16);
+    num_engines =    ( int) ( ( hw_version & 0x0000FF00) >> 8);
+    revision =       ( int) ( hw_version & 0x000000FF);
+
+    VERBOSE0 ("Running with %d %dx%d regex engine(s), revision: %d\n", num_engines, num_pkt_pipes, num_patt_pipes, revision);
+
     // Alloc state output buffer, aligned to 4K
     //int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt();
     int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * ((pkt_size / 1024) * 2);
@@ -977,8 +992,8 @@ int main (int argc, char* argv[])
         stat_size = 4096;
     }
 
-    // Iterate through 8 engines
-    for (int eng_id = 0; eng_id < 12; eng_id++) {
+    // Iterate through all engines
+    for (int eng_id = 0; eng_id < num_engines; eng_id++) {
         // Reset the hardware
         soft_reset (dn, eng_id);
 
