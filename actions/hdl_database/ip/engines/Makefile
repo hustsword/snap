@@ -23,6 +23,6 @@ subdirs += regex
 clean:
 	@for dir in $(subdirs); do	\
 		if [ -d $$dir -a -d $$dir/managed_ip_project ]; then	\
-			rm -rf $$dir/managed_ip_project || exit 1;		\
+		        cd $$dir; find . -maxdepth 1 -type d ! -path '.' -print -exec rm -r {} \;;   \
 		fi						\
 	done
