@@ -72,8 +72,8 @@ for i in $(find -name \*.v_source); do
     vcp=${i%.v_source}.vcp
     v=${i%.v_source}.v
     echo "                         Processing $i"
-    $HDL_PP/vcp -i $i -o $vcp -imacros ./defs.h -cpp /bin/cpp
-    perl -I $HDL_PP/plugins -Meperl $HDL_PP/eperl -o $v $vcp
+    $HDL_PP/vcp -i $i -o $vcp -imacros ./defs.h || exit 1
+    perl -I $HDL_PP/plugins -Meperl $HDL_PP/eperl -o $v $vcp || exit 1
 done                         
 
 # Create the IP for regex engine
