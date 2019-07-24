@@ -121,6 +121,9 @@ typedef struct CAPIRegexJobDescriptor_s {
     // Number of tuples (postgresql tuples) for this job
     size_t num_tuples;
 
+    // The thread id of this job descriptor
+    int thread_id;
+
     // Perf statistics (in nano seconds);
     int64_t t_init;
     int64_t t_regex_patt; // Pattern compile time
@@ -175,11 +178,11 @@ void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_p
 void* fill_one_pattern (const char* in_patt, void* in_patt_addr, int in_patt_id);
 
 // CAPI basic operations
-void action_write (struct snap_card* h, uint32_t addr, uint32_t data);
-uint32_t action_read (struct snap_card* h, uint32_t addr);
+void action_write (struct snap_card* h, uint32_t addr, uint32_t data, int id);
+uint32_t action_read (struct snap_card* h, uint32_t addr, int id);
 int action_wait_idle (struct snap_card* h, int timeout);
-void soft_reset (struct snap_card* h);
-void print_control_status (struct snap_card* h);
+void soft_reset (struct snap_card* h, int id);
+void print_control_status (struct snap_card* h, int id);
 struct snap_action* get_action (struct snap_card* handle,
                                 snap_action_flag_t flags, int timeout);
 void print_result (CAPIRegexJobDescriptor* job_desc, char* header_str, char* out_str);
@@ -192,7 +195,8 @@ void action_regex (struct snap_card* h,
                    size_t* num_matched_pkt,
                    size_t patt_size,
                    size_t pkt_size,
-                   size_t stat_size);
+                   size_t stat_size,
+                   int id);
 int capi_regex_scan_internal (struct snap_card* dnc,
                               int timeout,
                               void* patt_src_base,
@@ -201,7 +205,8 @@ int capi_regex_scan_internal (struct snap_card* dnc,
                               size_t* num_matched_pkt,
                               size_t patt_size,
                               size_t pkt_size,
-                              size_t stat_size);
+                              size_t stat_size,
+                              int id);
 void* capi_regex_compile_internal (const char* patt, size_t* size);
 int capi_regex_context_init (CAPIContext* context);
 int capi_regex_job_init (CAPIRegexJobDescriptor* job_desc,

@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-subdirs += sw/direct hw clean ip
+subdirs += framework engines 
 
 all: $(subdirs)
 
@@ -35,5 +35,3 @@ clean:
 			$(MAKE) -C $$dir $@ || exit 1;		\
 		fi						\
 	done
-	@find . -depth -name '*~'  -exec rm -rf '{}' \; -print
-	@find . -depth -name '.#*' -exec rm -rf '{}' \; -print

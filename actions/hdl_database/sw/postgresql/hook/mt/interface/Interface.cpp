@@ -49,6 +49,11 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
 
     elog (INFO, "Create %d job(s) for this worker", in_capiss->capi_regex_num_jobs);
 
+    if (in_capiss->capi_regex_num_jobs > hw_mgr->get_num_engines()) {
+        elog (ERROR, "Number of threads %d is greater than number of engines %d",
+              in_capiss->capi_regex_num_jobs, hw_mgr->get_num_engines());
+    }
+
     // Create threads
     for (int i = 0; i < in_capiss->capi_regex_num_jobs; i++) {
         ThreadRegexPtr thd = boost::make_shared<ThreadRegex> (i, 1000);

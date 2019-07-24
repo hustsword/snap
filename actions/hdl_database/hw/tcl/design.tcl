@@ -18,6 +18,8 @@ foreach usr_ip [list \
                 $regex_ipdir/fifo_sync_32_512i512o          \
                 $regex_ipdir/fifo_sync_32_5i5o              \
                 $regex_ipdir/ram_512i_512o_dual_64          \
+                $regex_ipdir/axi_register_slice_0           \
+                $regex_ipdir/axi_lite_register_slice_0      \
                ] {
   foreach usr_ip_xci [exec find $usr_ip -name *.xci] {
     set ip_name [exec basename $usr_ip_xci .xci]

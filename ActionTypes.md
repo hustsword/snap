@@ -3,8 +3,9 @@ Vendor | Range Start | Range End | Description
 :--- | :--- | :--- | :---
 Reserved | 00.00.00.00 | 00.00.00.00 | Reserved
 free | 00.00.00.01 | 00.00.00.01 | HDL StringMatch
-free | 00.00.00.02 | 00.00.00.02 | HDL Database
-free | 00.00.00.03 | 00.00.FF.FF | Free for experimental use
+free | 00.00.00.02 | 00.00.00.02 | Reserved
+free | 00.00.00.03 | 00.00.00.03 | HDL Database
+free | 00.00.00.04 | 00.00.FF.FF | Free for experimental use
 IBM | 10.14.00.00 | 10.14.00.00 | SNAP framework example
 IBM | 10.14.00.01 | 10.14.00.01 | HDL NVMe example
 IBM | 10.14.00.02 | 10.14.00.02 | HDL Helloworld
