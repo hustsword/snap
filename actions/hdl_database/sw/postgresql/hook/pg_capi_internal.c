@@ -415,6 +415,8 @@ void action_regex (struct snap_card* h,
             break;
         }
     } while (1);
+    
+    elog (DEBUG1, "work done!\n");
 
     // Stop working
     action_write (h, ACTION_CONTROL_L, 0x00000000, id);
@@ -440,6 +442,8 @@ void action_regex (struct snap_card* h,
         }
 
     } while (1);
+
+    elog (DEBUG1, "flushing done!\n");
 
     // Stop flushing
     action_write (h, ACTION_CONTROL_L, 0x00000000, id);

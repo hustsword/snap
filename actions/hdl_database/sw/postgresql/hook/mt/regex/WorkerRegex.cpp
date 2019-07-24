@@ -19,6 +19,8 @@
 #include "ThreadRegex.h"
 #include "constants.h"
 
+using namespace boost::chrono;
+
 WorkerRegex::WorkerRegex (HardwareManagerPtr in_hw_mgr, Relation in_relation, int in_attr_id, bool in_debug)
     : WorkerBase (in_hw_mgr),
       m_buffers (NULL),
@@ -202,9 +204,15 @@ void WorkerRegex::cleanup()
     free_mem (m_patt_src_base);
     release_buffers();
 
+    high_resolution_clock::time_point t_start = high_resolution_clock::now();
+
     for (size_t i = 0; i < m_threads.size(); i++) {
         m_threads[i]->cleanup();
     }
+
+    high_resolution_clock::time_point t_end = high_resolution_clock::now();
+    auto duration = duration_cast<microseconds> (t_end - t_start).count();
+    elog (INFO, "Free all threads after %lu microseconds (us)", (uint64_t) duration);
 }
 
 void WorkerRegex::read_buffers()
