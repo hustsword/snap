@@ -65,6 +65,9 @@ public:
     // Reset the engine
     void reset_engine (int in_eng_id);
 
+    // Get number of engines
+    int get_num_engines();
+
 private:
     // The card number
     int m_card_num;
@@ -80,6 +83,9 @@ private:
 
     // The struct to hold all CAPI card related handlers
     CAPIContext* m_context;
+
+    // The number of engines on the card
+    int m_num_engines;
 
     // Timeout value before waiting the action attached
     int m_timeout_sec;

@@ -23,6 +23,7 @@ HardwareManager::HardwareManager (int in_card_num)
       m_capi_action (NULL),
       m_attach_flags ((snap_action_flag_t)0),
       m_context (NULL),
+      m_num_engines (0),
       m_timeout_sec (0),
       m_timeout_usec (1000)
 {
@@ -34,6 +35,7 @@ HardwareManager::HardwareManager (int in_card_num, int in_timeout_sec, int in_ti
       m_capi_action (NULL),
       m_attach_flags ((snap_action_flag_t)0),
       m_context (NULL),
+      m_num_engines (0),
       m_timeout_sec (in_timeout_sec),
       m_timeout_usec (in_timeout_usec)
 {
@@ -54,6 +56,18 @@ int HardwareManager::init()
     m_capi_card = m_context->dn;
     m_capi_action = m_context->act;
     m_attach_flags = m_context->attach_flags;
+
+    // This is a global register, make ID to -1
+    uint32_t hw_version = action_read (m_context->dn, SNAP_ACTION_VERS_REG, -1);
+
+    int num_patt_pipes = (int) ((hw_version & 0xFF000000) >> 24);
+    int num_pkt_pipes = (int) ((hw_version & 0x00FF0000) >> 16);
+    int num_engines = (int) ((hw_version & 0x0000FF00) >> 8);
+    int revision = (int) (hw_version & 0x000000FF);
+
+    elog (INFO, "Running with %d %dx%d regex engine(s), revision: %d", num_engines, num_pkt_pipes, num_patt_pipes, revision);
+
+    m_num_engines = num_engines;
 
     return 0;
 }
@@ -104,3 +118,7 @@ void HardwareManager::reset_engine (int in_eng_id)
     soft_reset (m_capi_card, in_eng_id);
 }
 
+int HardwareManager::get_num_engines ()
+{
+    return m_num_engines;
+}

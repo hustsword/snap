@@ -11,7 +11,8 @@
 #define ACTION_REG_BASE                0x200
 #define ACTION_REG_ENG_RANGE           0x100
 
-#define REG(_reg,_id) ((ACTION_REG_BASE + (_id * ACTION_REG_ENG_RANGE)) + _reg)
+// -1 means global register (no offset is added)
+#define REG(_reg,_id) ((_id == -1) ? _reg : (ACTION_REG_BASE + (_id * ACTION_REG_ENG_RANGE)) + _reg)
 
 #define ACTION_STATUS_L                0x30
 #define ACTION_STATUS_H                0x34

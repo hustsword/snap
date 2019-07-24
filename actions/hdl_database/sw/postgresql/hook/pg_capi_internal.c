@@ -137,6 +137,10 @@ void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_p
     uint32_t bytes_used = 0;
     uint16_t pkt_len = size;
 
+    if (((uint64_t)pkt_base_addr & 0x3FULL) != 0) {
+        elog (INFO, "WARNING: Address %p is not 64B aligned", pkt_base_addr);
+    }
+
     // The frame header
     for (int i = 0; i < 4; i++) {
         pkt_base_addr[bytes_used] = 0x5A;
@@ -250,7 +254,7 @@ void action_write (struct snap_card* h, uint32_t addr, uint32_t data, int id)
 {
     int rc;
 
-    rc = snap_mmio_write32 (h, (uint64_t) REG(addr, id), data);
+    rc = snap_mmio_write32 (h, (uint64_t)REG (addr, id), data);
 
     if (0 != rc) {
         elog (DEBUG1, "Write MMIO 32 Err\n");
