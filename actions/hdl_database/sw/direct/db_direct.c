@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+/*
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,27 +30,12 @@
 #include <libsnap.h>
 #include <snap_tools.h>
 #include <snap_s_regs.h>
+*/
 
 #include "db_direct.h"
 #include "utils/fregex.h"
 #include "regex_ref.h"
-
-#include "boost/make_shared.hpp"
-#include "boost/shared_ptr.hpp"
-#include "boost/chrono.hpp"
-#include <boost/thread/thread.hpp>
-
-/*  defaults */
-#define STEP_DELAY      200
-#define DEFAULT_MEMCPY_BLOCK    4096
-#define DEFAULT_MEMCPY_ITER 1
-#define ACTION_WAIT_TIME    10   /* Default in sec */
-//#define MAX_NUM_PKT 502400
-
-#define MEGAB       (1024*1024ull)
-#define GIGAB       (1024 * MEGAB)
-
-#define NUM_THREADS 12
+#include "Interface.h"
 
 #define VERBOSE0(fmt, ...) do {         \
         printf(fmt, ## __VA_ARGS__);    \
@@ -78,10 +64,24 @@
 
 static uint32_t PATTERN_ID = 0;
 static uint32_t PACKET_ID = 0;
-static const char* version = GIT_VERSION;
+//static const char* version = GIT_VERSION;
 static  int verbose_level = 0;
 
-static uint64_t get_usec (void)
+void print_error (const char* file, const char* func, const char* line, int rc)
+{
+    printf ("ERROR: %s %s failed in line %s with return code %d\n", file, func, line, rc);
+}
+
+int64_t diff_time (struct timespec* t_beg, struct timespec* t_end)
+{
+    if (t_end == NULL || t_beg == NULL) {
+        return 0;
+    }
+
+    return ((t_end-> tv_sec - t_beg-> tv_sec) * 1000000000L + t_end-> tv_nsec - t_beg-> tv_nsec);
+}
+
+uint64_t get_usec (void)
 {
     struct timeval t;
 
@@ -89,7 +89,7 @@ static uint64_t get_usec (void)
     return t.tv_sec * 1000000 + t.tv_usec;
 }
 
-static int get_file_line_count (FILE* fp)
+int get_file_line_count (FILE* fp)
 {
     int lines = 0;
     char ch;
@@ -105,7 +105,7 @@ static int get_file_line_count (FILE* fp)
     return lines;
 }
 
-static void remove_newline (char* str)
+void remove_newline (char* str)
 {
     char* pos;
 
@@ -117,7 +117,7 @@ static void remove_newline (char* str)
     }
 }
 
-static void print_time (uint64_t elapsed, uint64_t size)
+void print_time (uint64_t elapsed, uint64_t size)
 {
     int t;
     float fsize = (float)size / (1024 * 1024);
@@ -134,7 +134,7 @@ static void print_time (uint64_t elapsed, uint64_t size)
     }
 }
 
-static void* alloc_mem (int align, size_t size)
+void* alloc_mem (int align, size_t size)
 {
     void* a;
     size_t size2 = size + align;
@@ -150,7 +150,7 @@ static void* alloc_mem (int align, size_t size)
     return a;
 }
 
-static void free_mem (void* a)
+void free_mem (void* a)
 {
     VERBOSE2 ("Free Mem %p\n", a);
 
@@ -171,7 +171,7 @@ static void free_mem (void* a)
 //    }
 //}
 
-static void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
+void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
 {
     unsigned char* pkt_base_addr = in_pkt_addr;
     int pkt_id;
@@ -179,7 +179,7 @@ static void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
     uint16_t pkt_len = size;
 
     PACKET_ID++;
-    // The TAG ID
+     // The TAG ID
     pkt_id = PACKET_ID;
 
     VERBOSE2 ("PKT[%d] %s len %d\n", pkt_id, in_pkt, pkt_len);
@@ -233,7 +233,7 @@ static void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
 
 }
 
-static void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
+void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
 {
     unsigned char* patt_base_addr = in_patt_addr;
     int config_len = 0;
@@ -315,7 +315,7 @@ static void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
 
 
 /* Action or Kernel Write and Read are 32 bit MMIO */
-static void action_write (struct snap_card* h, uint32_t addr, uint32_t data)
+void action_write (struct snap_card* h, uint32_t addr, uint32_t data)
 {
     int rc;
 
@@ -328,7 +328,7 @@ static void action_write (struct snap_card* h, uint32_t addr, uint32_t data)
     return;
 }
 
-static uint32_t action_read (struct snap_card* h, uint32_t addr)
+uint32_t action_read (struct snap_card* h, uint32_t addr)
 {
     int rc;
     uint32_t data;
@@ -360,7 +360,7 @@ static uint32_t action_read (struct snap_card* h, uint32_t addr)
 /*
  *  Start Action and wait for Idle.
  */
-static int action_wait_idle (struct snap_card* h, int timeout, uint64_t* elapsed)
+int action_wait_idle (struct snap_card* h, int timeout, uint64_t* elapsed)
 {
     int rc = ETIME;
     uint64_t t_start;   /* time in usec */
@@ -384,7 +384,7 @@ static int action_wait_idle (struct snap_card* h, int timeout, uint64_t* elapsed
     return rc;
 }
 
-static void print_control_status (struct snap_card* h, int eng_id)
+void print_control_status (struct snap_card* h, int eng_id)
 {
     if (verbose_level > 2) {
         uint32_t reg_data;
@@ -400,7 +400,7 @@ static void print_control_status (struct snap_card* h, int eng_id)
     }
 }
 
-static void soft_reset (struct snap_card* h, int eng_id)
+void soft_reset (struct snap_card* h, int eng_id)
 {
     // Status[4] to reset
     action_write (h, REG(ACTION_CONTROL_L, eng_id), 0x00000010);
@@ -410,7 +410,7 @@ static void soft_reset (struct snap_card* h, int eng_id)
     action_write (h, REG(ACTION_CONTROL_H, eng_id), 0x00000000);
 }
 
-static void action_regex (struct snap_card* h,
+void action_regex (struct snap_card* h,
                        void* patt_src_base,
                        void* pkt_src_base,
                        void* stat_dest_base,
@@ -590,7 +590,7 @@ static void action_regex (struct snap_card* h,
     return;
 }
 
-static int regex_scan (struct snap_card* dnc,
+int regex_scan (struct snap_card* dnc,
                     int timeout,
                     void* patt_src_base,
                     void* pkt_src_base,
@@ -619,7 +619,35 @@ static int regex_scan (struct snap_card* dnc,
     return rc;
 }
 
-static struct snap_action* get_action (struct snap_card* handle,
+/*
+int regex_scan (CAPIRegexJobDescriptor* job_desc)
+{
+    if (job_desc == NULL) {
+        return -1;
+    }
+
+    if (regex_scan_internal (job_desc->context->dn,
+                            job_desc->context->timeout,
+                            job_desc->patt_src_base,
+                            job_desc->pkt_src_base,
+                            job_desc->stat_dest_base,
+                            & (job_desc->num_matched_pkt),
+                            job_desc->patt_size,
+                            job_desc->pkt_size,
+                            job_desc->stat_size,
+                            job_desc->thread_id)) {
+
+        ereport (ERROR,
+                 (errcode (ERRCODE_INVALID_PARAMETER_VALUE),
+                  errmsg ("Hardware ERROR!")));
+        return -1;
+    }
+
+    return 0;
+}
+*/
+
+struct snap_action* get_action (struct snap_card* handle,
                                        snap_action_flag_t flags, int timeout)
 {
     struct snap_action* act;
@@ -635,7 +663,7 @@ static struct snap_action* get_action (struct snap_card* handle,
     return act;
 }
 
-static void usage (const char* prog)
+void usage (const char* prog)
 {
     VERBOSE0 ("CAPI Database Acceleration Direct Test.\n"
               "    Use Option -p and -q for pattern and packet\n"
@@ -645,7 +673,7 @@ static void usage (const char* prog)
               "    -h, --help           print usage information\n"
               "    -v, --verbose        verbose mode\n"
               "    -C, --card <cardno>  use this card for operation\n"
-              "    -V, --version\n"
+             // "    -V, --version\n"
               "    -q, --quiet          quiece output\n"
               "    -t, --timeout        Timeout after N sec (default 1 sec)\n"
               "    -I, --irq            Enable Action Done Interrupt (default No Interrupts)\n"
@@ -654,7 +682,7 @@ static void usage (const char* prog)
               , prog);
 }
 
-static void* sm_compile_file (const char* file_path, size_t* size)
+void* sm_compile_file (const char* file_path, size_t* size)
 {
     FILE* fp;
     char* line = NULL;
@@ -710,7 +738,7 @@ static void* sm_compile_file (const char* file_path, size_t* size)
     return patt_src_base;
 }
 
-static void* regex_scan_file (const char* file_path, size_t* size, size_t* size_for_sw)
+void* regex_scan_file (const char* file_path, size_t* size, size_t* size_for_sw)
 {
     FILE* fp = fopen (file_path, "r");
     char* line = NULL;
@@ -766,7 +794,7 @@ static void* regex_scan_file (const char* file_path, size_t* size, size_t* size_
     return pkt_src_base;
 }
 
-static int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no_chk_offset)
+int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no_chk_offset)
 {
     int i = 0, j = 0;
     uint16_t offset = 0;
@@ -825,42 +853,90 @@ static int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no
     return rc;
 }
 
-void thread_work (snap_card* dn, 
-                  int        eng_id, 
-                  int&       rc, 
-                  int        timeout, 
-                  void*      patt_src_base, 
-                  void*      pkt_src_base_0, 
-                  void*      stat_dest_base_0, 
-                  size_t*    num_matched_pkt, 
-                  size_t     patt_size, 
-                  int        stat_size)
+/*
+int capi_regex_context_init (CAPIContext* context)
 {
-    // reset the hardware
-    soft_reset (dn, eng_id);
+    if (context == NULL) {
+        return -1;
+    }
 
-    rc = regex_scan (dn, timeout,
-                      patt_src_base,
-                      pkt_src_base_0,
-                      stat_dest_base_0,
-                      num_matched_pkt,
-                      patt_size,
-                      pkt_size,
-                      stat_size,
-                      eng_id);
+    // Init the job descriptor
+    context->card_no      = 0;
+    context->timeout      = ACTION_WAIT_TIME;
+    context->attach_flags = (snap_action_flag_t) 0;
+    context->act          = NULL;
 
-    boost::this_thread::interruption_point();
+    // Prepare the card and action
+    elog (DEBUG1, "Open Card: %d", context->card_no);
+    sprintf (context->device, "/dev/cxl/afu%d.0s", context->card_no);
+    context->dn = snap_card_alloc_dev (context->device, SNAP_VENDOR_ID_IBM, SNAP_DEVICE_ID_SNAP);
 
-    return;
+    if (NULL == context->dn) {
+        ereport (ERROR,
+                 (errcode (ERRCODE_INVALID_PARAMETER_VALUE),
+                  errmsg ("Cannot allocate CARD!")));
+        return -1;
+    }
+
+    elog (DEBUG1, "Start to get action.");
+    context->act = get_action (context->dn, context->attach_flags, 5 * context->timeout);
+    elog (DEBUG1, "Finish get action.");
+
+    return 0;
 }
+
+int capi_regex_job_init (CAPIRegexJobDescriptor* job_desc,
+                         CAPIContext* context)
+{
+    if (NULL == job_desc) {
+        return -1;
+    }
+
+    if (NULL == context) {
+        return -1;
+    }
+
+    // Init the job descriptor
+    job_desc->context               = context;
+    job_desc->patt_src_base         = NULL;
+    job_desc->pkt_src_base          = NULL;
+    job_desc->stat_dest_base        = NULL;
+    job_desc->num_pkt               = 0;
+    job_desc->num_matched_pkt       = 0;
+    job_desc->pkt_size              = 0;
+    job_desc->max_alloc_pkt_size    = 0;
+    job_desc->patt_size             = 0;
+    job_desc->pkt_size_wo_hw_hdr    = 0;
+    job_desc->stat_size             = 0;
+    job_desc->pattern               = NULL;
+    job_desc->results               = NULL;
+    job_desc->curr_result_id        = 0;
+    //job_desc->start_blk_id          = 0;
+    //job_desc->num_blks              = 0;
+    job_desc->thread_id             = 0;
+    job_desc->t_init                = 0;
+    //job_desc->t_init                = 0;
+    job_desc->t_regex_patt          = 0;
+    job_desc->t_regex_pkt           = 0;
+    job_desc->t_regex_scan          = 0;
+    job_desc->t_regex_harvest       = 0;
+    job_desc->t_cleanup             = 0;
+
+    job_desc->next_desc             = NULL;
+
+    return 0;
+}
+*/
+
 
 int main (int argc, char* argv[])
 {
+    printf("main start\n");
     char device[64];
     struct snap_card* dn;   /* lib snap handle */
     int card_no = 0;
     int cmd;
-    int rc = 1;
+    //int rc = 1;
     uint64_t cir;
     int timeout = ACTION_WAIT_TIME;
     int no_chk_offset = 0;
@@ -869,15 +945,20 @@ int main (int argc, char* argv[])
     unsigned long ioctl_data;
     void* patt_src_base = NULL;
     void* pkt_src_base = NULL;
-    void* pkt_src_base_0 = NULL;
-    void* stat_dest_base_0 = NULL;
-    size_t num_matched_pkt = 0;
+    //void* pkt_src_base_0 = NULL;
+    //void* stat_dest_base_0 = NULL;
+    //size_t num_matched_pkt = 0;
     size_t pkt_size = 0;
     size_t patt_size = 0;
     size_t pkt_size_for_sw = 0;
     uint64_t start_time;
     uint64_t elapsed_time;
-    uint32_t reg_data;
+    //uint32_t reg_data;
+    uint32_t hw_version = 0;
+    int num_engines = 0;
+    int num_pkt_pipes = 0;
+    int num_patt_pipes = 0;
+    int revision = 0;
 
     while (1) {
         int option_index = 0;
@@ -885,7 +966,7 @@ int main (int argc, char* argv[])
             { "card",         required_argument, NULL, 'C' },
             { "verbose",      no_argument,       NULL, 'v' },
             { "help",         no_argument,       NULL, 'h' },
-            { "version",      no_argument,       NULL, 'V' },
+           // { "version",      no_argument,       NULL, 'V' },
             { "quiet",        no_argument,       NULL, 'q' },
             { "timeout",      required_argument, NULL, 't' },
             { "irq",          no_argument,       NULL, 'I' },
@@ -894,10 +975,10 @@ int main (int argc, char* argv[])
             { "pattern",      required_argument, NULL, 'q' },
             { 0,              no_argument,       NULL, 0   },
         };
-        cmd = getopt_long (argc, argv, "C:t:p:q:IfqvVh",
+        cmd = getopt_long (argc, argv, "C:t:p:q:Ifqvh",
                            long_options, &option_index);
 
-        if (cmd == -1) { /* all params processed ? */
+        if (cmd == -1) {  /* all params processed ? */
             break;
         }
 
@@ -906,9 +987,9 @@ int main (int argc, char* argv[])
             verbose_level++;
             break;
 
-        case 'V':   /* version */
-            VERBOSE0 ("%s\n", version);
-            exit (EXIT_SUCCESS);;
+        //case 'V':    version
+           // VERBOSE0 ("%s\n", version);
+           // exit (EXIT_SUCCESS);;
 
         case 'h':   /* help */
             usage (argv[0]);
@@ -922,7 +1003,7 @@ int main (int argc, char* argv[])
             timeout = strtol (optarg, (char**)NULL, 0);  /* in sec */
             break;
 
-        case 'I':      /* irq */
+        case 'I':      /* irq */ 
             attach_flags = SNAP_ACTION_DONE_IRQ | SNAP_ATTACH_IRQ;
             break;
 
@@ -935,7 +1016,7 @@ int main (int argc, char* argv[])
             exit (EXIT_FAILURE);
         }
     }
-
+    
     VERBOSE2 ("Open Card: %d\n", card_no);
     sprintf (device, "/dev/cxl/afu%d.0s", card_no);
     dn = snap_card_alloc_dev (device, SNAP_VENDOR_ID_IBM, SNAP_DEVICE_ID_SNAP);
@@ -945,8 +1026,9 @@ int main (int argc, char* argv[])
         VERBOSE0 ("ERROR: snap_card_alloc_dev(%s)\n", device);
         return -1;
     }
+    
 
-    /* Read Card Capabilities */
+    /* Read Card Capabilities */ 
     snap_card_ioctl (dn, GET_CARD_TYPE, (unsigned long)&ioctl_data);
     VERBOSE1 ("SNAP on ");
 
@@ -993,7 +1075,7 @@ int main (int argc, char* argv[])
     VERBOSE0 ("Software run finished with size %d.\n", (int) pkt_size_for_sw);
     print_time (elapsed_time, pkt_size_for_sw);
     VERBOSE0 ("======== SOFTWARE DONE========\n");
-
+    
     VERBOSE0 ("Start to get action.\n");
     act = get_action (dn, attach_flags, 5 * timeout);
 
@@ -1002,6 +1084,16 @@ int main (int argc, char* argv[])
     }
 
     VERBOSE0 ("Finish get action.\n");
+    
+    hw_version = action_read (dn, SNAP_ACTION_VERS_REG);
+    VERBOSE0 ("hw_version: %#x\n", hw_version);
+
+    num_patt_pipes = ( int) ( ( hw_version & 0xFF000000) >> 24);
+    num_pkt_pipes =  ( int) ( ( hw_version & 0x00FF0000) >> 16);
+    num_engines =    ( int) ( ( hw_version & 0x0000FF00) >> 8);
+    revision =       ( int) ( hw_version & 0x000000FF);
+
+    VERBOSE0 ("Running with %d %dx%d regex engine(s), revision: %d\n", num_engines, num_pkt_pipes, num_patt_pipes, revision);
 
     // Alloc state output buffer, aligned to 4K
     //int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt();
@@ -1013,6 +1105,11 @@ int main (int argc, char* argv[])
         stat_size = 4096;
     }
     
+    VERBOSE1 ("======== HARDWARE RUN ========\n");
+    ERROR_CHECK (start_regex_workers (num_engines, "./pattern.txt", no_chk_offset, pkt_src_base, pkt_size, stat_size));
+fail:
+    return -1;
+    /*
     // Iterate through 12 engines
     for (int eng_id = 0; eng_id < NUM_THREADS; eng_id++) {
 
@@ -1036,6 +1133,7 @@ int main (int argc, char* argv[])
                                                                                   &num_matched_pkt,
                                                                                   patt_size,
                                                                                   stat_size);
+	thd->join();
         elapsed_time = get_usec() - start_time;
         // pkt_size_for_sw is the real size without hardware specific 64B header
         print_time (elapsed_time, pkt_size_for_sw);
@@ -1076,7 +1174,8 @@ int main (int argc, char* argv[])
             VERBOSE0 ("\nTest PASSED for Engine %d!\n\n", eng_id);
         }
     }
-
+    */
+    
     free_mem (pkt_src_base);
     free_mem (patt_src_base);
     snap_detach_action (act);
@@ -1084,6 +1183,6 @@ int main (int argc, char* argv[])
     VERBOSE2 ("Free Card Handle: %p\n", dn);
     snap_card_free (dn);
 __exit1:
-    VERBOSE1 ("End of Test rc: %d\n", rc);
-    return rc;
+    VERBOSE1 ("End of Test\n"); 
+    return 0;
 }

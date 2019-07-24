@@ -39,36 +39,110 @@ endif
 endif
 
 #CPPFLAGS+= -g
-CPPFLAGS+= -O3
 CXX=g++
 
 include $(SNAP_ROOT)/snap_env.sh
+#POSTGRESQL_INCLUDE        = $(shell pg_config --includedir)
+#POSTGRESQL_INCLUDE_SERVER = $(shell pg_config --includedir-server)
+#POSTGRESQL_LIB            = $(shell pg_config --libdir)
+#POSTGRESQL_PKGLIB         = $(shell pg_config --pkglibdir)
+#POSTGRESQL_SHARELIB       = $(shell pg_config --sharedir)
 
-all: config all_build
+UTILS                     = ../../string-match-fpga/utils
+
+INCLUDES                  = -I. -I./ -I../
+INCLUDES                 += -I$(UTILS) 
+INCLUDES                 += -I$(SNAP_ROOT)/software/include
+#INCLUDES                 += -I$(POSTGRESQL_INCLUDE_SERVER) -I$(POSTGRESQL_INCLUDE)/internal
+
+EXTRA_CFLGAS             += -Wall -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv
+EXTRA_CFLGAS             += -Wno-error -Wno-unused-parameter -Wno-sign-compare
+EXTRA_CFLGAS             += -Wno-return-local-addr
+
+CPPFLAGS                 += -O3 $(EXTRA_CFLGAS) $(INCLUDES) -fPIC -D_GNU_SOURCE 
+LDFLAGS                  += $(EXTRA_CFLGAS) -fPIC -Wl,--as-needed -Wl,-rpath,--enable-new-dtags
+LDLIBS                   += -lcxl -lpthread -lsnap -lboost_thread -lboost_system -lboost_chrono
+
+BUILDDIR = ./obj
+TOBUILDDIR = $(addprefix $(BUILDDIR)/,$(1))
+MKDIR = if [ ! -d $(dir $@) ]; then mkdir -p $(dir $@); fi
+
+MT_CPPSRCS := $(shell find ./mt -name "*.cpp")
+MT_CPPOBJS := $(call TOBUILDDIR,$(patsubst %.cpp,%.o,$(MT_CPPSRCS)))
+MT_CPPFLAGS := --std=c++11
+MT_INCLUDES := -I. -I../ -I./mt -I./mt/base -I./mt/utils -I$(SNAP_ROOT)/software/include
+MT_INCLUDES += -I./mt/dirtest -I./mt/interface
+#MT_INCLUDES += -I$(POSTGRESQL_INCLUDE_SERVER) -I$(POSTGRESQL_INCLUDE)/internal
+MT_COMPILEFLAGS := -W -Wall -Wno-multichar -Wno-unused-parameter -Wno-unused-function -Werror-implicit-function-declaration
+MT_OPTFLAGS := -O3
+CPPFLAGS += $(MT_INCLUDES)
+
+DBDIRECT_CSRCS := ./db_direct.c
+DBDIRECT_COBJS := $(call TOBUILDDIR,$(patsubst %.c,%.o,$(DBDIRECT_CSRCS)))
+
+UTILS_CPPLINKS := utils/fregex.cpp utils/regex_config.cpp
+UTILS_CPPOBJS := $(call TOBUILDDIR,$(patsubst %.cpp,%.o,$(UTILS_CPPLINKS)))
+
+UTILS_CLINKS := utils/re_match.c
+UTILS_COBJS := $(call TOBUILDDIR,$(patsubst %.c,%.o,$(UTILS_CLINKS)))
+
+REGEXREF_CPPSRCS := ./regex_ref.cpp
+REGEXREF_CPPOBJS := $(call TOBUILDDIR,$(patsubst %.cpp,%.o,$(REGEXREF_CPPSRCS)))
+
+OBJS += $(MT_CPPOBJS)
+OBJS += $(DBDIRECT_COBJS) 
+OBJS += $(UTILS_CPPOBJS) 
+OBJS += $(UTILS_COBJS)
+OBJS += $(REGEXREF_CPPOBJS)
+
+all: config $(UTILS_CPPLINKS) $(UTILS_CLINKS) all_build
 
 config:
 	./action_config.sh
 
-fregex.o: utils/fregex.cpp
-	$(CXX) -c $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) -DNODEBUG $< -o $@
+# Build multithreading related CPP objs
+$(MT_CPPOBJS): $(BUILDDIR)/%.o: %.cpp
+	@$(MKDIR)
+	$(CXX) $(MT_OPTFLAGS) $(MT_COMPILEFLAGS) $(MT_CPPFLAGS) $(MT_INCLUDES) -c $< -MD -MT $@ -MF $(@:%o=%d) -o $@ $(LDLIBS)
 
-regex_config.o: utils/regex_config.cpp
-	$(CXX) -c $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) -DNODEBUG $< -o $@
+# Create the symbol link for util srcs
+$(UTILS_CPPLINKS): $(UTILS)/fregex.cpp $(UTILS)/regex_config.cpp
+	@if [ -L $@ ]; then unlink $@; fi
+	$(LINK) -s $(UTILS)/$@ $@
 
-regex_ref.o: regex_ref.cpp
-	$(CXX) -c $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) $< -o $@
+# Build util related CPP objs
+$(UTILS_CPPOBJS): $(BUILDDIR)/%.o: %.cpp
+	@$(MKDIR)
+	$(CXX) -c $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) -DNODEBUG $< -MD -MT $@ -MF $(@:%o=%d) -o $@
 
-re_match.o: utils/re_match.c
-	$(CXX) -c $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) $< -o $@
-	
-db_direct_objs += fregex.o regex_config.o regex_ref.o re_match.o
-db_direct: $(db_direct_objs)
+$(UTILS_CLINKs): $(UTILS)/re_match.c
+	@if [ -L $@ ]; then unlink $@; fi
+	$(LINK) -s $(UTILS)/$@ $@
+
+$(UTILS_COBJS): $(BUILDDIR)/%.o: %.c
+	@$(MKDIR)
+	$(CXX) -c $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) $< -MD -MT $@ -MF $(@:%o=%d) -o $@
+
+# Build regex_ref obj
+$(REGEXREF_CPPOBJS): $(BUILDDIR)/%.o: %.cpp
+	@$(MKDIR)
+	$(CXX) -c $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) $< -MD -MT $@ -MF $(@:%o=%d) -o $@
+
+# Build CAPI related C objs
+$(DBDIRECT_COBJS): $(BUILDDIR)/%.o: %.c
+	@$(MKDIR)
+	$(CC) -c -std=c99 $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) $< -MD -MT $@ -MF $(@:%o=%d) -o $@ 
 
 projs += db_direct
 
-db_direct: fregex.o regex_config.o db_direct.o regex_ref.o re_match.o
-	$(CXX) $(LDFLAGS) $($(@)_LDFLAGS) $@.o $($(@)_objs) $($(@)_libs) $(LDLIBS) -o $@
+# Link all together
+db_direct: $(OBJS)
+	$(CXX) $(LDFLAGS) $($(@)_LDFLAGS) $($(@)_objs) $($(@)_libs) $^ -o $@ $(LDLIBS) 
 
 # If you have the host code outside of the default snap directory structure, 
 # change to /path/to/snap/actions/software.mk
 include $(SNAP_ROOT)/actions/software.mk
+
+clean:
+	$(RM) $(projs) $(libs) $(OBJS) *.o *.log *.out *~ 
+	$(foreach l, $(UTILS_CPPLINKS), $(shell if [ -L $(l) ]; then unlink $(l); fi))
