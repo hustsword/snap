@@ -57,7 +57,6 @@ int WorkerRegex::init()
     return 0;
 }
 
-
 void WorkerRegex::check_thread_done()
 {
     if (m_interrupt) {
@@ -210,6 +209,8 @@ void WorkerRegex::cleanup()
 
 void WorkerRegex::read_buffers()
 {
+    capi_regex_check_relation (m_relation);
+
     m_num_blks = RelationGetNumberOfBlocksInFork (m_relation, MAIN_FORKNUM);
 
     m_buffers = (Buffer*) palloc0 (sizeof (Buffer) * m_num_blks);

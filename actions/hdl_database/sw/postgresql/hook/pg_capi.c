@@ -145,7 +145,7 @@ PGCAPIQualFromExpr (Node* expr, int varno)
         //List*       rlst = NIL;
         //ListCell*   lc;
 
-        //// elog (INFO, "In and_clause.");
+        //elog (INFO, "In and_clause.");
 
         //foreach (lc, ((BoolExpr*) expr)->args) {
         //    List*   temp = PGCAPIQualFromExpr ((Node*) lfirst (lc), varno);
@@ -407,7 +407,7 @@ new_job:
     int curr_job_id = capiss->capi_regex_curr_job;
     CAPIRegexJobDescriptor* job_desc = capiss->capi_regex_job_descs[curr_job_id];
 
-    //// elog (INFO, "Harvesting on job %d (total jobs %d) result %d (total results %d)",
+    //elog (INFO, "Harvesting on job %d (total jobs %d) result %d (total results %d)",
     //        capiss->capi_regex_curr_job, capiss->capi_regex_num_jobs,
     //        job_desc->curr_result_id, (int)job_desc->num_matched_pkt);
 

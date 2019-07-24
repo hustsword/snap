@@ -58,11 +58,19 @@ void print_time (uint64_t elapsed, uint64_t size)
     if (elapsed > 10000) {
         t = (int)elapsed / 1000;
         ft = (1000 / (float)t) * fsize;
+<<<<<<< HEAD
         // elog (INFO, " end after %d msec (%0.3f MB/sec)\n", t, ft);
     } else {
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
         // elog (INFO, " end after %d usec (%0.3f MB/sec)\n", t, ft);
+=======
+        elog (INFO, " end after %d msec (%0.3f MB/sec)\n", t, ft);
+    } else {
+        t = (int)elapsed;
+        ft = (1000000 / (float)t) * fsize;
+        elog (INFO, " end after %d usec (%0.3f MB/sec)\n", t, ft);
+>>>>>>> hdl_database
     }
 }
 
@@ -77,18 +85,30 @@ void print_time_text (const char* text, uint64_t elapsed, uint64_t size)
         ft = (1000 / (float)t) * fsize;
 
         if (0 == size) {
+<<<<<<< HEAD
             // elog (INFO, "%s run time: %d msec \n", text, t);
         } else {
             // elog (INFO, "%s run time: %d msec (%0.3f MB/sec)\n", text, t, ft);
+=======
+            elog (INFO, "%s run time: %d msec \n", text, t);
+        } else {
+            elog (INFO, "%s run time: %d msec (%0.3f MB/sec)\n", text, t, ft);
+>>>>>>> hdl_database
         }
     } else {
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
 
         if (0 == size) {
+<<<<<<< HEAD
             // elog (INFO, "%s run time:  %d usec\n", text, t);
         } else {
             // elog (INFO, "%s run time:  %d usec (%0.3f MB/sec)\n", text, t, ft);
+=======
+            elog (INFO, "%s run time:  %d usec\n", text, t);
+        } else {
+            elog (INFO, "%s run time:  %d usec (%0.3f MB/sec)\n", text, t, ft);
+>>>>>>> hdl_database
         }
     }
 }
@@ -132,13 +152,23 @@ void free_mem (void* a)
 
 void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_pkt_id)
 {
+<<<<<<< HEAD
     //elog (INFO, "entering fill_one_packet");
+=======
+>>>>>>> hdl_database
     unsigned char* pkt_base_addr = (unsigned char*) in_pkt_addr;
     int pkt_id = in_pkt_id;
     uint32_t bytes_used = 0;
     uint16_t pkt_len = size;
 
+<<<<<<< HEAD
     // elog (INFO, "making frame header..");
+=======
+    if (((uint64_t)pkt_base_addr & 0x3FULL) != 0) {
+        elog (INFO, "WARNING: Address %p is not 64B aligned", pkt_base_addr);
+    }
+
+>>>>>>> hdl_database
     // The frame header
     for (int i = 0; i < 4; i++) {
         pkt_base_addr[bytes_used] = 0x5A;
@@ -151,7 +181,11 @@ void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_p
     pkt_base_addr[bytes_used] = 0;
     pkt_base_addr[bytes_used] |= ((pkt_len >> 8) & 0xF);
     bytes_used ++;
+<<<<<<< HEAD
     // elog (INFO, "memset..");
+=======
+
+>>>>>>> hdl_database
     memset (pkt_base_addr + bytes_used, 0, 54);
     bytes_used += 54;
 
@@ -160,7 +194,10 @@ void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_p
         bytes_used++;
     }
 
+<<<<<<< HEAD
     // elog (INFO, "memcpy..");
+=======
+>>>>>>> hdl_database
     memcpy (pkt_base_addr + bytes_used, in_pkt, pkt_len);
     bytes_used += pkt_len;
 
@@ -171,7 +208,10 @@ void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_p
         if ((((uint64_t) (pkt_base_addr + bytes_used)) & 0x3F) == 0x3F) { //the last address of the packet stream is 512bit/64byte aligned
             break;
         } else {
+<<<<<<< HEAD
             // elog (INFO, "doing padding..");
+=======
+>>>>>>> hdl_database
             bytes_used ++;
             pkt_base_addr[bytes_used] = 0x00; //padding 8'h00 until the 512bit/64byte alignment
         }
@@ -250,11 +290,19 @@ void* fill_one_pattern (const char* in_patt, void* in_patt_addr, int in_patt_id)
 }
 
 /* Action or Kernel Write and Read are 32 bit MMIO */
+<<<<<<< HEAD
 void action_write (struct snap_card* h, uint32_t addr, uint32_t data)
 {
     int rc;
 
     rc = snap_mmio_write32 (h, (uint64_t)addr, data);
+=======
+void action_write (struct snap_card* h, uint32_t addr, uint32_t data, int id)
+{
+    int rc;
+
+    rc = snap_mmio_write32 (h, (uint64_t)REG (addr, id), data);
+>>>>>>> hdl_database
 
     if (0 != rc) {
         elog (DEBUG1, "Write MMIO 32 Err\n");
@@ -263,12 +311,20 @@ void action_write (struct snap_card* h, uint32_t addr, uint32_t data)
     return;
 }
 
+<<<<<<< HEAD
 uint32_t action_read (struct snap_card* h, uint32_t addr)
+=======
+uint32_t action_read (struct snap_card* h, uint32_t addr, int id)
+>>>>>>> hdl_database
 {
     int rc;
     uint32_t data;
 
+<<<<<<< HEAD
     rc = snap_mmio_read32 (h, (uint64_t)addr, &data);
+=======
+    rc = snap_mmio_read32 (h, (uint64_t)REG (addr, id), &data);
+>>>>>>> hdl_database
 
     if (0 != rc) {
         elog (DEBUG1, "Read MMIO 32 Err\n");
@@ -299,11 +355,16 @@ int action_wait_idle (struct snap_card* h, int timeout)
     return rc;
 }
 
+<<<<<<< HEAD
 void print_control_status (struct snap_card* h)
+=======
+void print_control_status (struct snap_card* h, int id)
+>>>>>>> hdl_database
 {
     if (verbose_level > 2) {
         uint32_t reg_data;
         elog (DEBUG3, " READ Control and Status Registers: \n");
+<<<<<<< HEAD
         reg_data = action_read (h, ACTION_STATUS_L);
         elog (DEBUG3, "       STATUS_L = 0x%x\n", reg_data);
         reg_data = action_read (h, ACTION_STATUS_H);
@@ -311,10 +372,20 @@ void print_control_status (struct snap_card* h)
         reg_data = action_read (h, ACTION_CONTROL_L);
         elog (DEBUG3, "       CONTROL_L = 0x%x\n", reg_data);
         reg_data = action_read (h, ACTION_CONTROL_H);
+=======
+        reg_data = action_read (h, ACTION_STATUS_L, id);
+        elog (DEBUG3, "       STATUS_L = 0x%x\n", reg_data);
+        reg_data = action_read (h, ACTION_STATUS_H, id);
+        elog (DEBUG3, "       STATUS_H = 0x%x\n", reg_data);
+        reg_data = action_read (h, ACTION_CONTROL_L, id);
+        elog (DEBUG3, "       CONTROL_L = 0x%x\n", reg_data);
+        reg_data = action_read (h, ACTION_CONTROL_H, id);
+>>>>>>> hdl_database
         elog (DEBUG3, "       CONTROL_H = 0x%x\n", reg_data);
     }
 }
 
+<<<<<<< HEAD
 void soft_reset (struct snap_card* h)
 {
     // Status[4] to reset
@@ -323,6 +394,16 @@ void soft_reset (struct snap_card* h)
     elog (DEBUG1, " Write ACTION_CONTROL for soft reset!");
     action_write (h, ACTION_CONTROL_L, 0x00000000);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
+=======
+void soft_reset (struct snap_card* h, int id)
+{
+    // Status[4] to reset
+    action_write (h, ACTION_CONTROL_L, 0x00000010, id);
+    action_write (h, ACTION_CONTROL_H, 0x00000000, id);
+    elog (DEBUG1, " Write ACTION_CONTROL for soft reset!");
+    action_write (h, ACTION_CONTROL_L, 0x00000000, id);
+    action_write (h, ACTION_CONTROL_H, 0x00000000, id);
+>>>>>>> hdl_database
 }
 
 void action_regex (struct snap_card* h,
@@ -332,6 +413,7 @@ void action_regex (struct snap_card* h,
                    size_t* num_matched_pkt,
                    size_t patt_size,
                    size_t pkt_size,
+<<<<<<< HEAD
                    size_t stat_size)
 {
     uint32_t reg_data;
@@ -379,6 +461,56 @@ void action_regex (struct snap_card* h,
 
     do {
         reg_data = action_read (h, ACTION_STATUS_L);
+=======
+                   size_t stat_size,
+                   int id)
+{
+    uint32_t reg_data;
+
+    print_control_status (h, id);
+
+    action_write (h, ACTION_PATT_INIT_ADDR_L,
+                  (uint32_t) (((uint64_t) patt_src_base) & 0xffffffff), id);
+    action_write (h, ACTION_PATT_INIT_ADDR_H,
+                  (uint32_t) ((((uint64_t) patt_src_base) >> 32) & 0xffffffff), id);
+
+    action_write (h, ACTION_PKT_INIT_ADDR_L,
+                  (uint32_t) (((uint64_t) pkt_src_base) & 0xffffffff), id);
+    action_write (h, ACTION_PKT_INIT_ADDR_H,
+                  (uint32_t) ((((uint64_t) pkt_src_base) >> 32) & 0xffffffff), id);
+
+    action_write (h, ACTION_PATT_CARD_DDR_ADDR_L, 0, id);
+    action_write (h, ACTION_PATT_CARD_DDR_ADDR_H, 0, id);
+
+    action_write (h, ACTION_STAT_INIT_ADDR_L,
+                  (uint32_t) (((uint64_t) stat_dest_base) & 0xffffffff), id);
+    action_write (h, ACTION_STAT_INIT_ADDR_H,
+                  (uint32_t) ((((uint64_t) stat_dest_base) >> 32) & 0xffffffff), id);
+
+    action_write (h, ACTION_PATT_TOTAL_NUM_L,
+                  (uint32_t) (((uint64_t) patt_size) & 0xffffffff), id);
+    action_write (h, ACTION_PATT_TOTAL_NUM_H,
+                  (uint32_t) ((((uint64_t) patt_size) >> 32) & 0xffffffff), id);
+
+    action_write (h, ACTION_PKT_TOTAL_NUM_L,
+                  (uint32_t) (((uint64_t) pkt_size) & 0xffffffff), id);
+    action_write (h, ACTION_PKT_TOTAL_NUM_H,
+                  (uint32_t) ((((uint64_t) pkt_size) >> 32) & 0xffffffff), id);
+
+    action_write (h, ACTION_STAT_TOTAL_SIZE_L,
+                  (uint32_t) (((uint64_t) stat_size) & 0xffffffff), id);
+    action_write (h, ACTION_STAT_TOTAL_SIZE_H,
+                  (uint32_t) ((((uint64_t) stat_size) >> 32) & 0xffffffff), id);
+
+    // Start copying the pattern from host memory to card
+    action_write (h, ACTION_CONTROL_L, 0x00000001, id);
+    action_write (h, ACTION_CONTROL_H, 0x00000000, id);
+
+    print_control_status (h, id);
+
+    do {
+        reg_data = action_read (h, ACTION_STATUS_L, id);
+>>>>>>> hdl_database
 
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
@@ -394,6 +526,7 @@ void action_regex (struct snap_card* h,
     } while (1);
 
     // Start working control[2:1] = 11
+<<<<<<< HEAD
     action_write (h, ACTION_CONTROL_L, 0x00000006);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
 
@@ -403,12 +536,25 @@ void action_regex (struct snap_card* h,
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
             elog (DEBUG1, "about to exit, cannot finish scan");
+=======
+    action_write (h, ACTION_CONTROL_L, 0x00000006, id);
+    action_write (h, ACTION_CONTROL_H, 0x00000000, id);
+
+    do {
+        reg_data = action_read (h, ACTION_STATUS_L, id);
+
+        // Status[23:8]
+        if ((reg_data & 0x00FFFF00) != 0) {
+>>>>>>> hdl_database
             exit (EXIT_FAILURE);
         }
 
         // Status[0]
         if ((reg_data & 0x00000010) != 0) {
+<<<<<<< HEAD
             elog (DEBUG1, "about to exit, cannot finish scan");
+=======
+>>>>>>> hdl_database
             exit (EXIT_FAILURE);
         }
 
@@ -417,6 +563,7 @@ void action_regex (struct snap_card* h,
         }
     } while (1);
 
+<<<<<<< HEAD
     elog (DEBUG1, "scan is done!\n");
     // Stop working
     action_write (h, ACTION_CONTROL_L, 0x00000000);
@@ -428,6 +575,18 @@ void action_regex (struct snap_card* h,
 
     do {
         reg_data = action_read (h, ACTION_STATUS_L);
+=======
+    // Stop working
+    action_write (h, ACTION_CONTROL_L, 0x00000000, id);
+    action_write (h, ACTION_CONTROL_H, 0x00000000, id);
+
+    // Flush rest data
+    action_write (h, ACTION_CONTROL_L, 0x00000008, id);
+    action_write (h, ACTION_CONTROL_H, 0x00000000, id);
+
+    do {
+        reg_data = action_read (h, ACTION_STATUS_L, id);
+>>>>>>> hdl_database
 
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
@@ -436,17 +595,27 @@ void action_regex (struct snap_card* h,
 
         // Status[3]
         if ((reg_data & 0x00000008) == 8) {
+<<<<<<< HEAD
             reg_data = action_read (h, ACTION_STATUS_H);
+=======
+            reg_data = action_read (h, ACTION_STATUS_H, id);
+>>>>>>> hdl_database
             *num_matched_pkt = reg_data;
             break;
         }
 
     } while (1);
 
+<<<<<<< HEAD
     elog (DEBUG1, "flushing is done!\n");
     // Stop flushing
     action_write (h, ACTION_CONTROL_L, 0x00000000);
     action_write (h, ACTION_CONTROL_H, 0x00000000);
+=======
+    // Stop flushing
+    action_write (h, ACTION_CONTROL_L, 0x00000000, id);
+    action_write (h, ACTION_CONTROL_H, 0x00000000, id);
+>>>>>>> hdl_database
 
     return;
 }
@@ -459,14 +628,23 @@ int capi_regex_scan_internal (struct snap_card* dnc,
                               size_t* num_matched_pkt,
                               size_t patt_size,
                               size_t pkt_size,
+<<<<<<< HEAD
                               size_t stat_size)
+=======
+                              size_t stat_size,
+                              int id)
+>>>>>>> hdl_database
 {
     int rc;
 
     rc = 0;
 
     action_regex (dnc, patt_src_base, pkt_src_base, stat_dest_base, num_matched_pkt,
+<<<<<<< HEAD
                   patt_size, pkt_size, stat_size);
+=======
+                  patt_size, pkt_size, stat_size, id);
+>>>>>>> hdl_database
     rc = action_wait_idle (dnc, timeout);
 
     if (0 != rc) {
@@ -481,11 +659,19 @@ struct snap_action* get_action (struct snap_card* handle,
 {
     struct snap_action* act;
 
+<<<<<<< HEAD
     act = snap_attach_action (handle, ACTION_TYPE_STRING_MATCH,
                               flags, timeout);
 
     if (NULL == act) {
         elog (DEBUG1, "Error: Can not attach Action: %x\n", ACTION_TYPE_STRING_MATCH);
+=======
+    act = snap_attach_action (handle, ACTION_TYPE_DATABASE,
+                              flags, timeout);
+
+    if (NULL == act) {
+        elog (DEBUG1, "Error: Can not attach Action: %x\n", ACTION_TYPE_DATABASE);
+>>>>>>> hdl_database
         elog (DEBUG1, "       Try to run snap_main tool\n");
     }
 
@@ -641,9 +827,12 @@ int capi_regex_context_init (CAPIContext* context)
     context->act = get_action (context->dn, context->attach_flags, 5 * context->timeout);
     elog (DEBUG1, "Finish get action.");
 
+<<<<<<< HEAD
     // Reset the hardware
     soft_reset (context->dn);
 
+=======
+>>>>>>> hdl_database
     return 0;
 }
 
@@ -675,6 +864,10 @@ int capi_regex_job_init (CAPIRegexJobDescriptor* job_desc,
     job_desc->curr_result_id        = 0;
     job_desc->start_blk_id          = 0;
     job_desc->num_blks              = 0;
+<<<<<<< HEAD
+=======
+    job_desc->thread_id             = 0;
+>>>>>>> hdl_database
     job_desc->t_init                = 0;
     job_desc->t_init                = 0;
     job_desc->t_regex_patt          = 0;
@@ -717,7 +910,12 @@ int capi_regex_scan (CAPIRegexJobDescriptor* job_desc)
                                   & (job_desc->num_matched_pkt),
                                   job_desc->patt_size,
                                   job_desc->pkt_size,
+<<<<<<< HEAD
                                   job_desc->stat_size)) {
+=======
+                                  job_desc->stat_size,
+                                  job_desc->thread_id)) {
+>>>>>>> hdl_database
 
         ereport (ERROR,
                  (errcode (ERRCODE_INVALID_PARAMETER_VALUE),
@@ -760,6 +958,7 @@ int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc)
 
     // Wait for transaction to be done.
     do {
+<<<<<<< HEAD
         action_read (job_desc->context->dn, ACTION_STATUS_L);
         count++;
     } while (count < 2);
@@ -768,6 +967,18 @@ int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc)
     job_desc->num_matched_pkt = reg_data;
     job_desc->results = (uint32_t*) palloc (job_desc->num_matched_pkt * sizeof (uint32_t));
 
+=======
+        action_read (job_desc->context->dn, ACTION_STATUS_L, job_desc->thread_id);
+        count++;
+    } while (count < 2);
+
+    uint32_t reg_data = action_read (job_desc->context->dn, ACTION_STATUS_H, job_desc->thread_id);
+    job_desc->num_matched_pkt = reg_data;
+    job_desc->results = (uint32_t*) palloc (job_desc->num_matched_pkt * sizeof (uint32_t));
+
+    elog (INFO, "Thread %d finished with %zu matched packets", job_desc->thread_id, job_desc->num_matched_pkt);
+
+>>>>>>> hdl_database
     if (get_results (job_desc->results, job_desc->num_matched_pkt, job_desc->stat_dest_base)) {
         errno = ENODEV;
         return -1;
