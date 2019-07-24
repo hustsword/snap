@@ -759,6 +759,41 @@ static void* regex_scan_file (const char* file_path, size_t* size, size_t* size_
     return pkt_src_base;
 }
 
+static int print_results (size_t num_results, void* stat_dest_base)
+{
+    int i = 0, j = 0;
+    uint16_t offset = 0;
+    uint32_t pkt_id = 0;
+    uint32_t patt_id = 0;
+    int rc = 0;
+
+    VERBOSE0 ("---- Result buffer address: %p ----\n", stat_dest_base);
+    VERBOSE0 ("---- Results (HW: hardware) ----\n");
+    VERBOSE0 ("PKT(HW) PATT(HW) OFFSET(HW)\n");
+
+    for (i = 0; i < (int)num_results; i++) {
+        for (j = 0; j < 4; j++) {
+            patt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << j * 8);
+        }
+
+        for (j = 4; j < 8; j++) {
+            pkt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 4) * 8);
+        }
+
+        for (j = 8; j < 10; j++) {
+            offset |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 2) * 8);
+        }
+
+        VERBOSE0 ("%7d\t%6d\t%7d\n", pkt_id, patt_id, offset);
+
+        patt_id = 0;
+        pkt_id = 0;
+        offset = 0;
+    }
+
+    return rc;
+}
+
 static int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no_chk_offset)
 {
     int i = 0, j = 0;
@@ -1036,10 +1071,14 @@ int main (int argc, char* argv[])
         num_matched_pkt = reg_data;
 
         if (verbose_level > 2) {
-            __hexdump (stdout, stat_dest_base_0, (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt());
+          __hexdump (stdout, stat_dest_base_0, (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt());
         }
 
         rc = compare_results (num_matched_pkt, stat_dest_base_0, no_chk_offset);
+
+        if (verbose_level > 1) {
+            print_results ((pkt_size / 1024) * 2, stat_dest_base_0);
+        }
 
         VERBOSE0 ("Cleanup memories");
         start_time = get_usec();
