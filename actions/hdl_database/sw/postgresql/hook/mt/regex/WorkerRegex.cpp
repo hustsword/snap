@@ -39,6 +39,7 @@ WorkerRegex::WorkerRegex (HardwareManagerPtr in_hw_mgr, Relation in_relation, in
 
 WorkerRegex::~WorkerRegex()
 {
+    elog (DEBUG5, "WorkerRegex destroyed!");
 }
 
 void WorkerRegex::set_mode (bool in_interrupt)
@@ -207,6 +208,8 @@ void WorkerRegex::cleanup()
     for (size_t i = 0; i < m_threads.size(); i++) {
         m_threads[i]->cleanup();
     }
+
+    m_threads.clear();
 }
 
 void WorkerRegex::read_buffers()
