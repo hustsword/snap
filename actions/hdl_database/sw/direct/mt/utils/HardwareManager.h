@@ -40,6 +40,11 @@ public:
     // The Constructor of hardware manager
     HardwareManager (int in_card_num);
     HardwareManager (int in_card_num, int in_timeout_sec, int in_timeout_usec);
+    HardwareManager (int in_card_num,
+                    CAPICard* in_capi_card,
+                    CAPIAction* in_capi_action,
+                    snap_action_flag_t in_attach_flags,
+                    int in_timeout_sec, int in_timeout_usec);
 
     // The Destructor of hardware manager
     ~HardwareManager();
@@ -59,18 +64,12 @@ public:
     // Wait interrupt
     int wait_interrupt();
 
-    // Get the CAPI context
-    //CAPIContext* get_context();
-
     // Reset the engine
     void reset_engine (int in_eng_id);
 
     CAPICard* get_capi_card();
 
-    int get_timeout();
-
 private:
-    char m_device[64];
     
     // The card number
     int m_card_num;
@@ -83,11 +82,6 @@ private:
 
     // The flags to attach the action
     snap_action_flag_t m_attach_flags;
-
-    int m_timeout;
-
-    // The struct to hold all CAPI card related handlers
-    //CAPIContext* m_context;
 
     // Timeout value before waiting the action attached
     int m_timeout_sec;

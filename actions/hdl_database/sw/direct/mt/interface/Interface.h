@@ -22,7 +22,16 @@ extern "C" {
 #endif
 #include "db_direct.h"
 enum test_mode {POLL = 0, INTERRUPT, INVALID};
-int start_regex_workers (int num_engines, const char* patt_file_path, int no_chk_offset, void* pkt_src_base, size_t pkt_size, size_t stat_size);
+int start_regex_workers (int num_engines,  
+			int no_chk_offset, 
+			void* patt_src_base,
+			size_t patt_size,
+			void* pkt_src_base, 
+			size_t pkt_size, 
+			size_t stat_size,
+			struct snap_card* dn,
+			struct snap_action* act,
+			snap_action_flag_t attach_flags);
 #ifdef __cplusplus
 }
 #endif

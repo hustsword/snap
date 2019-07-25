@@ -32,10 +32,7 @@ class WorkerDirtest : public WorkerBase
 {
 public:
     // Constructor of the worker base
-    WorkerDirtest (HardwareManagerPtr in_hw_mgr,
-                 // Relation in_relation,
-                 // int in_attr_id,
-                 bool in_debug);
+    WorkerDirtest (HardwareManagerPtr in_hw_mgr, bool in_debug);
 
     // Destructor of the worker base
     ~WorkerDirtest();
@@ -52,8 +49,8 @@ public:
     // Set if we are going to use interrupt or polling
     void set_mode (bool in_interrupt);
 
-    // Compile the regex pattern
-    int regex_compile (const char* in_patt);
+    // Copy pattern buffer to worker
+    void set_patt_src_base (void* in_patt_src_base, size_t in_patt_size);
 
     // Get the pattern buffer pointer
     void* get_pattern_buffer();
@@ -61,32 +58,8 @@ public:
     // Get the size of the pattern buffer
     size_t get_pattern_buffer_size();
 
-    // Get pionter to the relation
-    //Relation get_relation();
-
-    // Get the attribute ID to be scanned
-    //int get_attr_id();
-
-    //TODO
-    // Get the number of buffers (blocks) for different thread
-    //int get_num_blks_per_thread (int in_thread_id, int* out_start_blk_id);
-
-    // Get the number of tuples for different thread
-    // TODO: assume tuples are evenly distributed across buffers
-    //size_t get_num_tuples_per_thread (int in_thread_id);
-
     // Clean up any threads created for this worker
     virtual void cleanup();
-
-    // Read all buffers of this relation
-    //void read_buffers();
-
-    // Release all buffers of this relation
-    //void release_buffers();
-
-    // A container to hold all buffer pointers of this relation,
-    // make it public so it can be referenced with minimum cost.
-    // Buffer* m_buffers;
 
 private:
     // Use interrupt or poll to check thread done?
@@ -97,18 +70,6 @@ private:
 
     // Size of the regex pattern buffer
     size_t m_patt_size;
-
-    // The relation of this work
-    //Relation m_relation;
-
-    // The attribute ID to be scanned
-    // int m_attr_id;
-
-    // Total number of buffers (blocks) in the relation
-    //int m_num_blks;
-
-    // Total number of tuples in the relation
-    //size_t m_num_tuples;
 };
 
 typedef boost::shared_ptr<WorkerDirtest> WorkerDirtestPtr;

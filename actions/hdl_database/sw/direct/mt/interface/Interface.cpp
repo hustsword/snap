@@ -25,41 +25,30 @@
 
 using namespace boost::chrono;
 
-int start_regex_workers (int num_engines, const char* patt_file_path, int no_chk_offset, void* pkt_src_base, size_t pkt_size, size_t stat_size)
+int start_regex_workers (int num_engines, 
+                         int no_chk_offset, 
+			 void* patt_src_base,
+			 size_t patt_size,
+                         void* pkt_src_base, 
+                         size_t pkt_size, 
+                         size_t stat_size,
+                         struct snap_card* dn,
+                         struct snap_action* act,
+                         snap_action_flag_t attach_flags)
 {
     printf ("Running on regex worker\n");
 
-    /*
-    if (NULL == in_capiss) {
-        elog (ERROR, "Invalid CAPI Scan State pointer");
-        return -1;
-    }
-    */
-
-    HardwareManagerPtr hw_mgr =  boost::make_shared<HardwareManager> (0, 0, 1000);
+    HardwareManagerPtr hw_mgr =  boost::make_shared<HardwareManager> (0, dn, act, attach_flags, 0, 1000);
 
     WorkerDirtestPtr worker = boost::make_shared<WorkerDirtest> (hw_mgr, false);
     worker->set_mode (false);
 
     printf ("Init hardware\n");
     ERROR_CHECK (hw_mgr->init());
-    printf ("Compile pattern\n");
-    ERROR_CHECK (worker->regex_compile (patt_file_path));
+    printf ("Copy pattern to hardware\n");
+    worker->set_patt_src_base (patt_src_base, patt_size);
 
     printf ("Create %d job(s) for this worker\n", num_engines);
-
-    /*
-    ThreadDirtestPtr thd = boost::make_shared<ThreadDirtest> (0,1000);
-    JobDirtestPtr job = boost::make_shared<JobDirtest> (0,0,hw_mgr,false);
-    CAPIRegexJobDescriptor* job_desc = (CAPIRegexJobDescriptor*) palloc0 (sizeof (CAPIRegexJobDescriptor));
-    job->set_job_desc (job_desc);
-    job->set_no_chk_offset (no_chk_offset);
-    job->set_pkt_src_base (pkt_src_base);
-    job->set_stat_size (stat_size);
-    job->set_worker (worker);
-    thd->add_job(job);
-    worker->add_thread(thd);
-    */
 
     // Create threads
     for (int i = 0; i < num_engines; i++) {
@@ -67,8 +56,6 @@ int start_regex_workers (int num_engines, const char* patt_file_path, int no_chk
 
         // Create 1 job for each thread
         JobDirtestPtr job = boost::make_shared<JobDirtest> (0, i, hw_mgr, false);
-        //CAPIRegexJobDescriptor* job_desc = (CAPIRegexJobDescriptor*) palloc0 (sizeof (CAPIRegexJobDescriptor));
-        //job->set_job_desc (job_desc);
         job->set_no_chk_offset (no_chk_offset);
         job->set_pkt_src_base (pkt_src_base, pkt_size);
         job->set_stat_dest_base (stat_size);
@@ -83,15 +70,7 @@ int start_regex_workers (int num_engines, const char* patt_file_path, int no_chk
     printf ("Finish setting up jobs.\n");
 
     do {
-        // Read relation buffers
-        //high_resolution_clock::time_point t_start = high_resolution_clock::now();
-        //worker->read_buffers();
-        //if (worker->init()) {
-            //elog (ERROR, "Failed to initialize worker");
-            //return -1;
-        //}
         high_resolution_clock::time_point t_end0 = high_resolution_clock::now();
-        //auto duration0 = duration_cast<microseconds> (t_end0 - t_start).count();
         // Start work, multithreading starts from here
         worker->start();
         // Multithreading ends at here
@@ -103,8 +82,8 @@ int start_regex_workers (int num_engines, const char* patt_file_path, int no_chk
         high_resolution_clock::time_point t_end2 = high_resolution_clock::now();
         auto duration2 = duration_cast<microseconds> (t_end2 - t_end1).count();
 
-        //elog (INFO, "Read buffers finished after %lu microseconds (us)\n", (uint64_t) duration0);
-        printf ("Work finished after %lu microseconds (us)\n", (uint64_t) duration1);
+        printf ("Work finished after %lu microseconds (us) ", (uint64_t) duration1);
+	print_time (duration1, pkt_size);
         printf ("Cleanup finished after %lu microseconds (us)\n", (uint64_t) duration2);
 
         printf ("Worker done!\n");

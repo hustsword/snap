@@ -63,12 +63,6 @@ public:
     // Cleanup allocated memories
     virtual void cleanup();
 
-    // Allocate packet buffer and stat buffer
-    //int allocate_packet_buffer ();
-
-    // Set the job descriptor
-    //void set_job_desc (CAPIRegexJobDescriptor* in_job_desc);
-
     // Set result compare if it checks offset
     void set_no_chk_offset (int in_no_chk_offset);
 
@@ -81,9 +75,6 @@ public:
 private:
     // Pointer to worker for adding job descriptors
     WorkerDirtestPtr m_worker;
-
-    // The Job descritpor which contains all information for a regex job
-    //CAPIRegexJobDescriptor* m_job_desc;
 
 
     size_t m_num_matched_pkt;
@@ -101,33 +92,6 @@ private:
     void* m_stat_dest_base;
 
     size_t m_stat_size;
-
-
-    // Internal functions to handle relation buffers
-    /* 
-    //void* capi_regex_pkt_psql_internal (Relation rel,
-    int capi_regex_pkt_psql_internal ( //Relation rel,
-                                        //int attr_id,
-                                        int start_blk_id,
-                                        int num_blks,
-                                        void* pkt_src_base,
-                                        size_t* size,
-                                        size_t* size_wo_hw_hdr,
-                                        size_t* num_pkt,
-                                        int64_t* t_pkt_cpy);
-
-    // Handle the packet preparation
-    int capi_regex_pkt_psql (CAPIRegexJobDescriptor* job_desc //,
-                              Relation rel, int attr_id );
-    
-
-    // Aligned variant of palloc0
-    void* aligned_palloc0 (size_t in_size);
-
-    // An array to hold all allocated pointers,
-    // need this array to remember which pointer needs to be freed.
-    std::vector<void*> m_allocated_ptrs;
-    */
 
 };
 

@@ -14,23 +14,6 @@
  * limitations under the License.
  */
 
-/*
-#include <inttypes.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#include <errno.h>
-#include <malloc.h>
-#include <unistd.h>
-#include <sys/time.h>
-#include <getopt.h>
-#include <ctype.h>
-
-#include <libsnap.h>
-#include <snap_tools.h>
-#include <snap_s_regs.h>
-*/
 
 #include "db_direct.h"
 #include "utils/fregex.h"
@@ -794,7 +777,7 @@ void* regex_scan_file (const char* file_path, size_t* size, size_t* size_for_sw)
     return pkt_src_base;
 }
 
-/*
+
 int print_results (size_t num_results, void* stat_dest_base)
 {
     int i = 0, j = 0;
@@ -829,9 +812,9 @@ int print_results (size_t num_results, void* stat_dest_base)
 
     return rc;
 }
-*/
 
-static int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no_chk_offset)
+
+int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no_chk_offset)
 {
     int i = 0, j = 0;
     uint16_t offset = 0;
@@ -890,85 +873,9 @@ static int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no
     return rc;
 }
 
-/*
-int capi_regex_context_init (CAPIContext* context)
-{
-    if (context == NULL) {
-        return -1;
-    }
-
-    // Init the job descriptor
-    context->card_no      = 0;
-    context->timeout      = ACTION_WAIT_TIME;
-    context->attach_flags = (snap_action_flag_t) 0;
-    context->act          = NULL;
-
-    // Prepare the card and action
-    elog (DEBUG1, "Open Card: %d", context->card_no);
-    sprintf (context->device, "/dev/cxl/afu%d.0s", context->card_no);
-    context->dn = snap_card_alloc_dev (context->device, SNAP_VENDOR_ID_IBM, SNAP_DEVICE_ID_SNAP);
-
-    if (NULL == context->dn) {
-        ereport (ERROR,
-                 (errcode (ERRCODE_INVALID_PARAMETER_VALUE),
-                  errmsg ("Cannot allocate CARD!")));
-        return -1;
-    }
-
-    elog (DEBUG1, "Start to get action.");
-    context->act = get_action (context->dn, context->attach_flags, 5 * context->timeout);
-    elog (DEBUG1, "Finish get action.");
-
-    return 0;
-}
-
-int capi_regex_job_init (CAPIRegexJobDescriptor* job_desc,
-                         CAPIContext* context)
-{
-    if (NULL == job_desc) {
-        return -1;
-    }
-
-    if (NULL == context) {
-        return -1;
-    }
-
-    // Init the job descriptor
-    job_desc->context               = context;
-    job_desc->patt_src_base         = NULL;
-    job_desc->pkt_src_base          = NULL;
-    job_desc->stat_dest_base        = NULL;
-    job_desc->num_pkt               = 0;
-    job_desc->num_matched_pkt       = 0;
-    job_desc->pkt_size              = 0;
-    job_desc->max_alloc_pkt_size    = 0;
-    job_desc->patt_size             = 0;
-    job_desc->pkt_size_wo_hw_hdr    = 0;
-    job_desc->stat_size             = 0;
-    job_desc->pattern               = NULL;
-    job_desc->results               = NULL;
-    job_desc->curr_result_id        = 0;
-    //job_desc->start_blk_id          = 0;
-    //job_desc->num_blks              = 0;
-    job_desc->thread_id             = 0;
-    job_desc->t_init                = 0;
-    //job_desc->t_init                = 0;
-    job_desc->t_regex_patt          = 0;
-    job_desc->t_regex_pkt           = 0;
-    job_desc->t_regex_scan          = 0;
-    job_desc->t_regex_harvest       = 0;
-    job_desc->t_cleanup             = 0;
-
-    job_desc->next_desc             = NULL;
-
-    return 0;
-}
-*/
-
-
 int main (int argc, char* argv[])
 {
-    printf("main start\n");
+    //printf("main start\n");
     char device[64];
     struct snap_card* dn;   /* lib snap handle */
     int card_no = 0;
@@ -990,11 +897,7 @@ int main (int argc, char* argv[])
     size_t pkt_size_for_sw = 0;
     uint64_t start_time;
     uint64_t elapsed_time;
-//<<<<<<< HEAD
     //uint32_t reg_data;
-//=======
-    //uint32_t reg_data;
-//>>>>>>> hdl_database
     uint32_t hw_version = 0;
     int num_engines = 0;
     int num_pkt_pipes = 0;
@@ -1058,6 +961,7 @@ int main (int argc, char* argv[])
         }
     }
     
+    printf ("Open Card: %d\n", card_no);
     VERBOSE2 ("Open Card: %d\n", card_no);
     sprintf (device, "/dev/cxl/afu%d.0s", card_no);
     dn = snap_card_alloc_dev (device, SNAP_VENDOR_ID_IBM, SNAP_DEVICE_ID_SNAP);
@@ -1114,6 +1018,8 @@ int main (int argc, char* argv[])
     regex_ref_run_match();
     elapsed_time = get_usec() - start_time;
     VERBOSE0 ("Software run finished with size %d.\n", (int) pkt_size_for_sw);
+    int sw_num_matched_pkt = regex_ref_get_num_matched_pkt();
+    printf ("Software run finished with %d matched packets", sw_num_matched_pkt);
     print_time (elapsed_time, pkt_size_for_sw);
     VERBOSE0 ("======== SOFTWARE DONE========\n");
     
@@ -1136,16 +1042,6 @@ int main (int argc, char* argv[])
 
     VERBOSE0 ("Running with %d %dx%d regex engine(s), revision: %d\n", num_engines, num_pkt_pipes, num_patt_pipes, revision);
 
-    hw_version = action_read (dn, SNAP_ACTION_VERS_REG);
-    VERBOSE0 ("hw_version: %#x\n", hw_version);
-
-    num_patt_pipes = ( int) ( ( hw_version & 0xFF000000) >> 24);
-    num_pkt_pipes =  ( int) ( ( hw_version & 0x00FF0000) >> 16);
-    num_engines =    ( int) ( ( hw_version & 0x0000FF00) >> 8);
-    revision =       ( int) ( hw_version & 0x000000FF);
-
-    VERBOSE0 ("Running with %d %dx%d regex engine(s), revision: %d\n", num_engines, num_pkt_pipes, num_patt_pipes, revision);
-
     // Alloc state output buffer, aligned to 4K
     //int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt();
     int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * ((pkt_size / 1024) * 2);
@@ -1155,89 +1051,12 @@ int main (int argc, char* argv[])
     if (stat_size == 0) {
         stat_size = 4096;
     }
-//<<<<<<< HEAD
     
     VERBOSE1 ("======== HARDWARE RUN ========\n");
-    ERROR_CHECK (start_regex_workers (num_engines, "./pattern.txt", no_chk_offset, pkt_src_base, pkt_size, stat_size));
+    ERROR_CHECK (start_regex_workers (num_engines, no_chk_offset, patt_src_base, patt_size, pkt_src_base, pkt_size, stat_size,
+			    	      dn, act, attach_flags));
 fail:
     return -1;
-    /*
-    // Iterate through 12 engines
-    for (int eng_id = 0; eng_id < NUM_THREADS; eng_id++) {
-=======
-
-    // Iterate through all engines
-    for (int eng_id = 0; eng_id < num_engines; eng_id++) {
-        // Reset the hardware
-        soft_reset (dn, eng_id);
->>>>>>> hdl_database
-
-        pkt_src_base_0 = alloc_mem (64, pkt_size);
-        memcpy (pkt_src_base_0, pkt_src_base, pkt_size);
-
-        stat_dest_base_0 = alloc_mem (64, stat_size);
-        memset (stat_dest_base_0, 0, stat_size);
-
-        VERBOSE1 ("======== HARDWARE RUN ========\n");
-        start_time = get_usec();
-        VERBOSE1 ("======== HARDWARE RUN on Engine #%d ========\n", eng_id);
-        boost::shared_ptr<boost::thread> thd = boost::make_shared<boost::thread> (thread_work,
-                                                                                  dn,
-                                                                                  eng_id,
-                                                                                  rc,
-                                                                                  timeout,
-                                                                                  patt_src_base,
-                                                                                  pkt_src_base_0,
-                                                                                  stat_dest_base_0,
-                                                                                  &num_matched_pkt,
-                                                                                  patt_size,
-                                                                                  stat_size);
-	thd->join();
-        elapsed_time = get_usec() - start_time;
-        // pkt_size_for_sw is the real size without hardware specific 64B header
-        print_time (elapsed_time, pkt_size_for_sw);
-
-        VERBOSE1 ("Finish regex_scan with %d matched packets.\n", (int)num_matched_pkt);
-        VERBOSE1 ("======== HARDWARE DONE========\n");
-
-        // Wait for transaction to be done.
-        int count = 0;
-
-        do {
-            VERBOSE3 (" Draining %i! \n", count);
-            action_read (dn, REG(ACTION_STATUS_L, eng_id));
-            count++;
-        } while (count < 10);
-
-        reg_data = action_read (dn, REG(ACTION_STATUS_H, eng_id));
-        VERBOSE0 ("After draining, number of matched packets: %d\n", reg_data);
-        num_matched_pkt = reg_data;
-
-        if (verbose_level > 2) {
-          __hexdump (stdout, stat_dest_base_0, (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt());
-        }
-
-        rc = compare_results (num_matched_pkt, stat_dest_base_0, no_chk_offset);
-
-        if (verbose_level > 1) {
-            print_results ((pkt_size / 1024) * 2, stat_dest_base_0);
-        }
-
-        VERBOSE0 ("Cleanup memories");
-        start_time = get_usec();
-        free_mem (pkt_src_base_0);
-        free_mem (stat_dest_base_0);
-        elapsed_time = get_usec() - start_time;
-        print_time (elapsed_time, 0);
-
-        if (rc) {
-            VERBOSE0 ("Miscompare detected between hardware and software ref model on Engine %d.\n", eng_id);
-            break;
-        } else {
-            VERBOSE0 ("\nTest PASSED for Engine %d!\n\n", eng_id);
-        }
-    }
-    */
     
     free_mem (pkt_src_base);
     free_mem (patt_src_base);

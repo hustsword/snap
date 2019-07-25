@@ -21,19 +21,19 @@
 ThreadDirtest::ThreadDirtest()
     : ThreadBase (0, 600)
 {
-    printf("create dirtest thread\n");
+    //printf("create dirtest thread\n");
 }
 
 ThreadDirtest::ThreadDirtest (int in_id)
     : ThreadBase (in_id)
 {
-    printf("create dirtest thread\n");
+    //printf("create dirtest thread on engine %d\n", in_id);
 }
 
 ThreadDirtest::ThreadDirtest (int in_id, int in_timeout)
     : ThreadBase (in_id, in_timeout)
 {
-    printf("create dirtest thread\n");
+    //printf("create dirtest thread on engine %d\n", in_id);
 }
 
 ThreadDirtest::~ThreadDirtest()
@@ -42,7 +42,7 @@ ThreadDirtest::~ThreadDirtest()
 
 int ThreadDirtest::init()
 {
-    printf("init thread\n");
+    //printf("Eng %d: init thread\n", m_id);
     for (size_t i = 0; i < m_jobs.size(); i++) {
         if (m_jobs[i]->init()) {
             return -1;
@@ -54,7 +54,7 @@ int ThreadDirtest::init()
 
 void ThreadDirtest::work_with_job (JobPtr in_job)
 {
-    printf("thread work with job\n");
+    //printf("Eng %d: thread work with job\n", m_id);
     JobDirtestPtr job = boost::dynamic_pointer_cast<JobDirtest> (in_job);
 
     if (NULL == job) {
@@ -74,7 +74,7 @@ void ThreadDirtest::work_with_job (JobPtr in_job)
 
 void ThreadDirtest::cleanup()
 {
-    printf("clean up thread\n");
+    //printf("Eng %d: clean up thread\n", m_id);
     for (size_t i = 0; i < m_jobs.size(); i++) {
         m_jobs[i]->cleanup();
     }

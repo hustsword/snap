@@ -79,7 +79,7 @@ void ThreadBase::delete_job (int job_id)
 
 int ThreadBase::start()
 {
-    printf("thread start!");
+    printf("Eng %d: thread start!", m_id);
     if (NULL != m_thread) {
         std::cerr << "m_thread is not NULL on start" << std::endl;
     } else {
@@ -91,7 +91,7 @@ int ThreadBase::start()
 
 void ThreadBase::work()
 {
-    printf("thread work!");
+    printf("Eng %d: thread work!", m_id);
     m_stopped = false;
 
     m_current_job_idx = 0;
@@ -110,7 +110,7 @@ void ThreadBase::work()
 
 int ThreadBase::stop()
 {
-    printf("thread stop!");
+    printf("Eng %d: thread stop!", m_id);
     if (m_stopped) {
         return m_jobs.size();
     }

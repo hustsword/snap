@@ -22,11 +22,10 @@ HardwareManager::HardwareManager (int in_card_num)
       m_capi_card (NULL),
       m_capi_action (NULL),
       m_attach_flags ((snap_action_flag_t)0),
-      //m_context (NULL),
       m_timeout_sec (0),
       m_timeout_usec (1000)
 {
-    printf("create hardware manager\n");
+    //printf("create hardware manager\n");
 }
 
 HardwareManager::HardwareManager (int in_card_num, int in_timeout_sec, int in_timeout_usec)
@@ -34,11 +33,26 @@ HardwareManager::HardwareManager (int in_card_num, int in_timeout_sec, int in_ti
       m_capi_card (NULL),
       m_capi_action (NULL),
       m_attach_flags ((snap_action_flag_t)0),
-      //m_context (NULL),
       m_timeout_sec (in_timeout_sec),
       m_timeout_usec (in_timeout_usec)
 {
-    printf("create hardware manager\n");
+    //printf("create hardware manager\n");
+}
+
+
+HardwareManager::HardwareManager (int in_card_num,
+                                 CAPICard* in_capi_card,
+                                 CAPIAction* in_capi_action,
+                                 snap_action_flag_t in_attach_flags,
+                                 int in_timeout_sec, int in_timeout_usec)
+    : m_card_num (in_card_num),
+      m_capi_card (in_capi_card),
+      m_capi_action (in_capi_action),
+      m_attach_flags (in_attach_flags),
+      m_timeout_sec (in_timeout_sec),
+      m_timeout_usec (in_timeout_usec)
+{
+    //printf("create hardware manager\n");
 }
 
 HardwareManager::~HardwareManager()
@@ -47,43 +61,19 @@ HardwareManager::~HardwareManager()
 
 int HardwareManager::init()
 {
-    /*
-    m_context = (CAPIContext*) palloc0 (sizeof (CAPIContext));
-
-    if (capi_regex_context_init (m_context)) {
-        return -1;
-    }
-    */
-
-    // Init the job descriptor
-    m_timeout = ACTION_WAIT_TIME;
-
     // Prepare the card and action
-    printf ("Open Card: %d", m_card_num);
-    sprintf (m_device, "/dev/cxl/afu%d.0s", m_card_num);
-    m_capi_card = snap_card_alloc_dev (m_device, SNAP_VENDOR_ID_IBM, SNAP_DEVICE_ID_SNAP);
-
     if (NULL == m_capi_card) {
-        /*ereport (ERROR,
-                 (errcode (ERRCODE_INVALID_PARAMETER_VALUE),
-                  errmsg ("Cannot allocate CARD!"))); */
-	printf ("Cannot allocate CARD!\n");
+        printf ("ERROR: CAPI card is NULL\n");
         return -1;
     }
 
-    printf ("Start to get action.\n");
-    m_capi_action = get_action (m_capi_card, m_attach_flags, 5 * m_timeout);
-    printf ("Finish get action.\n");
+    if (NULL == m_capi_action) {
+        printf ("ERROR: cannot get action. Actions is NULL\n");
+        return -1;
+    }
 
     return 0;
 
-    /*
-    m_capi_card = m_context->dn;
-    m_capi_action = m_context->act;
-    m_attach_flags = m_context->attach_flags;
-
-    return 0;
-    */
 }
 
 void HardwareManager::reg_write (uint32_t in_addr, uint32_t in_data, int in_eng_id)
@@ -99,16 +89,7 @@ uint32_t HardwareManager::reg_read (uint32_t in_addr, int in_eng_id)
 
 void HardwareManager::cleanup()
 {
-    //soft_reset (m_capi_card);
-
-    snap_detach_action (m_capi_action);
-    snap_card_free (m_capi_card);
-
-    //if (m_context) {
-      //  pfree (m_context);
-    //}
-
-    printf ("Deattach the card.\n");
+    //printf("cleaning hardware manager... do nothing.\n");
 }
 
 int HardwareManager::wait_interrupt()
@@ -122,13 +103,6 @@ int HardwareManager::wait_interrupt()
     return 0;
 }
 
-/*
-CAPIContext* HardwareManager::get_context()
-{
-    return m_context;
-}
-*/
-
 void HardwareManager::reset_engine (int in_eng_id)
 {
     soft_reset (m_capi_card, in_eng_id);
@@ -137,10 +111,5 @@ void HardwareManager::reset_engine (int in_eng_id)
 CAPICard* HardwareManager::get_capi_card()
 {
     return m_capi_card;
-}
-
-int HardwareManager::get_timeout()
-{
-    return m_timeout;
 }
 
