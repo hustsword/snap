@@ -109,11 +109,13 @@ void print_time (uint64_t elapsed, uint64_t size)
     if (elapsed > 10000) {
         t = (int)elapsed / 1000;
         ft = (1000 / (float)t) * fsize;
-        VERBOSE0 (" end after %d msec (%0.3f MB/sec)\n", t, ft);
+        //VERBOSE0 (" end after %d msec (%0.3f MB/sec)\n", t, ft);
+	VERBOSE0 ("%d msec %0.3f\n", t, ft);
     } else {
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
-        VERBOSE0 (" end after %d usec (%0.3f MB/sec)\n", t, ft);
+        //VERBOSE0 (" end after %d usec (%0.3f MB/sec)\n", t, ft);
+	VERBOSE0 ("%d usec %0.3f\n", t, ft);
     }
 }
 
@@ -1053,8 +1055,11 @@ int main (int argc, char* argv[])
     }
     
     VERBOSE1 ("======== HARDWARE RUN ========\n");
-    ERROR_CHECK (start_regex_workers (num_engines, no_chk_offset, patt_src_base, patt_size, pkt_src_base, pkt_size, stat_size,
-			    	      dn, act, attach_flags));
+
+    for (int num_eng_using = 1; num_eng_using <= num_engines; ++num_eng_using) {
+        ERROR_CHECK (start_regex_workers (num_eng_using, no_chk_offset, patt_src_base, patt_size, pkt_src_base, pkt_size, stat_size,
+			    	          dn, act, attach_flags));
+    }
 fail:
     return -1;
     

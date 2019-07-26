@@ -82,11 +82,12 @@ int start_regex_workers (int num_engines,
         high_resolution_clock::time_point t_end2 = high_resolution_clock::now();
         auto duration2 = duration_cast<microseconds> (t_end2 - t_end1).count();
 
-        printf ("Work finished after %lu microseconds (us) ", (uint64_t) duration1);
+        //printf ("Work finished after %lu microseconds (us)\n", (uint64_t) duration1);
+	printf ("Work ");
 	print_time (duration1, pkt_size);
         printf ("Cleanup finished after %lu microseconds (us)\n", (uint64_t) duration2);
 
-        printf ("Worker done!\n");
+        printf ("Worker done!\n\n");
     } while (0);
 
     return 0;

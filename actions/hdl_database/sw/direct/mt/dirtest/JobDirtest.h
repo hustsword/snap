@@ -92,7 +92,6 @@ private:
     void* m_stat_dest_base;
 
     size_t m_stat_size;
-
 };
 
 typedef boost::shared_ptr<JobDirtest> JobDirtestPtr;

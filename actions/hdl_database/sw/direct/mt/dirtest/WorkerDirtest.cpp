@@ -107,12 +107,14 @@ size_t WorkerDirtest::get_pattern_buffer_size()
 
 void WorkerDirtest::cleanup()
 {
-    printf("clean up worker\n");
+    //printf("clean up worker\n");
     free_mem (m_patt_src_base);
     // release_buffers();
 
     for (size_t i = 0; i < m_threads.size(); i++) {
         m_threads[i]->cleanup();
     }
+
+    m_threads.clear();
 }
 

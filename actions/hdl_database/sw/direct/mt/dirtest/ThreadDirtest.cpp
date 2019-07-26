@@ -78,4 +78,6 @@ void ThreadDirtest::cleanup()
     for (size_t i = 0; i < m_jobs.size(); i++) {
         m_jobs[i]->cleanup();
     }
+
+    m_jobs.clear();
 }

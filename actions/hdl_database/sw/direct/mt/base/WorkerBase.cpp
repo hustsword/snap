@@ -48,7 +48,7 @@ void WorkerBase::delete_thread (int in_thread_id)
 
 void WorkerBase::start()
 {
-    printf("worker start!\n");
+    //printf("worker start!\n");
     if (check_start()) {
         printf ("Unable to start worker because check_start failed.");
         return;

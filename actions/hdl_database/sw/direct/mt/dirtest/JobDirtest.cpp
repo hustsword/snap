@@ -119,7 +119,7 @@ int JobDirtest::run()
     done();
 
     elapsed_time = get_usec() - start_time;
-    printf ("Eng %d finished with size %d ", m_thread_id, (int)m_pkt_size);
+    //printf ("Eng %d finished with size %d ", m_thread_id, (int)m_pkt_size);
     print_time (elapsed_time, m_pkt_size);
 
     return 0;
@@ -219,7 +219,7 @@ int JobDirtest::result()
         printf ("ERROR: Miscompare detected between hardware and software ref model on Engine %d.\n", m_thread_id);
         return -1;
     } else {
-	printf ("Test PASSED for Engine %d!\n", m_thread_id);
+	//printf ("Test PASSED for Engine %d!\n", m_thread_id);
     }
     return 0;
 }
@@ -251,6 +251,4 @@ void JobDirtest::set_stat_dest_base (size_t in_stat_size)
     m_stat_dest_base = alloc_mem (64, m_stat_size);
     memset (m_stat_dest_base, 0, m_stat_size);
 }
-
-
 
