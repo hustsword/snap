@@ -64,7 +64,7 @@ public:
     // Get the result
     int result();
 
-    // Cleanup allocated memories
+    // Cleanup smart pointers' references
     virtual void cleanup();
 
     // Set the job descriptor

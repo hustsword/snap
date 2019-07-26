@@ -56,6 +56,7 @@ ThreadRegex::ThreadRegex (int in_id, int in_timeout)
 
 ThreadRegex::~ThreadRegex()
 {
+    elog (DEBUG5, "ThreadRegex destroyed!");
 }
 
 int ThreadRegex::init()
@@ -166,7 +167,6 @@ void ThreadRegex::work_with_job (JobPtr in_job)
         return;
     }
 
-    //elog (DEBUG1, "Thread %d: Before setting packet buffer and result buffer", m_id);
     do {
         if (0 != job->set_packet_buffer (m_pkt_src_base, m_max_alloc_pkt_size)) {
             elog (ERROR, "Failed to set packet buffer for JobRegex");
@@ -179,7 +179,6 @@ void ThreadRegex::work_with_job (JobPtr in_job)
         }
     } while (0);
 
-    //elog (DEBUG1, "Thread %d: Finish setting packet buffer and result buffer", m_id);
     do {
         if (0 != job->run()) {
             elog (ERROR, "Failed to run the JobRegex");
@@ -187,15 +186,21 @@ void ThreadRegex::work_with_job (JobPtr in_job)
         }
     } while (0);
 
-    //elog (DEBUG1, "Thread %d: Finish run() of job %d", m_id, in_job->get_id());
-
     return;
 }
 
 void ThreadRegex::cleanup()
 {
-    free (m_pkt_src_base);
-    free (m_stat_dest_base);
+    free_mem (m_pkt_src_base);
+    free_mem (m_stat_dest_base);
+
+    for (size_t i = 0; i < m_jobs.size(); i++) {
+        m_jobs[i]->cleanup();
+    }
+    m_jobs.clear();
+
+    m_worker = NULL;
+    m_thread = NULL;
 }
 
 int ThreadRegex::get_id()

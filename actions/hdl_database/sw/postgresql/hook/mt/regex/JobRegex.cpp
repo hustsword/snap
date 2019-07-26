@@ -47,6 +47,7 @@ JobRegex::JobRegex (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mgr, b
 
 JobRegex::~JobRegex()
 {
+    elog (DEBUG5, "JobRegex destroyed!");
 }
 
 int JobRegex::run()
@@ -58,19 +59,19 @@ int JobRegex::run()
     }
 
     do {
-	//elog (DEBUG1, "Thread %d: Before init()..", m_thread_id);
+	    elog (DEBUG3, "Thread %d Job %d: Before init()..", m_thread_id, m_id);
         if (init()) {
             elog (ERROR, "Failed to perform regex job initializing");
             fail();
             return -1;
         }
-	//elog (DEBUG1, "Thread %d: Finish init()..", m_thread_id);
+	    elog (DEBUG3, "Thread %d Job %d: Finish init()..", m_thread_id, m_id);
         if (packet()) {
             elog (ERROR, "Failed to perform regex packet preparing");
             fail();
             return -1;
         }
-	//elog (DEBUG1, "Thread %d: Finish packet()..", m_thread_id);
+	    elog (DEBUG3, "Thread %d Job %d: Finish packet()..", m_thread_id, m_id);
     } while (0);
 
     do {
@@ -82,7 +83,7 @@ int JobRegex::run()
             fail();
             return -1;
         }
-	//elog (DEBUG1, "Thread %d: Finish scan()..", m_thread_id);
+	    elog (DEBUG3, "Thread %d Job %d: Finish scan()..", m_thread_id, m_id);
     } while (0);
 
     if (result()) {
@@ -90,7 +91,7 @@ int JobRegex::run()
         fail();
         return -1;
     }
-    //elog (DEBUG1, "Thread %d: Finish result()..", m_thread_id);
+    elog (DEBUG3, "Thread %d Job %d: Finish result()..", m_thread_id, m_id);
 
     done();
 
@@ -128,9 +129,8 @@ int JobRegex::init()
     m_job_desc->patt_src_base = m_worker->get_pattern_buffer();
     m_job_desc->patt_size = m_worker->get_pattern_buffer_size();
     int start_blk_id = 0;
-    //elog (DEBUG1, "Thread %d: Before getting block info for this job", m_thread_id);
     int num_blks = m_thread->get_num_blks_per_job (m_id, &start_blk_id);
-    //elog (DEBUG1, "Thread %d: After getting block info for this job", m_thread_id);
+    
     // Get the blocks for this job
     m_job_desc->num_blks = num_blks;
     m_job_desc->start_blk_id = start_blk_id;
@@ -144,10 +144,8 @@ int JobRegex::init()
     // Assign the thread id to this job descriptor
     m_job_desc->thread_id = m_thread_id;
 
-    //elog (DEBUG1, "Thread %d: Before reseting engine", m_thread_id);
     // Reset the engine
     m_hw_mgr->reset_engine (m_thread_id);
-   // elog (DEBUG1, "Thread %d: Finish reseting engine", m_thread_id);
     
     return 0;
 }
@@ -230,10 +228,12 @@ int JobRegex::set_result_buffer (void* in_stat_dest_base, size_t in_stat_size)
     return 0;
 }
 
-// TODO: Should not be used
+
 void JobRegex::cleanup()
 {
-    elog (ERROR, "Should not be here, because no need cleanup for JobRegex");
+    m_hw_mgr = NULL;
+    m_worker = NULL;
+    m_thread = NULL;
 }
 
 int JobRegex::capi_regex_pkt_psql_internal (Relation rel, int attr_id,
@@ -242,8 +242,6 @@ int JobRegex::capi_regex_pkt_psql_internal (Relation rel, int attr_id,
         size_t* size, size_t* size_wo_hw_hdr,
         size_t* num_pkt, int64_t* t_pkt_cpy)
 {
-    //elog (DEBUG1, "Thread %d: Entering capi_regex_pkt_psql_internal..", m_thread_id);
-    //elog (DEBUG1, "Thread %d: start_blk_id is %d, num_blks is %d", m_thread_id, start_blk_id, num_blks);
     if (NULL == pkt_src_base) {
         return -1;
     }
@@ -292,9 +290,6 @@ int JobRegex::capi_regex_pkt_psql_internal (Relation rel, int attr_id,
     }
 
     (*size) = (uint64_t) pkt_src - (uint64_t) pkt_src_base;
-
-
-    //elog (DEBUG1, "Thread %d: Leaving capi_regex_pkt_psql_internal..", m_thread_id);
 
     //return pkt_src_base;
     return 0;

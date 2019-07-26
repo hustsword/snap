@@ -41,6 +41,7 @@ WorkerRegex::WorkerRegex (HardwareManagerPtr in_hw_mgr, Relation in_relation, in
 
 WorkerRegex::~WorkerRegex()
 {
+    elog (DEBUG5, "WorkerRegex destroyed!");
 }
 
 void WorkerRegex::set_mode (bool in_interrupt)
@@ -203,6 +204,7 @@ void WorkerRegex::cleanup()
 {
     free_mem (m_patt_src_base);
     release_buffers();
+    m_hw_mgr = NULL;
 
     high_resolution_clock::time_point t_start = high_resolution_clock::now();
 
@@ -213,6 +215,8 @@ void WorkerRegex::cleanup()
     high_resolution_clock::time_point t_end = high_resolution_clock::now();
     auto duration = duration_cast<microseconds> (t_end - t_start).count();
     elog (INFO, "Free all threads after %lu microseconds (us)", (uint64_t) duration);
+
+    m_threads.clear();
 }
 
 void WorkerRegex::read_buffers()

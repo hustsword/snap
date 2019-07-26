@@ -77,18 +77,18 @@ void print_time_text (const char* text, uint64_t elapsed, uint64_t size)
         ft = (1000 / (float)t) * fsize;
 
         if (0 == size) {
-            elog (INFO, "%s run time: %d msec \n", text, t);
+            elog (INFO, "%s run time: %d msec", text, t);
         } else {
-            elog (INFO, "%s run time: %d msec (%0.3f MB/sec)\n", text, t, ft);
+            elog (INFO, "%s run time: %d msec (%0.3f MB/sec)", text, t, ft);
         }
     } else {
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
 
         if (0 == size) {
-            elog (INFO, "%s run time:  %d usec\n", text, t);
+            elog (INFO, "%s run time:  %d usec", text, t);
         } else {
-            elog (INFO, "%s run time:  %d usec (%0.3f MB/sec)\n", text, t, ft);
+            elog (INFO, "%s run time:  %d usec (%0.3f MB/sec)", text, t, ft);
         }
     }
 }
@@ -325,19 +325,27 @@ void soft_reset (struct snap_card* h, int id)
     action_write (h, ACTION_CONTROL_H, 0x00000000, id);
 }
 
-void action_regex (struct snap_card* h,
-                   void* patt_src_base,
-                   void* pkt_src_base,
-                   void* stat_dest_base,
-                   size_t* num_matched_pkt,
-                   size_t patt_size,
-                   size_t pkt_size,
-                   size_t stat_size,
-                   int id)
+int action_regex (struct snap_card* h,
+                  void* patt_src_base,
+                  void* pkt_src_base,
+                  void* stat_dest_base,
+                  size_t* num_matched_pkt,
+                  size_t patt_size,
+                  size_t pkt_size,
+                  size_t stat_size,
+                  int id)
 {
     uint32_t reg_data;
+    int64_t count = 0;
 
     print_control_status (h, id);
+
+    elog (DEBUG1, "PKT  source: %p", pkt_src_base);
+    elog (DEBUG1, "PATT source: %p", patt_src_base);
+    elog (DEBUG1, "Stat source: %p", stat_dest_base);
+    elog (DEBUG1, "PKT  size: %zu", pkt_size);
+    elog (DEBUG1, "PATT size: %zu", patt_size);
+    elog (DEBUG1, "Stat size: %zu", stat_size);
 
     action_write (h, ACTION_PATT_INIT_ADDR_L,
                   (uint32_t) (((uint64_t) patt_src_base) & 0xffffffff), id);
@@ -378,13 +386,14 @@ void action_regex (struct snap_card* h,
 
     print_control_status (h, id);
 
+    count = 0;
     do {
         reg_data = action_read (h, ACTION_STATUS_L, id);
 
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
-            elog (DEBUG1, "Error code got 0X%X\n", ((reg_data & 0x00FFFF00) >> 8));
-            exit (EXIT_FAILURE);
+            elog (ERROR, "Error code got 0X%X\n", ((reg_data & 0x00FFFF00) >> 8));
+            return -1;
         }
 
         // Status[0]
@@ -392,27 +401,44 @@ void action_regex (struct snap_card* h,
             elog (DEBUG1, "Pattern copy done!\n");
             break;
         }
+
+        usleep (1000);
+
+        count ++;
+        if ((count % 1000) == 0) {
+            elog (INFO, "Heart beat on hardware pattern polling");
+        }
     } while (1);
 
     // Start working control[2:1] = 11
     action_write (h, ACTION_CONTROL_L, 0x00000006, id);
     action_write (h, ACTION_CONTROL_H, 0x00000000, id);
 
+    count = 0;
     do {
         reg_data = action_read (h, ACTION_STATUS_L, id);
 
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
-            exit (EXIT_FAILURE);
+            elog (ERROR, "Error code got 0X%X\n", ((reg_data & 0x00FFFF00) >> 8));
+            return -1;
         }
 
         // Status[0]
         if ((reg_data & 0x00000010) != 0) {
-            exit (EXIT_FAILURE);
+            elog (ERROR, "Error status got 0X%X\n", (reg_data & 0x00000010));
+            return -1;
         }
 
         if ((reg_data & 0x00000006) == 6) {
             break;
+        }
+
+        usleep (1000);
+
+        count ++;
+        if ((count % 1000) == 0) {
+            elog (INFO, "Heart beat on hardware status polling");
         }
     } while (1);
     
@@ -426,12 +452,14 @@ void action_regex (struct snap_card* h,
     action_write (h, ACTION_CONTROL_L, 0x00000008, id);
     action_write (h, ACTION_CONTROL_H, 0x00000000, id);
 
+    count = 0;
     do {
         reg_data = action_read (h, ACTION_STATUS_L, id);
 
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
-            exit (EXIT_FAILURE);
+            elog (ERROR, "Error code got 0X%X\n", ((reg_data & 0x00FFFF00) >> 8));
+            return -1;
         }
 
         // Status[3]
@@ -441,6 +469,10 @@ void action_regex (struct snap_card* h,
             break;
         }
 
+        count ++;
+        if ((count % 1000) == 0) {
+            elog (INFO, "Heart beat on hardware draining polling");
+        }
     } while (1);
 
     elog (DEBUG1, "flushing done!\n");
@@ -449,7 +481,7 @@ void action_regex (struct snap_card* h,
     action_write (h, ACTION_CONTROL_L, 0x00000000, id);
     action_write (h, ACTION_CONTROL_H, 0x00000000, id);
 
-    return;
+    return 0;
 }
 
 int capi_regex_scan_internal (struct snap_card* dnc,
@@ -463,17 +495,14 @@ int capi_regex_scan_internal (struct snap_card* dnc,
                               size_t stat_size,
                               int id)
 {
-    int rc;
-
-    rc = 0;
-
-    action_regex (dnc, patt_src_base, pkt_src_base, stat_dest_base, num_matched_pkt,
-                  patt_size, pkt_size, stat_size, id);
-    rc = action_wait_idle (dnc, timeout);
+    int rc = action_regex (dnc, patt_src_base, pkt_src_base, stat_dest_base, num_matched_pkt,
+                           patt_size, pkt_size, stat_size, id);
 
     if (0 != rc) {
         return rc;
     }
+
+    rc = action_wait_idle (dnc, timeout);
 
     return rc;
 }
@@ -510,8 +539,8 @@ void* capi_regex_compile_internal (const char* patt, size_t* size)
     elog (DEBUG1, "PATTERN Source Address Start at 0X%016lX\n", (uint64_t) patt_src);
 
     if (patt == NULL) {
-        elog (DEBUG1, "PATTERN pointer is NULL!\n");
-        exit (EXIT_FAILURE);
+        elog (ERROR, "PATTERN pointer is NULL!\n");
+        return NULL;
     }
 
     //remove_newline (patt);
@@ -729,6 +758,42 @@ int capi_regex_scan (CAPIRegexJobDescriptor* job_desc)
     return 0;
 }
 
+int print_results (size_t num_results, void* stat_dest_base)
+{
+    int i = 0, j = 0;
+    uint16_t offset = 0;
+    uint32_t pkt_id = 0;
+    uint32_t patt_id = 0;
+    int rc = 0;
+
+    elog (INFO, "---- Result buffer address: %p ----\n", stat_dest_base);
+    elog (INFO, "---- Number of result items: %zu ----\n", num_results);
+    elog (INFO, "---- Results (HW: hardware) ----\n");
+    elog (INFO, "PKT(HW) PATT(HW) OFFSET(HW)\n");
+
+    for (i = 0; i < (int)num_results; i++) {
+        for (j = 0; j < 4; j++) {
+            patt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << j * 8);
+        }
+
+        for (j = 4; j < 8; j++) {
+            pkt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 4) * 8);
+        }
+
+        for (j = 8; j < 10; j++) {
+            offset |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 2) * 8);
+        }
+
+        elog (INFO, "%7d\t%6d\t%7d\n", pkt_id, patt_id, offset);
+
+        patt_id = 0;
+        pkt_id = 0;
+        offset = 0;
+    }
+
+    return rc;
+}
+
 int get_results (void* result, size_t num_matched_pkt, void* stat_dest_base)
 {
     int i = 0, j = 0;
@@ -763,15 +828,15 @@ int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc)
     do {
         action_read (job_desc->context->dn, ACTION_STATUS_L, job_desc->thread_id);
         count++;
-    } while (count < 2);
+    } while (count < 10);
 
     uint32_t reg_data = action_read (job_desc->context->dn, ACTION_STATUS_H, job_desc->thread_id);
     job_desc->num_matched_pkt = reg_data;
-    job_desc->results = (uint32_t*) palloc (job_desc->num_matched_pkt * sizeof (uint32_t));
+    job_desc->results = (uint32_t*) palloc (reg_data * sizeof (uint32_t));
 
-    elog (INFO, "Thread %d finished with %zu matched packets", job_desc->thread_id, job_desc->num_matched_pkt);
+    elog (INFO, "Thread %d finished with %d matched packets", job_desc->thread_id, reg_data);
 
-    if (get_results (job_desc->results, job_desc->num_matched_pkt, job_desc->stat_dest_base)) {
+    if (get_results (job_desc->results, reg_data, job_desc->stat_dest_base)) {
         errno = ENODEV;
         return -1;
     }
