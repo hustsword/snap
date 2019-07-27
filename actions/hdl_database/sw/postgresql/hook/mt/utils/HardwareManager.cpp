@@ -43,6 +43,7 @@ HardwareManager::HardwareManager (int in_card_num, int in_timeout_sec, int in_ti
 
 HardwareManager::~HardwareManager()
 {
+    elog (DEBUG5, "Hardware manager destroyed!");
 }
 
 int HardwareManager::init()
@@ -67,7 +68,13 @@ int HardwareManager::init()
 
     elog (INFO, "Running with %d %dx%d regex engine(s), revision: %d", num_engines, num_pkt_pipes, num_patt_pipes, revision);
 
-    m_num_engines = num_engines;
+    // TODO: workaround for old hardware which don't have configuration information in version register
+    if (0 == num_engines) {
+        elog (INFO, "Warning! Number of engines == 0, old hardware? Workaround number of engines to 1");
+        m_num_engines = 1;
+    } else {
+        m_num_engines = num_engines;
+    }
 
     return 0;
 }
