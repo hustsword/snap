@@ -47,6 +47,7 @@ JobRegex::JobRegex (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mgr, b
 
 JobRegex::~JobRegex()
 {
+    elog (DEBUG5, "JobRegex destroyed!");
 }
 
 int JobRegex::run()
@@ -198,6 +199,9 @@ void JobRegex::cleanup()
     for (size_t i = 0; i < m_allocated_ptrs.size(); i++) {
         pfree (m_allocated_ptrs[i]);
     }
+
+    free_mem (m_job_desc->pkt_src_base);
+    free_mem (m_job_desc->stat_dest_base);
 }
 
 int JobRegex::allocate_packet_buffer()

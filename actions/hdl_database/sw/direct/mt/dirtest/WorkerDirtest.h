@@ -58,6 +58,8 @@ public:
     // Get the size of the pattern buffer
     size_t get_pattern_buffer_size();
 
+    float get_sum_band_width();
+
     // Clean up any threads created for this worker
     virtual void cleanup();
 

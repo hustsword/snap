@@ -19,19 +19,19 @@
 #include "JobDirtest.h"
 
 ThreadDirtest::ThreadDirtest()
-    : ThreadBase (0, 600)
+    : ThreadBase (0, 600), m_band_width (0)
 {
     //printf("create dirtest thread\n");
 }
 
 ThreadDirtest::ThreadDirtest (int in_id)
-    : ThreadBase (in_id)
+    : ThreadBase (in_id), m_band_width (0)
 {
     //printf("create dirtest thread on engine %d\n", in_id);
 }
 
 ThreadDirtest::ThreadDirtest (int in_id, int in_timeout)
-    : ThreadBase (in_id, in_timeout)
+    : ThreadBase (in_id, in_timeout), m_band_width (0)
 {
     //printf("create dirtest thread on engine %d\n", in_id);
 }
@@ -62,6 +62,9 @@ void ThreadDirtest::work_with_job (JobPtr in_job)
         return;
     }
 
+    uint64_t start_time, elapsed_time;
+    start_time = get_usec();
+
     do {
         if (0 != job->run()) {
             printf ("ERROR: Failed to run the JobDirtest\n");
@@ -69,7 +72,16 @@ void ThreadDirtest::work_with_job (JobPtr in_job)
         }
     } while (0);
 
+    elapsed_time = get_usec() - start_time;
+    //printf ("Eng %d finished with size %d ", m_id, (int)m_pkt_size);
+    m_band_width = print_time (elapsed_time, job->get_pkt_size());
+
     return;
+}
+
+float ThreadDirtest::get_band_width()
+{
+    return m_band_width;
 }
 
 void ThreadDirtest::cleanup()

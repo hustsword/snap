@@ -105,6 +105,15 @@ size_t WorkerDirtest::get_pattern_buffer_size()
     return m_patt_size;
 }
 
+float WorkerDirtest::get_sum_band_width()
+{
+    float sum_band_width = 0;
+    for (size_t i = 0; i < m_threads.size(); i++) {
+        sum_band_width += boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) ->get_band_width();
+    }
+    return sum_band_width;
+}
+
 void WorkerDirtest::cleanup()
 {
     //printf("clean up worker\n");

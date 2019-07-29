@@ -34,28 +34,30 @@ int start_regex_workers (int num_engines,
                          size_t stat_size,
                          struct snap_card* dn,
                          struct snap_action* act,
-                         snap_action_flag_t attach_flags)
+                         snap_action_flag_t attach_flags,
+			 float* thread_total_band_width,
+			 float* worker_band_width)
 {
-    printf ("Running on regex worker\n");
+    //printf ("Running on regex worker\n");
 
     HardwareManagerPtr hw_mgr =  boost::make_shared<HardwareManager> (0, dn, act, attach_flags, 0, 1000);
 
     WorkerDirtestPtr worker = boost::make_shared<WorkerDirtest> (hw_mgr, false);
     worker->set_mode (false);
 
-    printf ("Init hardware\n");
+    //printf ("Init hardware\n");
     ERROR_CHECK (hw_mgr->init());
-    printf ("Copy pattern to hardware\n");
+    //printf ("Copy pattern to hardware\n");
     worker->set_patt_src_base (patt_src_base, patt_size);
 
-    printf ("Create %d job(s) for this worker\n", num_engines);
+    //printf ("Create %d job(s) for this worker\n", num_engines);
 
     // Create threads
     for (int i = 0; i < num_engines; i++) {
         ThreadDirtestPtr thd = boost::make_shared<ThreadDirtest> (i, 1000);
 
         // Create 1 job for each thread
-        JobDirtestPtr job = boost::make_shared<JobDirtest> (0, i, hw_mgr, false);
+	JobDirtestPtr job = boost::make_shared<JobDirtest> (0, i, hw_mgr, false);
         job->set_no_chk_offset (no_chk_offset);
         job->set_pkt_src_base (pkt_src_base, pkt_size);
         job->set_stat_dest_base (stat_size);
@@ -67,13 +69,15 @@ int start_regex_workers (int num_engines,
         worker->add_thread (thd);
     }
 
-    printf ("Finish setting up jobs.\n");
+    //printf ("Finish setting up jobs.\n");
 
     do {
         high_resolution_clock::time_point t_end0 = high_resolution_clock::now();
         // Start work, multithreading starts from here
         worker->start();
         // Multithreading ends at here
+        *thread_total_band_width = worker->get_sum_band_width();
+	//printf ("%0.3f\n", *thread_total_band_width);
         high_resolution_clock::time_point t_end1 = high_resolution_clock::now();
         auto duration1 = duration_cast<microseconds> (t_end1 - t_end0).count();
         // Cleanup objects created for this procedure
@@ -84,10 +88,10 @@ int start_regex_workers (int num_engines,
 
         //printf ("Work finished after %lu microseconds (us)\n", (uint64_t) duration1);
 	printf ("Work ");
-	print_time (duration1, pkt_size);
+	*worker_band_width = print_time (duration1, pkt_size * num_engines);
         printf ("Cleanup finished after %lu microseconds (us)\n", (uint64_t) duration2);
 
-        printf ("Worker done!\n\n");
+        printf ("Worker done!\n");
     } while (0);
 
     return 0;

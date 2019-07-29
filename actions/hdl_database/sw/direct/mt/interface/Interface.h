@@ -31,7 +31,9 @@ int start_regex_workers (int num_engines,
 			size_t stat_size,
 			struct snap_card* dn,
 			struct snap_action* act,
-			snap_action_flag_t attach_flags);
+			snap_action_flag_t attach_flags,
+			float* thread_total_band_width,
+			float* worker_band_width);
 #ifdef __cplusplus
 }
 #endif

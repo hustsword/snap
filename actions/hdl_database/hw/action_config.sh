@@ -62,11 +62,13 @@ else
     cd ../../hw/
 fi
 
+echo "                        Generating defs.h"
 if [ ! -f ./defs.h ]; then
     touch defs.h
-    echo "                        Generating defs.h"
-    echo "#define NUM_KERNELS ${NUM_OF_DATABASE_KERNELS}" > defs.h
+else
+    rm defs.h
 fi
+echo "#define NUM_KERNELS ${NUM_OF_DATABASE_KERNELS}" > defs.h
 
 for i in $(find -name \*.v_source); do
     vcp=${i%.v_source}.vcp

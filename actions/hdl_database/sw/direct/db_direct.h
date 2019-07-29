@@ -90,7 +90,7 @@ int64_t diff_time (struct timespec* t_beg, struct timespec* t_end);
 uint64_t get_usec (void);
 int get_file_line_count (FILE* fp);
 void remove_newline (char* str);
-void print_time (uint64_t elapsed, uint64_t size);
+float print_time (uint64_t elapsed, uint64_t size);
 void* alloc_mem (int align, size_t size);
 void free_mem (void* a);
 

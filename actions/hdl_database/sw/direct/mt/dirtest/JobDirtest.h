@@ -72,6 +72,8 @@ public:
     // Set stat_dest_base for the job descripter
     void set_stat_dest_base (size_t in_stat_size);
 
+    size_t get_pkt_size();
+
 private:
     // Pointer to worker for adding job descriptors
     WorkerDirtestPtr m_worker;

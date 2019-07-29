@@ -83,8 +83,8 @@ JobDirtest::~JobDirtest()
 
 int JobDirtest::run()
 {
-    uint64_t start_time, elapsed_time;
-    start_time = get_usec();
+    //uint64_t start_time, elapsed_time;
+    //start_time = get_usec();
     do {
         if (init()) {
             printf ("ERROR: Failed to perform regex job initializing\n");
@@ -118,9 +118,9 @@ int JobDirtest::run()
 
     done();
 
-    elapsed_time = get_usec() - start_time;
+    //elapsed_time = get_usec() - start_time;
     //printf ("Eng %d finished with size %d ", m_thread_id, (int)m_pkt_size);
-    print_time (elapsed_time, m_pkt_size);
+    //print_time (elapsed_time, m_pkt_size);
 
     return 0;
 }
@@ -250,5 +250,10 @@ void JobDirtest::set_stat_dest_base (size_t in_stat_size)
     m_stat_size = in_stat_size;
     m_stat_dest_base = alloc_mem (64, m_stat_size);
     memset (m_stat_dest_base, 0, m_stat_size);
+}
+
+size_t JobDirtest::get_pkt_size()
+{
+    return m_pkt_size;
 }
 

@@ -100,7 +100,7 @@ void remove_newline (char* str)
     }
 }
 
-void print_time (uint64_t elapsed, uint64_t size)
+float print_time (uint64_t elapsed, uint64_t size)
 {
     int t;
     float fsize = (float)size / (1024 * 1024);
@@ -109,14 +109,15 @@ void print_time (uint64_t elapsed, uint64_t size)
     if (elapsed > 10000) {
         t = (int)elapsed / 1000;
         ft = (1000 / (float)t) * fsize;
-        //VERBOSE0 (" end after %d msec (%0.3f MB/sec)\n", t, ft);
-	VERBOSE0 ("%d msec %0.3f\n", t, ft);
+        VERBOSE0 (" end after %d msec (%0.3f MB/sec)\n", t, ft);
+	//VERBOSE0 ("%d msec %0.3f\n", t, ft);
     } else {
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
-        //VERBOSE0 (" end after %d usec (%0.3f MB/sec)\n", t, ft);
-	VERBOSE0 ("%d usec %0.3f\n", t, ft);
+        VERBOSE0 (" end after %d usec (%0.3f MB/sec)\n", t, ft);
+	//VERBOSE0 ("%d usec %0.3f\n", t, ft);
     }
+    return ft;
 }
 
 void* alloc_mem (int align, size_t size)
@@ -489,7 +490,7 @@ void action_regex (struct snap_card* h,
 
     do {
         reg_data = action_read (h, REG(ACTION_STATUS_L, eng_id));
-        VERBOSE1 ("Packet Phase: polling Status reg with 0X%X\n", reg_data);
+        VERBOSE3 ("Packet Phase: polling Status reg with 0X%X\n", reg_data);
 
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
@@ -603,34 +604,6 @@ int regex_scan (struct snap_card* dnc,
 
     return rc;
 }
-
-/*
-int regex_scan (CAPIRegexJobDescriptor* job_desc)
-{
-    if (job_desc == NULL) {
-        return -1;
-    }
-
-    if (regex_scan_internal (job_desc->context->dn,
-                            job_desc->context->timeout,
-                            job_desc->patt_src_base,
-                            job_desc->pkt_src_base,
-                            job_desc->stat_dest_base,
-                            & (job_desc->num_matched_pkt),
-                            job_desc->patt_size,
-                            job_desc->pkt_size,
-                            job_desc->stat_size,
-                            job_desc->thread_id)) {
-
-        ereport (ERROR,
-                 (errcode (ERRCODE_INVALID_PARAMETER_VALUE),
-                  errmsg ("Hardware ERROR!")));
-        return -1;
-    }
-
-    return 0;
-}
-*/
 
 struct snap_action* get_action (struct snap_card* handle,
                                        snap_action_flag_t flags, int timeout)
@@ -1055,10 +1028,48 @@ int main (int argc, char* argv[])
     }
     
     VERBOSE1 ("======== HARDWARE RUN ========\n");
-
+    
+    /*
     for (int num_eng_using = 1; num_eng_using <= num_engines; ++num_eng_using) {
+	float sum_thread_bw = 0, sum_worker_bw = 0;
+	float avg_thread_bw, avg_worker_bw;
+	float min_thread_bw = 0, max_thread_bw = 0, min_worker_bw = 0, max_worker_bw = 0;
+        for (int i = 0; i < 10; ++i) {
+            printf ("Iteration %d:\n", i+1);
+	    float thread_bw, worker_bw;
+            ERROR_CHECK (start_regex_workers (num_eng_using, no_chk_offset, patt_src_base, patt_size, pkt_src_base, pkt_size, stat_size,
+			    	              dn, act, attach_flags, &thread_bw, &worker_bw));
+	    if (i == 0) {
+                min_thread_bw = thread_bw;
+		max_thread_bw = thread_bw;
+		min_worker_bw = worker_bw;
+		max_worker_bw = worker_bw;
+	    }
+	    if (thread_bw < min_thread_bw) {
+	        min_thread_bw = thread_bw;
+	    } else if (thread_bw > max_thread_bw) {
+		max_thread_bw = thread_bw;
+	    }
+	    if (worker_bw < min_worker_bw) {
+		min_worker_bw = worker_bw;
+	    } else if (worker_bw > max_worker_bw) {
+		max_worker_bw = worker_bw;
+	    }
+	    sum_thread_bw += thread_bw;
+	    sum_worker_bw += worker_bw;
+	}
+	avg_thread_bw = (sum_thread_bw - min_thread_bw - max_thread_bw) / 8;
+	avg_worker_bw = (sum_worker_bw - min_worker_bw - max_worker_bw) / 8;
+	printf ("For %d engine(s), the average thread total band width is %0.3f MB/sec;\n", num_eng_using, avg_thread_bw);
+	printf ("the average worker band width is %0.3f MB/sec.\n\n", avg_worker_bw);
+    }
+    */
+    for (int num_eng_using = 1; num_eng_using <= num_engines; ++num_eng_using) { 
+        float thread_bw, worker_bw;
         ERROR_CHECK (start_regex_workers (num_eng_using, no_chk_offset, patt_src_base, patt_size, pkt_src_base, pkt_size, stat_size,
-			    	          dn, act, attach_flags));
+			                  dn, act, attach_flags, &thread_bw, &worker_bw));
+        printf ("For %d engine(s), the thread total band width is %0.3f MB/sec;\n", num_eng_using, thread_bw);
+        printf ("the worker band width is %0.3f MB/sec.\n\n", worker_bw);
     }
 fail:
     return -1;

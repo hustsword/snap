@@ -188,15 +188,15 @@ struct snap_action* get_action (struct snap_card* handle,
 void print_result (CAPIRegexJobDescriptor* job_desc, char* header_str, char* out_str);
 
 // CAPI regex operations for PostgreSQL
-void action_regex (struct snap_card* h,
-                   void* patt_src_base,
-                   void* pkt_src_base,
-                   void* stat_dest_base,
-                   size_t* num_matched_pkt,
-                   size_t patt_size,
-                   size_t pkt_size,
-                   size_t stat_size,
-                   int id);
+int action_regex (struct snap_card* h,
+                  void* patt_src_base,
+                  void* pkt_src_base,
+                  void* stat_dest_base,
+                  size_t* num_matched_pkt,
+                  size_t patt_size,
+                  size_t pkt_size,
+                  size_t stat_size,
+                  int id);
 int capi_regex_scan_internal (struct snap_card* dnc,
                               int timeout,
                               void* patt_src_base,
@@ -223,6 +223,7 @@ int capi_regex_compile (CAPIRegexJobDescriptor* job_desc, const char* pattern);
 //int capi_regex_pkt_psql (CAPIRegexJobDescriptor* job_desc,
 //                         Relation rel, int attr_id);
 int capi_regex_scan (CAPIRegexJobDescriptor* job_desc);
+int print_results (size_t num_results, void* stat_dest_base);
 int get_results (void* result, size_t num_matched_pkt, void* stat_dest_base);
 int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc);
 int capi_regex_job_cleanup (CAPIRegexJobDescriptor* job_desc);
