@@ -244,9 +244,9 @@ module action_hdl_database # (
     assign action_wid[7:4] = 4'd0;
 
     assign rid_fifo_wen = m_axi_snap_arvalid && m_axi_snap_arready;
-    assign rid_fifo_ren = m_axi_snap_rvalid && m_axi_snap_rready;
+    assign rid_fifo_ren = m_axi_snap_rvalid && m_axi_snap_rready && m_axi_snap_rlast;
     assign wid_fifo_wen = m_axi_snap_awvalid && m_axi_snap_awready;
-    assign wid_fifo_ren = m_axi_snap_bvalid && m_axi_snap_bready;
+    assign wid_fifo_ren = m_axi_snap_bvalid && m_axi_snap_bready && m_axi_snap_wlast;
 
     axi_rid_fifo rid_fifo (
         .clk            (clk)
