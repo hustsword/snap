@@ -47,7 +47,7 @@ JobRegex::JobRegex (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mgr, b
 
 JobRegex::~JobRegex()
 {
-    elog (DEBUG5, "JobRegex destroyed!");
+    //elog (DEBUG5, "JobRegex destroyed!");
 }
 
 int JobRegex::run()
@@ -59,19 +59,19 @@ int JobRegex::run()
     }
 
     do {
-	    elog (DEBUG3, "Thread %d Job %d: Before init()..", m_thread_id, m_id);
+	    //elog (DEBUG3, "Thread %d Job %d: Before init()..", m_thread_id, m_id);
         if (init()) {
             elog (ERROR, "Failed to perform regex job initializing");
             fail();
             return -1;
         }
-	    elog (DEBUG3, "Thread %d Job %d: Finish init()..", m_thread_id, m_id);
+	    //elog (DEBUG3, "Thread %d Job %d: Finish init()..", m_thread_id, m_id);
         if (packet()) {
             elog (ERROR, "Failed to perform regex packet preparing");
             fail();
             return -1;
         }
-	    elog (DEBUG3, "Thread %d Job %d: Finish packet()..", m_thread_id, m_id);
+	    //elog (DEBUG3, "Thread %d Job %d: Finish packet()..", m_thread_id, m_id);
     } while (0);
 
     do {
@@ -83,7 +83,7 @@ int JobRegex::run()
             fail();
             return -1;
         }
-	    elog (DEBUG3, "Thread %d Job %d: Finish scan()..", m_thread_id, m_id);
+	    //elog (DEBUG3, "Thread %d Job %d: Finish scan()..", m_thread_id, m_id);
     } while (0);
 
     if (result()) {
@@ -91,7 +91,7 @@ int JobRegex::run()
         fail();
         return -1;
     }
-    elog (DEBUG3, "Thread %d Job %d: Finish result()..", m_thread_id, m_id);
+    //elog (DEBUG3, "Thread %d Job %d: Finish result()..", m_thread_id, m_id);
 
     done();
 
@@ -245,13 +245,10 @@ int JobRegex::capi_regex_pkt_psql_internal (Relation rel, int attr_id,
     if (NULL == pkt_src_base) {
         return -1;
     }
-    elog(INFO, "Entering pkt internal..");
 
     void* pkt_src      = pkt_src_base;
     TupleDesc tupdesc  = RelationGetDescr (rel);
     uint16 lp_len = m_worker->m_tup_len;
-    elog (INFO, "start tup id is %d", start_tup_id);
-    elog (INFO, "tup num is %d", num_tups);
 
     for (int tup_num = 0; tup_num < num_tups; ++tup_num) {
 	//elog (INFO, "before get tuphdr");
@@ -329,10 +326,6 @@ int JobRegex::get_results (void* result, size_t num_matched_pkt, void* stat_dest
         }
 
         ((HeapTupleHeader*)result)[i] = m_worker->m_tuples[(int)pkt_id];
-	if (i == 0) {
-	    elog (INFO, "result0 is at %p", ((HeapTupleHeader*)result)[0]);
-	    elog (INFO, "pkt id is %u", pkt_id);
-	}
         pkt_id = 0;
     }
 

@@ -229,9 +229,6 @@ void WorkerRegex::read_buffers()
                 lp_offset == MAXALIGN (lp_offset)) {
                 HeapTupleHeader tuphdr = (HeapTupleHeader) PageGetItem (page, id); // also check ItemIdHasStorage (id)
                 m_tuples[count] = tuphdr;
-		if (count == 457) {
-		    elog (INFO, "tuphdr at line 457 is at %p", tuphdr);
-		}
                 count++;
             }
         }
