@@ -383,6 +383,39 @@ config NUM_OF_DATABASE_KERNELS
 	  Number of kernels (engines) in database acceleration.
 
 choice
+	bool "Database regex engine configuration"
+	help
+            Select different regex engine configuration
+        depends on HDL_DATABASE
+	default REGEX_16X1
+
+	config REGEX_64X1
+		bool "64X1 -- 64 packet pipelines, 1 pattern pipelines"
+		help
+                    Regex with 64X1 configuration
+
+	config REGEX_16X1
+		bool "16X1 -- 16 packet pipelines, 1 pattern pipelines"
+		help
+                    Regex with 16X1 configuration
+
+	config REGEX_8X1
+		bool "8X1 -- 8 packet pipelines, 1 pattern pipelines"
+		help
+                    Regex with 8X1 configuration
+
+endchoice
+
+config DATABASE_REGEX_CONFIG
+        depends on HDL_DATABASE
+        string
+	default "64X1" if REGEX_64X1
+	default "16X1" if REGEX_16X1
+	default "8X1"  if REGEX_8X1
+	help
+	  Number of kernels (engines) in database acceleration.
+
+choice
 	bool "NVDLA configuration"
 	default NV_SMALL
 	help

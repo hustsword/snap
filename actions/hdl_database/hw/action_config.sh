@@ -21,6 +21,7 @@
 echo "                        action config says ACTION_ROOT is $ACTION_ROOT"
 echo "                        action config says FPGACHIP is $FPGACHIP"
 echo "                        action config says there are $NUM_OF_DATABASE_KERNELS kernels used in this action"
+echo "                        action config says $DATABASE_REGEX_CONFIG is used for regex engine configuration"
 
 REGEX_DESIGN=engines/regex
 REGEX_IP=../ip/engines/regex
@@ -68,25 +69,74 @@ if [ ! -f ./defs.h ]; then
 else
     rm defs.h
 fi
-echo "#define NUM_KERNELS ${NUM_OF_DATABASE_KERNELS}" > defs.h
+# Generate number of kernel configurations
+echo "#define NUM_KERNELS ${NUM_OF_DATABASE_KERNELS}" >> defs.h
 
+# Generate regex configurations
+if [ $DATABASE_REGEX_CONFIG == 64X1 ]; then
+    echo "#define REGEX_NUM_BUFFER_SL             4 " >> defs.h
+    echo "#define REGEX_NUM_BUFFER_TL             16 " >> defs.h
+    echo "#define REGEX_NUM_BUFFER_4THL           16 " >> defs.h
+    echo "#define REGEX_NUM_PIPELINE_IN_A_GROUP   1 " >> defs.h
+    echo "#define REGEX_NUM_OF_PIPELINE_GROUP     64 " >> defs.h
+    echo "#define REGEX_NUM_STRING_MATCH_PIPELINE 64 " >> defs.h
+elif [ $DATABASE_REGEX_CONFIG == 16X1 ]; then
+    echo "#define REGEX_NUM_BUFFER_SL             1 " >> defs.h
+    echo "#define REGEX_NUM_BUFFER_TL             2 " >> defs.h
+    echo "#define REGEX_NUM_BUFFER_4THL           2 " >> defs.h
+    echo "#define REGEX_NUM_PIPELINE_IN_A_GROUP   1 " >> defs.h
+    echo "#define REGEX_NUM_OF_PIPELINE_GROUP     16 " >> defs.h
+    echo "#define REGEX_NUM_STRING_MATCH_PIPELINE 16 " >> defs.h
+elif [ $DATABASE_REGEX_CONFIG == 8X1 ]; then
+    echo "#define REGEX_NUM_BUFFER_SL             1 " >> defs.h
+    echo "#define REGEX_NUM_BUFFER_TL             1 " >> defs.h
+    echo "#define REGEX_NUM_BUFFER_4THL           1 " >> defs.h
+    echo "#define REGEX_NUM_PIPELINE_IN_A_GROUP   1 " >> defs.h
+    echo "#define REGEX_NUM_OF_PIPELINE_GROUP     8 " >> defs.h
+    echo "#define REGEX_NUM_STRING_MATCH_PIPELINE 8 " >> defs.h
+else
+    echo "Unknown REGEX configuration: ${REGEX_CONFIG}"
+    exit -1
+fi
+
+# Preprocess configurable verilogs
 for i in $(find -name \*.v_source); do
     vcp=${i%.v_source}.vcp
     v=${i%.v_source}.v
-    echo "                         Processing $i"
-    $HDL_PP/vcp -i $i -o $vcp -imacros ./defs.h || exit 1
-    perl -I $HDL_PP/plugins -Meperl $HDL_PP/eperl -o $v $vcp || exit 1
+    echo "                        Processing $i"
+    $HDL_PP/vcp -i $i -o $vcp -imacros ./defs.h 2> defs.log
+
+    if [ ! $? ]; then
+        echo "!! ERROR processing $vcp"
+        exit -1
+    fi
+
+    perl -I $HDL_PP/plugins -Meperl $HDL_PP/eperl -o $v $vcp 2> defs.log
+
+    if [ ! $? ]; then
+        echo "!! ERROR processing $v"
+        exit -1
+    fi
 done                         
 
 # Create the IP for regex engine
 if [ ! -d $STRING_MATCH_VERILOG/../fpga_ip/managed_ip_project ]; then
     echo "                        Call all_ip_gen.pl to generate regex IPs"
-    $STRING_MATCH_VERILOG/../fpga_ip/all_ip_gen.pl -fpga_chip $FPGACHIP -outdir $STRING_MATCH_VERILOG/../fpga_ip
+    $STRING_MATCH_VERILOG/../fpga_ip/all_ip_gen.pl -fpga_chip $FPGACHIP -outdir $STRING_MATCH_VERILOG/../fpga_ip >> regex_fpga_ip_gen.log
+
+    if [ ! $? ]; then
+        echo "!! ERROR generating regex IPs."
+        exit -1
+    fi
 fi
 
 # Create IP for the framework
 if [ ! -d $ACTION_ROOT/ip/framework/framework_ip_prj ]; then
     echo "                        Call create_framework_ip.tcl to generate framework IPs"
-    vivado -mode batch -source $ACTION_ROOT/ip/tcl/create_framework_ip.tcl -notrace -nojournal -tclargs $ACTION_ROOT $FPGACHIP $NUM_OF_DATABASE_KERNELS
-fi
+    vivado -mode batch -source $ACTION_ROOT/ip/tcl/create_framework_ip.tcl -notrace -nojournal -tclargs $ACTION_ROOT $FPGACHIP $NUM_OF_DATABASE_KERNELS >> framework_fpga_ip_gen.log
 
+    if [ ! $? ]; then
+        echo "!! ERROR generating framework IPs."
+        exit -1;
+    fi
+fi

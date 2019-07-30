@@ -64,12 +64,12 @@
     parameter PATTERN_NUM_FL                 = 1,
     parameter PATTERN_NUM_SL                 = 1,
     parameter NUM_OF_PU                      = 1,
-    parameter NUM_BUFFER_SL                  = 1,
-    parameter NUM_BUFFER_TL                  = 2,
-    parameter NUM_BUFFER_4THL                = 2,
-    parameter NUM_STRING_MATCH_PIPELINE      = 16,
-    parameter NUM_PIPELINE_IN_A_GROUP        = 1,
-    parameter NUM_OF_PIPELINE_GROUP          = 16 
+    parameter NUM_BUFFER_SL                  = REGEX_NUM_BUFFER_SL,
+    parameter NUM_BUFFER_TL                  = REGEX_NUM_BUFFER_TL,
+    parameter NUM_BUFFER_4THL                = REGEX_NUM_BUFFER_4THL,
+    parameter NUM_STRING_MATCH_PIPELINE      = REGEX_NUM_STRING_MATCH_PIPELINE,
+    parameter NUM_PIPELINE_IN_A_GROUP        = REGEX_NUM_PIPELINE_IN_A_GROUP,
+    parameter NUM_OF_PIPELINE_GROUP          = REGEX_NUM_OF_PIPELINE_GROUP
 )
 (
     input  ap_clk                    ,

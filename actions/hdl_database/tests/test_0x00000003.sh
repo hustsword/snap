@@ -1,14 +1,16 @@
 #!/bin/bash
-. ./env.sh
-#~/projects/nsa121b/capi-util-ecap-update/capi-reset.sh
-echo $SNAP_ROOT
-#echo $ACTION_ROOT
-#$SNAP_ROOT/software/tools/snap_maint -vv
-../../../software/tools/snap_maint -vv
-if [[ ! -z $1 ]]; then
-    cp ./$1 packet.txt
+ROOT=../../../
+if [ ! -z $SNAP_ROOT ]; then
+    ROOT=$SNAP_ROOT
 fi
-#cp $ACTION_ROOT/tests/pattern.txt pattern.txt
-cp ./pattern.txt pattern.txt
-#$ACTION_ROOT/sw/direct/db_direct -f -t 10 $*
-../sw/direct/db_direct -f -t 10 $*
+
+echo $ROOT
+
+$ROOT/software/tools/snap_maint -vv
+
+if [[ ! -z $1 ]]; then
+    cp $ROOT/actions/hdl_database/tests/$1 packet.txt
+fi
+
+cp $ROOT/actions/hdl_database/tests/pattern.txt pattern.txt
+$ROOT/actions/hdl_database/sw/direct/db_direct -f -t 10 $*
