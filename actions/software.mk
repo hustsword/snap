@@ -98,5 +98,4 @@ uninstall:
 	done
 
 clean distclean:
-	$(RM) $(projs) $(libs) *.o *.log *.out *~ *.so
-
+	$(RM) $(projs) $(libs) *.o $($(projs)_objs) *.log *.out *~ *.so

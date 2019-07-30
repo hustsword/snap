@@ -74,17 +74,17 @@ echo "#define NUM_KERNELS ${NUM_OF_DATABASE_KERNELS}" >> defs.h
 
 # Generate regex configurations
 if [ $DATABASE_REGEX_CONFIG == 64X1 ]; then
-    echo "#define REGEX_NUM_BUFFER_SL             4 " >> defs.h
+    echo "#define REGEX_NUM_BUFFER_SL             4  " >> defs.h
     echo "#define REGEX_NUM_BUFFER_TL             16 " >> defs.h
     echo "#define REGEX_NUM_BUFFER_4THL           16 " >> defs.h
-    echo "#define REGEX_NUM_PIPELINE_IN_A_GROUP   1 " >> defs.h
+    echo "#define REGEX_NUM_PIPELINE_IN_A_GROUP   1  " >> defs.h
     echo "#define REGEX_NUM_OF_PIPELINE_GROUP     64 " >> defs.h
     echo "#define REGEX_NUM_STRING_MATCH_PIPELINE 64 " >> defs.h
 elif [ $DATABASE_REGEX_CONFIG == 16X1 ]; then
-    echo "#define REGEX_NUM_BUFFER_SL             1 " >> defs.h
-    echo "#define REGEX_NUM_BUFFER_TL             2 " >> defs.h
-    echo "#define REGEX_NUM_BUFFER_4THL           2 " >> defs.h
-    echo "#define REGEX_NUM_PIPELINE_IN_A_GROUP   1 " >> defs.h
+    echo "#define REGEX_NUM_BUFFER_SL             1  " >> defs.h
+    echo "#define REGEX_NUM_BUFFER_TL             2  " >> defs.h
+    echo "#define REGEX_NUM_BUFFER_4THL           2  " >> defs.h
+    echo "#define REGEX_NUM_PIPELINE_IN_A_GROUP   1  " >> defs.h
     echo "#define REGEX_NUM_OF_PIPELINE_GROUP     16 " >> defs.h
     echo "#define REGEX_NUM_STRING_MATCH_PIPELINE 16 " >> defs.h
 elif [ $DATABASE_REGEX_CONFIG == 8X1 ]; then
@@ -104,14 +104,14 @@ for i in $(find -name \*.v_source); do
     vcp=${i%.v_source}.vcp
     v=${i%.v_source}.v
     echo "                        Processing $i"
-    $HDL_PP/vcp -i $i -o $vcp -imacros ./defs.h 2> defs.log
+    $HDL_PP/vcp -i $i -o $vcp -imacros ./defs.h 2>> defs.log
 
     if [ ! $? ]; then
         echo "!! ERROR processing $vcp"
         exit -1
     fi
 
-    perl -I $HDL_PP/plugins -Meperl $HDL_PP/eperl -o $v $vcp 2> defs.log
+    perl -I $HDL_PP/plugins -Meperl $HDL_PP/eperl -o $v $vcp 2>> defs.log
 
     if [ ! $? ]; then
         echo "!! ERROR processing $v"
