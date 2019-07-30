@@ -371,6 +371,24 @@ choice
 		select DISABLE_SDRAM_AND_BRAM
 		select DISABLE_NVME
 		select ENABLE_ACTION_CLK_DERATE
+
+        config HLS_VECTOR_GENERATOR
+            	bool "HLS Vector Generator example"
+            help
+                This is a simple example that generates a vector from FPGA:
+                - HOST calls an FPGA action to generate a vector of size N
+                This example is written in C and compiled with HLS
+            select ENABLE_HLS_SUPPORT
+            select DISABLE_SDRAM_AND_BRAM
+            select DISABLE_NVME
+        
+        config HLS_PARALLEL_MEMCPY
+            	bool "HLS Parallel Memcpy example"
+            help
+                This example is written in C and compiled with HLS
+            select ENABLE_HLS_SUPPORT
+            select DISABLE_SDRAM_AND_BRAM
+            select DISABLE_NVME
 endchoice
 
 config NUM_OF_DATABASE_KERNELS
@@ -438,24 +456,6 @@ choice
 		  NVDLA with 2048 MACs and all feature
 endchoice
 	
-config HLS_VECTOR_GENERATOR
-    	bool "HLS Vector Generator example"
-    help
-        This is a simple example that generates a vector from FPGA:
-        - HOST calls an FPGA action to generate a vector of size N
-        This example is written in C and compiled with HLS
-    select ENABLE_HLS_SUPPORT
-    select DISABLE_SDRAM_AND_BRAM
-    select DISABLE_NVME
-
-config HLS_PARALLEL_MEMCPY
-    	bool "HLS Parallel Memcpy example"
-    help
-        This example is written in C and compiled with HLS
-    select ENABLE_HLS_SUPPORT
-    select DISABLE_SDRAM_AND_BRAM
-    select DISABLE_NVME
-
 config NVDLA_CONFIG 
         depends on HDL_NVDLA
 	string
