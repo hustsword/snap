@@ -90,13 +90,19 @@ private:
     //void* capi_regex_pkt_psql_internal (Relation rel,
     int capi_regex_pkt_psql_internal (Relation rel,
                                       int attr_id,
-                                      int start_blk_id,
-                                      int num_blks,
+                                      int start_tup_id,
+                                      int num_tups,
                                       void* pkt_src_base,
                                       size_t* size,
                                       size_t* size_wo_hw_hdr,
                                       size_t* num_pkt,
                                       int64_t* t_pkt_cpy);
+
+    // Internal functions to handle results
+    int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc);
+
+    // Helper function to write results
+    int get_results (void* result, size_t num_matched_pkt, void* stat_dest_base);
 
     // Handle the packet preparation
     int capi_regex_pkt_psql (CAPIRegexJobDescriptor* job_desc,

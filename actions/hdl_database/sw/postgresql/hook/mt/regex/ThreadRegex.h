@@ -42,11 +42,11 @@ public:
     // Set pointer to worker
     void set_worker (WorkerRegexPtr in_worker);
 
-    // Set buffers base and number of blocks
-    void set_blk_info (int in_base, int in_num);
+    // Set tuples base and number of tuples
+    void set_tup_info (int in_base, int in_num);
 
-    // Get the number of buffers (blocks) for different job
-    int get_num_blks_per_job (int in_job_id, int* out_start_blk_id);
+    // Get the number of tuples for different job
+    int get_num_tups_per_job (int in_job_id, int* out_start_tup_id);
 
     // Allocate the reused packet buffer and result buffer for this thread
     int allocate_buffers();
@@ -61,11 +61,11 @@ public:
     virtual void cleanup();
 
 private:
-    // Base address of worker's buffers for this thread
-    int m_buffers_base;
+    // Base address of worker's tuples for this thread
+    int m_tuples_base;
 
-    // Total number of buffers (blocks) assigned to this thread
-    int m_num_blks;
+    // Total number of tuples assigned to this thread
+    int m_num_tups;
 
     // Pattern buffer base address for this thread
     void* m_pkt_src_base;

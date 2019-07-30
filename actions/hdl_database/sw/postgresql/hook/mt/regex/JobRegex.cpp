@@ -128,17 +128,17 @@ int JobRegex::init()
     // Copy the pattern from worker to job
     m_job_desc->patt_src_base = m_worker->get_pattern_buffer();
     m_job_desc->patt_size = m_worker->get_pattern_buffer_size();
-    int start_blk_id = 0;
-    int num_blks = m_thread->get_num_blks_per_job (m_id, &start_blk_id);
     
-    // Get the blocks for this job
-    m_job_desc->num_blks = num_blks;
-    m_job_desc->start_blk_id = start_blk_id;
+    int start_tup_id = 0;
+    int num_tups = m_thread->get_num_tups_per_job (m_id, &start_tup_id);
+    
+    // Get the tuples for this job
+    m_job_desc->num_tups = num_tups;
+    m_job_desc->start_tup_id = start_tup_id;
 
-    if (0 == num_blks) {
-        elog (ERROR, "Number of blocks is invalid for thread %d job %d",
+    if (0 == num_tups) {
+        elog (ERROR, "Number of tuples is invalid for thread %d job %d",
               m_thread_id, m_id);
-        return -1;
     }
 
     // Assign the thread id to this job descriptor
@@ -237,7 +237,7 @@ void JobRegex::cleanup()
 }
 
 int JobRegex::capi_regex_pkt_psql_internal (Relation rel, int attr_id,
-        int start_blk_id, int num_blks,
+        int start_tup_id, int num_tups,
         void* pkt_src_base,
         size_t* size, size_t* size_wo_hw_hdr,
         size_t* num_pkt, int64_t* t_pkt_cpy)
@@ -248,45 +248,22 @@ int JobRegex::capi_regex_pkt_psql_internal (Relation rel, int attr_id,
 
     void* pkt_src      = pkt_src_base;
     TupleDesc tupdesc  = RelationGetDescr (rel);
+    uint16 lp_len = m_worker->m_tup_len;
 
-    Buffer buf = InvalidBuffer;
-    int first_blk_num_lines = 0;
+    for (int tup_num = 0; tup_num < num_tups; ++tup_num) {
+        HeapTupleHeader tuphdr = *(m_worker->m_tuples[start_tup_id + tup_num]);
 
-    for (int blk_num = start_blk_id; blk_num < num_blks + start_blk_id; ++blk_num) {
-        do {
-            buf = m_worker->m_buffers[blk_num];
-        } while (0);
+        // TODO: be careful about the packet id.
+        // The packet id is supposed to be the row ID in the relation,
+        // is this really the correct way to do this?
+        int pkt_id = start_tup_id + tup_num;
 
-        Page page = (Page) BufferGetPage (buf);
-        int num_lines = PageGetMaxOffsetNumber (page);
-
-        if (blk_num == start_blk_id) {
-            first_blk_num_lines = num_lines;
-        }
-
-        for (int line_num = 0; line_num <= num_lines; ++line_num) {
-            ItemId id = PageGetItemId (page, line_num);
-            uint16 lp_offset = ItemIdGetOffset (id);
-            uint16 lp_len = ItemIdGetLength (id);
-            HeapTupleHeader tuphdr = (HeapTupleHeader) PageGetItem (page, id); // also check ItemIdHasStorage (id)
-
-            // TODO: be careful about the packet id.
-            // The packet id is supposed to be the row ID in the relation,
-            // is this really the correct way to do this?
-            int pkt_id = line_num + blk_num * first_blk_num_lines;
-
-            if (ItemIdHasStorage (id) &&
-                lp_len >= MinHeapTupleSize &&
-                lp_offset == MAXALIGN (lp_offset)) {
-
-                int attr_len = 0;
-                bytea* attr_ptr = DatumGetByteaP (get_attr (tuphdr, tupdesc, lp_len, attr_id, &attr_len));
-                attr_len = VARSIZE (attr_ptr) - VARHDRSZ;
-                (*size_wo_hw_hdr) += attr_len;
-                pkt_src = fill_one_packet (VARDATA (attr_ptr), attr_len, pkt_src, pkt_id);
-                (*num_pkt)++;
-            }
-        }
+        int attr_len = 0;
+        bytea* attr_ptr = DatumGetByteaP (get_attr (tuphdr, tupdesc, lp_len, attr_id, &attr_len));
+        attr_len = VARSIZE (attr_ptr) - VARHDRSZ;
+        (*size_wo_hw_hdr) += attr_len;
+        pkt_src = fill_one_packet (VARDATA (attr_ptr), attr_len, pkt_src, pkt_id);
+        (*num_pkt)++;
     }
 
     (*size) = (uint64_t) pkt_src - (uint64_t) pkt_src_base;
@@ -308,8 +285,8 @@ int JobRegex::capi_regex_pkt_psql (CAPIRegexJobDescriptor* job_desc, Relation re
 
     if (capi_regex_pkt_psql_internal (rel,
                                       attr_id,
-                                      job_desc->start_blk_id,
-                                      job_desc->num_blks,
+                                      job_desc->start_tup_id,
+                                      job_desc->num_tups,
                                       job_desc->pkt_src_base,
                                       & (job_desc->pkt_size),
                                       & (job_desc->pkt_size_wo_hw_hdr),
@@ -327,4 +304,55 @@ int JobRegex::capi_regex_pkt_psql (CAPIRegexJobDescriptor* job_desc, Relation re
 
     return 0;
 }
+
+int JobRegex::get_results (void* result, size_t num_matched_pkt, void* stat_dest_base)
+{
+    int i = 0, j = 0;
+    uint32_t pkt_id = 0;
+
+    if (result == NULL) {
+        return -1;
+    }
+
+    for (i = 0; i < (int)num_matched_pkt; i++) {
+        for (j = 4; j < 8; j++) {
+            pkt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 4) * 8);
+        }
+
+        ((HeapTupleHeader**)result)[i] = m_tuples[(int)pkt_id];
+
+        pkt_id = 0;
+    }
+
+    return 0;
+}
+
+int JobRegex::capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc)
+{
+    if (job_desc == NULL) {
+        return -1;
+    }
+
+    int count = 0;
+
+    // Wait for transaction to be done.
+    do {
+        action_read (job_desc->context->dn, ACTION_STATUS_L, job_desc->thread_id);
+        count++;
+    } while (count < 10);
+
+    uint32_t reg_data = action_read (job_desc->context->dn, ACTION_STATUS_H, job_desc->thread_id);
+    job_desc->num_matched_pkt = reg_data;
+    job_desc->results = (HeapTupleHeader**) palloc (reg_data * sizeof (HeapTupleHeader*));
+
+    //elog (INFO, "Thread %d finished with %d matched packets", job_desc->thread_id, reg_data);
+
+    if (get_results (job_desc->results, reg_data, job_desc->stat_dest_base)) {
+        errno = ENODEV;
+        return -1;
+    }
+
+    return 0;
+}
+
 

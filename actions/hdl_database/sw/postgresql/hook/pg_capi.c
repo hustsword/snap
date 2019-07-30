@@ -397,6 +397,7 @@ PGCAPIAccessCustomScan (CustomScanState* node)
     HeapScanDesc    scan;
     TupleTableSlot* slot;
     char**       values;
+    Relation relation = capiss->css.ss.ss_currentRelation;
 
 new_job:
 
@@ -419,16 +420,17 @@ new_job:
         goto new_job;
     }
 
-    values = (char**) palloc (2 * sizeof (char*));
-    values[0] = (char*) palloc (16 * sizeof (char));
-    values[1] = (char*) palloc (16 * sizeof (char));
-
     // TODO: need a real column data to be returned
     sprintf (values[0], "Column data");
     sprintf (values[1], "%d", ((uint32_t*)job_desc->results)[job_desc->curr_result_id]);
-    (job_desc->curr_result_id)++;
 
-    HeapTuple tuple = BuildTupleFromCStrings (capiss->attinmeta, values);
+    HeapTupleHeader* tupleH = ((HeapTupleHeader**)job_desc->results)[job_desc->curr_result_id];
+    (job_desc->curr_result_id)++;
+    HeapTuple tuple;
+    tuple->t_len = sizeof (*tupleH);
+    tuple->t_self = tupleH->t_ctid;
+    tuple->t_tableOid = relation;
+    tuple->t_data = *tupleH;
 
     if (!capiss->css.ss.ss_currentScanDesc) {
         ReScanPGCAPIScan (node);

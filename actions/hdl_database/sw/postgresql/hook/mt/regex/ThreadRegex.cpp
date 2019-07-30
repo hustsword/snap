@@ -20,8 +20,8 @@
 
 ThreadRegex::ThreadRegex()
     : ThreadBase (0, 600),
-      m_buffers_base (0),
-      m_num_blks (0),
+      m_tuples_base (0),
+      m_num_tups (0),
       m_pkt_src_base (NULL),
       m_max_alloc_pkt_size (0),
       m_stat_dest_base (NULL),
@@ -32,8 +32,8 @@ ThreadRegex::ThreadRegex()
 
 ThreadRegex::ThreadRegex (int in_id)
     : ThreadBase (in_id),
-      m_buffers_base (0),
-      m_num_blks (0),
+      m_tuples_base (0),
+      m_num_tups (0),
       m_pkt_src_base (NULL),
       m_max_alloc_pkt_size (0),
       m_stat_dest_base (NULL),
@@ -44,8 +44,8 @@ ThreadRegex::ThreadRegex (int in_id)
 
 ThreadRegex::ThreadRegex (int in_id, int in_timeout)
     : ThreadBase (in_id, in_timeout),
-      m_buffers_base (0),
-      m_num_blks (0),
+      m_tuples_base (0),
+      m_num_tups (0),
       m_pkt_src_base (NULL),
       m_max_alloc_pkt_size (0),
       m_stat_dest_base (NULL),
@@ -62,10 +62,10 @@ ThreadRegex::~ThreadRegex()
 int ThreadRegex::init()
 {
 
-    int thd_start_blk_id = 0;
-    int thd_num_blks = m_worker->get_num_blks_per_thread (m_id, &thd_start_blk_id);
+    int thd_start_tup_id = 0;
+    int thd_num_tups = m_worker->get_num_tups_per_thread (m_id, &thd_start_tup_id);
 
-    set_blk_info (thd_start_blk_id, thd_num_blks);
+    set_tup_info (thd_start_tup_id, thd_num_tups);
     allocate_buffers();
 
     return 0;
@@ -76,18 +76,18 @@ void ThreadRegex::set_worker (WorkerRegexPtr in_worker)
     m_worker = in_worker;
 }
 
-void ThreadRegex::set_blk_info (int in_base, int in_num)
+void ThreadRegex::set_tup_info (int in_base, int in_num)
 {
-    m_buffers_base = in_base;
-    m_num_blks = in_num;
+    m_tuples_base = in_base;
+    m_num_tups = in_num;
 }
 
-int ThreadRegex::get_num_blks_per_job (int in_job_id, int* out_start_blk_id)
+int ThreadRegex::get_num_tups_per_job (int in_job_id, int* out_start_tup_id)
 {
     int num_jobs = m_jobs.size();
-    int num_blks_per_job = 0;
+    int num_tups_per_job = 0;
 
-    if (m_num_blks <= 0) {
+    if (m_num_tups <= 0) {
         return -1;
     }
 
@@ -95,24 +95,24 @@ int ThreadRegex::get_num_blks_per_job (int in_job_id, int* out_start_blk_id)
         return -1;
     }
 
-    int blks_per_job = m_num_blks / num_jobs;
-    int blks_last_job = m_num_blks % num_jobs;
+    int tups_per_job = m_num_tups / num_jobs;
+    int tups_last_job = m_num_tups % num_jobs;
 
-    if (0 == blks_per_job) {
+    if (0 == tups_per_job) {
         // TODO: if number of total blocks is less than number of jobs, get panic.
         // Need to revisit this behavior.
         return -1;
     }
 
-    *out_start_blk_id = m_buffers_base + in_job_id * blks_per_job;
+    *out_start_tup_id = m_tuples_base + in_job_id * tups_per_job;
 
-    num_blks_per_job = blks_per_job;
+    num_tups_per_job = tups_per_job;
 
     if (in_job_id == (num_jobs - 1)) {
-        num_blks_per_job += blks_last_job;
+        num_tups_per_job += tups_last_job;
     }
 
-    return num_blks_per_job;
+    return num_tups_per_job;
 }
 
 int ThreadRegex::allocate_buffers()
@@ -120,7 +120,7 @@ int ThreadRegex::allocate_buffers()
     int num_jobs = m_jobs.size();
 
     // TODO: is there a way to know exactly how many tuples we have before iterating all buffers?
-    uint64_t total_row_count = m_worker->get_num_tuples_per_thread (m_id);
+    uint64_t total_row_count = m_num_tups;
     uint64_t row_count = total_row_count / num_jobs + 1;
 
 

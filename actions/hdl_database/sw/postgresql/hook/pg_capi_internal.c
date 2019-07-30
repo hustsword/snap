@@ -794,55 +794,6 @@ int print_results (size_t num_results, void* stat_dest_base)
     return rc;
 }
 
-int get_results (void* result, size_t num_matched_pkt, void* stat_dest_base)
-{
-    int i = 0, j = 0;
-    uint32_t pkt_id = 0;
-
-    if (result == NULL) {
-        return -1;
-    }
-
-    for (i = 0; i < (int)num_matched_pkt; i++) {
-        for (j = 4; j < 8; j++) {
-            pkt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 4) * 8);
-        }
-
-        ((uint32_t*)result)[i] = pkt_id;
-
-        pkt_id = 0;
-    }
-
-    return 0;
-}
-
-int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc)
-{
-    if (job_desc == NULL) {
-        return -1;
-    }
-
-    int count = 0;
-
-    // Wait for transaction to be done.
-    do {
-        action_read (job_desc->context->dn, ACTION_STATUS_L, job_desc->thread_id);
-        count++;
-    } while (count < 10);
-
-    uint32_t reg_data = action_read (job_desc->context->dn, ACTION_STATUS_H, job_desc->thread_id);
-    job_desc->num_matched_pkt = reg_data;
-    job_desc->results = (uint32_t*) palloc (reg_data * sizeof (uint32_t));
-
-    elog (INFO, "Thread %d finished with %d matched packets", job_desc->thread_id, reg_data);
-
-    if (get_results (job_desc->results, reg_data, job_desc->stat_dest_base)) {
-        errno = ENODEV;
-        return -1;
-    }
-
-    return 0;
-}
 
 int capi_regex_job_cleanup (CAPIRegexJobDescriptor* job_desc)
 {

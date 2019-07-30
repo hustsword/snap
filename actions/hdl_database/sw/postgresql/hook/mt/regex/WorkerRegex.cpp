@@ -24,13 +24,15 @@ using namespace boost::chrono;
 WorkerRegex::WorkerRegex (HardwareManagerPtr in_hw_mgr, Relation in_relation, int in_attr_id, bool in_debug)
     : WorkerBase (in_hw_mgr),
       m_buffers (NULL),
+      m_tuples (NULL),
       m_interrupt (true),
       m_patt_src_base (NULL),
       m_patt_size (0),
       m_relation (in_relation),
       m_attr_id (in_attr_id),
       m_num_blks (0),
-      m_num_tuples (0)
+      m_num_tuples (0),
+      m_tup_len (0)
 {
     m_job_manager_en = false;
 
@@ -138,39 +140,7 @@ int WorkerRegex::get_attr_id()
     return m_attr_id;
 }
 
-int WorkerRegex::get_num_blks_per_thread (int in_thread_id, int* out_start_blk_id)
-{
-    int num_threads = m_threads.size();
-
-    if (m_num_blks <= 0) {
-        return -1;
-    }
-
-    if (num_threads <= 0) {
-        return -1;
-    }
-
-    int blks_per_thread = m_num_blks / num_threads;
-    int blks_last_thread = m_num_blks % num_threads;
-
-    if (0 == blks_per_thread) {
-        // TODO: if number of total blocks is less than number of threads, get panic.
-        // Need to revisit this behavior.
-        return -1;
-    }
-
-    *out_start_blk_id = in_thread_id * blks_per_thread;
-
-    int num_blks_per_thread = blks_per_thread;
-
-    if (in_thread_id == (num_threads - 1)) {
-        num_blks_per_thread += blks_last_thread;
-    }
-
-    return num_blks_per_thread;
-}
-
-size_t WorkerRegex::get_num_tuples_per_thread (int in_thread_id)
+size_t WorkerRegex::get_num_tuples_per_thread (int in_thread_id, int* out_start_tup_id)
 {
     int num_threads = m_threads.size();
 
@@ -190,6 +160,8 @@ size_t WorkerRegex::get_num_tuples_per_thread (int in_thread_id)
         // Need to revisit this behavior.
         return -1;
     }
+
+    *out_start_tup_id = in_thread_id * tuples_per_thread;
 
     int num_tuples_per_thread = tuples_per_thread;
 
@@ -224,8 +196,18 @@ void WorkerRegex::read_buffers()
     capi_regex_check_relation (m_relation);
 
     m_num_blks = RelationGetNumberOfBlocksInFork (m_relation, MAIN_FORKNUM);
+    int m_est_num_blks = relpages;
+    int m_est_num_tups;
+    if (m_est_num_blks == m_num_blks) {
+        m_est_num_tups = (int)reltuples + 1;
+    } else {
+        m_est_num_tups = (int)(reltuples * 1.1);
+    }
 
     m_buffers = (Buffer*) palloc0 (sizeof (Buffer) * m_num_blks);
+    m_tuples = (HeapTupleHeader**) palloc0 (sizeof (HeapTupleHeader*) * m_est_num_tups);
+
+    int count = 1;
 
     for (int blk_num = 0; blk_num < m_num_blks; ++blk_num) {
         Buffer buf = ReadBufferExtended (m_relation, MAIN_FORKNUM, blk_num, RBM_NORMAL, NULL);
@@ -235,6 +217,21 @@ void WorkerRegex::read_buffers()
         m_num_tuples += num_lines;
 
         m_buffers[blk_num] = buf;
+
+        for (int line_num = 0; line_num <= num_lines; ++line_num) {
+            ItemId id = PageGetItemId (page, line_num);
+            uint16 lp_offset = ItemIdGetOffset (id);
+            uint16 lp_len = ItemIdGetLength (id);
+            if (m_tup_len == 0) {
+                m_tup_len = lp_len;
+            }
+            if (lp_len >= MinHeapTupleSize &&
+                lp_offset == MAXALIGN (lp_offset)) {
+                HeapTupleHeader tuphdr = (HeapTupleHeader) PageGetItem (page, id); // also check ItemIdHasStorage (id)
+                m_tuples[count] = & tuphdr;
+                count++;
+            }
+        }
     }
 
     elog (INFO, "Read %d buffers from relation", m_num_blks);
@@ -250,6 +247,7 @@ void WorkerRegex::release_buffers()
         }
 
         pfree (m_buffers);
+        pfree (m_tuples);
     }
 }
 
