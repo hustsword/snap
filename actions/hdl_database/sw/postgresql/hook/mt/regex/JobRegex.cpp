@@ -47,7 +47,7 @@ JobRegex::JobRegex (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mgr, b
 
 JobRegex::~JobRegex()
 {
-    elog (DEBUG5, "JobRegex destroyed!");
+    //elog (DEBUG5, "JobRegex destroyed!");
 }
 
 int JobRegex::run()
@@ -59,19 +59,19 @@ int JobRegex::run()
     }
 
     do {
-	    elog (DEBUG3, "Thread %d Job %d: Before init()..", m_thread_id, m_id);
+	    //elog (DEBUG3, "Thread %d Job %d: Before init()..", m_thread_id, m_id);
         if (init()) {
             elog (ERROR, "Failed to perform regex job initializing");
             fail();
             return -1;
         }
-	    elog (DEBUG3, "Thread %d Job %d: Finish init()..", m_thread_id, m_id);
+	    //elog (DEBUG3, "Thread %d Job %d: Finish init()..", m_thread_id, m_id);
         if (packet()) {
             elog (ERROR, "Failed to perform regex packet preparing");
             fail();
             return -1;
         }
-	    elog (DEBUG3, "Thread %d Job %d: Finish packet()..", m_thread_id, m_id);
+	    //elog (DEBUG3, "Thread %d Job %d: Finish packet()..", m_thread_id, m_id);
     } while (0);
 
     do {
@@ -83,7 +83,7 @@ int JobRegex::run()
             fail();
             return -1;
         }
-	    elog (DEBUG3, "Thread %d Job %d: Finish scan()..", m_thread_id, m_id);
+	    //elog (DEBUG3, "Thread %d Job %d: Finish scan()..", m_thread_id, m_id);
     } while (0);
 
     if (result()) {
@@ -91,7 +91,7 @@ int JobRegex::run()
         fail();
         return -1;
     }
-    elog (DEBUG3, "Thread %d Job %d: Finish result()..", m_thread_id, m_id);
+    //elog (DEBUG3, "Thread %d Job %d: Finish result()..", m_thread_id, m_id);
 
     done();
 

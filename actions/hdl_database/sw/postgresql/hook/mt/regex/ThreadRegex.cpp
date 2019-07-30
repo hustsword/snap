@@ -56,7 +56,7 @@ ThreadRegex::ThreadRegex (int in_id, int in_timeout)
 
 ThreadRegex::~ThreadRegex()
 {
-    elog (DEBUG5, "ThreadRegex destroyed!");
+    //elog (DEBUG5, "ThreadRegex destroyed!");
 }
 
 int ThreadRegex::init()
