@@ -1,4 +1,3 @@
-
 ## Env Variables
 
 set action_root [lindex $argv 0]
@@ -112,3 +111,4 @@ generate_target all [get_files $src_dir/axi_wid_fifo/axi_wid_fifo.xci] > $log_fi
 
 close_project
 puts "\[CREATE_DATABASE_FRAMEWORK_IPs..........\] done  [clock format [clock seconds] -format {%T %a %b %d %Y}]"
+

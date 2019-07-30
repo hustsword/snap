@@ -36,7 +36,9 @@ int start_regex_workers (int num_engines,
                          struct snap_action* act,
                          snap_action_flag_t attach_flags,
 			 float* thread_total_band_width,
-			 float* worker_band_width)
+			 float* worker_band_width,
+			 uint64_t* worker_runtime,
+			 uint64_t* worker_cleanup_time)
 {
     //printf ("Running on regex worker\n");
 
@@ -86,12 +88,14 @@ int start_regex_workers (int num_engines,
         high_resolution_clock::time_point t_end2 = high_resolution_clock::now();
         auto duration2 = duration_cast<microseconds> (t_end2 - t_end1).count();
 
+	*worker_runtime = (uint64_t) duration1;
         //printf ("Work finished after %lu microseconds (us)\n", (uint64_t) duration1);
-	printf ("Work ");
 	*worker_band_width = print_time (duration1, pkt_size * num_engines);
+	printf ("Work finished after %lu usec (%0.3f MB/sec). ", (uint64_t) duration1, *worker_band_width);
+	*worker_cleanup_time = (uint64_t) duration2;
         printf ("Cleanup finished after %lu microseconds (us)\n", (uint64_t) duration2);
 
-        printf ("Worker done!\n");
+        //printf ("Worker done!\n");
     } while (0);
 
     return 0;

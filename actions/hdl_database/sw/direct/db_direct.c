@@ -109,12 +109,12 @@ float print_time (uint64_t elapsed, uint64_t size)
     if (elapsed > 10000) {
         t = (int)elapsed / 1000;
         ft = (1000 / (float)t) * fsize;
-        VERBOSE0 (" end after %d msec (%0.3f MB/sec)\n", t, ft);
+        //VERBOSE0 (" end after %d msec (%0.3f MB/sec)\n", t, ft);
 	//VERBOSE0 ("%d msec %0.3f\n", t, ft);
     } else {
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
-        VERBOSE0 (" end after %d usec (%0.3f MB/sec)\n", t, ft);
+        //VERBOSE0 (" end after %d usec (%0.3f MB/sec)\n", t, ft);
 	//VERBOSE0 ("%d usec %0.3f\n", t, ft);
     }
     return ft;
@@ -828,10 +828,10 @@ int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no_chk_of
         if ((ref_stat.packet_id != pkt_id) ||
             (ref_stat.pattern_id != patt_id) ||
             ((ref_stat.offset != offset) && (no_chk_offset == 0))) {
-            VERBOSE1 ("%7d\t%6d\t%7d\t%7d\t%6d\t%9d", pkt_id, patt_id, offset,
+            VERBOSE0 ("%7d\t%6d\t%7d\t%7d\t%6d\t%9d", pkt_id, patt_id, offset,
                       ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
 
-            VERBOSE1 (" MISMATCH!\n");
+            VERBOSE0 (" MISMATCH!\n");
             rc = 1;
         } else {
             VERBOSE1 ("%7d\t%6d\t%7d\t%7d\t%6d\t%7d", pkt_id, patt_id, offset,
@@ -995,7 +995,8 @@ int main (int argc, char* argv[])
     VERBOSE0 ("Software run finished with size %d.\n", (int) pkt_size_for_sw);
     int sw_num_matched_pkt = regex_ref_get_num_matched_pkt();
     printf ("Software run finished with %d matched packets", sw_num_matched_pkt);
-    print_time (elapsed_time, pkt_size_for_sw);
+    float sw_bw = print_time (elapsed_time, pkt_size_for_sw);
+    printf (" end after %lu usec (%0.3f MB/sec)\n", elapsed_time, sw_bw);
     VERBOSE0 ("======== SOFTWARE DONE========\n");
     
     VERBOSE0 ("Start to get action.\n");
@@ -1032,18 +1033,26 @@ int main (int argc, char* argv[])
     /*
     for (int num_eng_using = 1; num_eng_using <= num_engines; ++num_eng_using) {
 	float sum_thread_bw = 0, sum_worker_bw = 0;
+	uint64_t sum_worker_runtime = 0, sum_cleanup_time = 0;
 	float avg_thread_bw, avg_worker_bw;
+	uint64_t avg_worker_runtime, avg_cleanup_time;
 	float min_thread_bw = 0, max_thread_bw = 0, min_worker_bw = 0, max_worker_bw = 0;
+	uint64_t min_worker_runtime = 0, max_worker_runtime = 0, min_cleanup_time = 0, max_cleanup_time = 0;
         for (int i = 0; i < 10; ++i) {
-            printf ("Iteration %d:\n", i+1);
+            printf ("Iteration %d: ", i+1);
 	    float thread_bw, worker_bw;
+	    uint64_t worker_runtime, cleanup_time;
             ERROR_CHECK (start_regex_workers (num_eng_using, no_chk_offset, patt_src_base, patt_size, pkt_src_base, pkt_size, stat_size,
-			    	              dn, act, attach_flags, &thread_bw, &worker_bw));
+			    	              dn, act, attach_flags, &thread_bw, &worker_bw, &worker_runtime, &cleanup_time));
 	    if (i == 0) {
                 min_thread_bw = thread_bw;
 		max_thread_bw = thread_bw;
 		min_worker_bw = worker_bw;
 		max_worker_bw = worker_bw;
+		min_worker_runtime = worker_runtime;
+		max_worker_runtime = worker_runtime;
+		min_cleanup_time = cleanup_time;
+		max_cleanup_time = cleanup_time;
 	    }
 	    if (thread_bw < min_thread_bw) {
 	        min_thread_bw = thread_bw;
@@ -1055,22 +1064,43 @@ int main (int argc, char* argv[])
 	    } else if (worker_bw > max_worker_bw) {
 		max_worker_bw = worker_bw;
 	    }
+	    if (worker_runtime < min_worker_runtime) {
+		min_worker_runtime = worker_runtime;
+	    } else if (worker_runtime > max_worker_runtime) {
+		max_worker_runtime = worker_runtime;
+	    }
+	    if (cleanup_time < min_cleanup_time) {
+		min_cleanup_time = cleanup_time;
+	    } else if (cleanup_time > max_cleanup_time) {
+		max_cleanup_time = cleanup_time;
+	    }
 	    sum_thread_bw += thread_bw;
 	    sum_worker_bw += worker_bw;
+	    sum_worker_runtime += worker_runtime;
+	    sum_cleanup_time += cleanup_time;
 	}
 	avg_thread_bw = (sum_thread_bw - min_thread_bw - max_thread_bw) / 8;
 	avg_worker_bw = (sum_worker_bw - min_worker_bw - max_worker_bw) / 8;
+	avg_worker_runtime = (sum_worker_runtime - min_worker_runtime - max_worker_runtime) / 8;
+	avg_cleanup_time = (sum_cleanup_time - min_cleanup_time - max_cleanup_time) / 8;
 	printf ("For %d engine(s), the average thread total band width is %0.3f MB/sec;\n", num_eng_using, avg_thread_bw);
-	printf ("the average worker band width is %0.3f MB/sec.\n\n", avg_worker_bw);
+	printf ("the average worker band width is %0.3f MB/sec;\n", avg_worker_bw);
+	printf ("the average worker runtime is %lu usec;\n", avg_worker_runtime);
+	printf ("the average worker cleanup time is %lu usec.\n\n", avg_cleanup_time);
     }
     */
+    
     for (int num_eng_using = 1; num_eng_using <= num_engines; ++num_eng_using) { 
         float thread_bw, worker_bw;
+	uint64_t worker_runtime, cleanup_time;
         ERROR_CHECK (start_regex_workers (num_eng_using, no_chk_offset, patt_src_base, patt_size, pkt_src_base, pkt_size, stat_size,
-			                  dn, act, attach_flags, &thread_bw, &worker_bw));
+			                  dn, act, attach_flags, &thread_bw, &worker_bw, &worker_runtime, &cleanup_time));
         printf ("For %d engine(s), the thread total band width is %0.3f MB/sec;\n", num_eng_using, thread_bw);
-        printf ("the worker band width is %0.3f MB/sec.\n\n", worker_bw);
+        printf ("the worker band width is %0.3f MB/sec;\n", worker_bw);
+	printf ("the worker runtime is %lu usec;\n", worker_runtime);
+	printf ("the worker cleanup time is %lu usec.\n\n", cleanup_time);
     }
+    
 fail:
     return -1;
     

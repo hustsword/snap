@@ -74,7 +74,7 @@ void ThreadDirtest::work_with_job (JobPtr in_job)
 
     elapsed_time = get_usec() - start_time;
     //printf ("Eng %d finished with size %d ", m_id, (int)m_pkt_size);
-    m_band_width = print_time (elapsed_time, job->get_pkt_size());
+    m_band_width += print_time (elapsed_time, job->get_pkt_size());
 
     return;
 }
