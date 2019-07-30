@@ -701,8 +701,8 @@ int capi_regex_job_init (CAPIRegexJobDescriptor* job_desc,
     job_desc->pattern               = NULL;
     job_desc->results               = NULL;
     job_desc->curr_result_id        = 0;
-    job_desc->start_blk_id          = 0;
-    job_desc->num_blks              = 0;
+    job_desc->start_tup_id          = 0;
+    job_desc->num_tups              = 0;
     job_desc->thread_id             = 0;
     job_desc->t_init                = 0;
     job_desc->t_init                = 0;

@@ -102,8 +102,8 @@ typedef struct CAPIRegexJobDescriptor_s {
     // TODO: currently only 1 pattern for each job
     char* pattern;
 
-    // The pointer to the results (id of matched packets)
-    uint32_t* results;
+    // The pointer to the results
+    HeapTupleHeader* results;
 
     // An index to record the result processing.
     // Each id corresponds one entry in the results buffer.

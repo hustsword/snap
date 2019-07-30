@@ -69,7 +69,7 @@ public:
 
     // Get the number of tuples for different thread
     // TODO: assume tuples are evenly distributed across buffers
-    size_t get_num_tuples_per_thread (int in_thread_id, int* out_start_tup_id);
+    size_t get_num_tups_per_thread (int in_thread_id, int* out_start_tup_id);
 
     // Clean up any threads created for this worker
     virtual void cleanup();
@@ -85,7 +85,7 @@ public:
     Buffer* m_buffers;
 
     // A container to hold all tupler header pointers
-    HeapTupleHeader** m_tuples;
+    HeapTupleHeader* m_tuples;
 
     // Length of a tuple
     uint16 m_tup_len;

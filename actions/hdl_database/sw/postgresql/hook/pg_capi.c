@@ -420,17 +420,15 @@ new_job:
         goto new_job;
     }
 
-    // TODO: need a real column data to be returned
-    sprintf (values[0], "Column data");
-    sprintf (values[1], "%d", ((uint32_t*)job_desc->results)[job_desc->curr_result_id]);
-
-    HeapTupleHeader* tupleH = ((HeapTupleHeader**)job_desc->results)[job_desc->curr_result_id];
+    HeapTupleHeader tupleH = ((HeapTupleHeader*)job_desc->results)[job_desc->curr_result_id];
     (job_desc->curr_result_id)++;
-    HeapTuple tuple;
-    tuple->t_len = sizeof (*tupleH);
+    
+    HeapTuple tuple = (HeapTuple) palloc(HEAPTUPLESIZE);
+    tuple->t_len = sizeof (tupleH);
     tuple->t_self = tupleH->t_ctid;
-    tuple->t_tableOid = relation;
-    tuple->t_data = *tupleH;
+    tuple->t_tableOid = relation->rd_id;
+    tuple->t_data = tupleH;
+
 
     if (!capiss->css.ss.ss_currentScanDesc) {
         ReScanPGCAPIScan (node);

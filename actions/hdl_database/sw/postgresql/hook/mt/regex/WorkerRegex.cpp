@@ -140,7 +140,7 @@ int WorkerRegex::get_attr_id()
     return m_attr_id;
 }
 
-size_t WorkerRegex::get_num_tuples_per_thread (int in_thread_id, int* out_start_tup_id)
+size_t WorkerRegex::get_num_tups_per_thread (int in_thread_id, int* out_start_tup_id)
 {
     int num_threads = m_threads.size();
 
@@ -196,18 +196,18 @@ void WorkerRegex::read_buffers()
     capi_regex_check_relation (m_relation);
 
     m_num_blks = RelationGetNumberOfBlocksInFork (m_relation, MAIN_FORKNUM);
-    int m_est_num_blks = relpages;
+    int m_est_num_blks = m_relation->rd_rel->relpages;
     int m_est_num_tups;
     if (m_est_num_blks == m_num_blks) {
-        m_est_num_tups = (int)reltuples + 1;
+        m_est_num_tups = (int)m_relation->rd_rel->reltuples + 1;
     } else {
-        m_est_num_tups = (int)(reltuples * 1.1);
+        m_est_num_tups = (int)(m_relation->rd_rel->reltuples * 1.1);
     }
 
     m_buffers = (Buffer*) palloc0 (sizeof (Buffer) * m_num_blks);
-    m_tuples = (HeapTupleHeader**) palloc0 (sizeof (HeapTupleHeader*) * m_est_num_tups);
+    m_tuples = (HeapTupleHeader*) palloc0 (sizeof (HeapTupleHeader) * m_est_num_tups);
 
-    int count = 1;
+    int count = 0;
 
     for (int blk_num = 0; blk_num < m_num_blks; ++blk_num) {
         Buffer buf = ReadBufferExtended (m_relation, MAIN_FORKNUM, blk_num, RBM_NORMAL, NULL);
@@ -228,7 +228,10 @@ void WorkerRegex::read_buffers()
             if (lp_len >= MinHeapTupleSize &&
                 lp_offset == MAXALIGN (lp_offset)) {
                 HeapTupleHeader tuphdr = (HeapTupleHeader) PageGetItem (page, id); // also check ItemIdHasStorage (id)
-                m_tuples[count] = & tuphdr;
+                m_tuples[count] = tuphdr;
+		if (count == 457) {
+		    elog (INFO, "tuphdr at line 457 is at %p", tuphdr);
+		}
                 count++;
             }
         }

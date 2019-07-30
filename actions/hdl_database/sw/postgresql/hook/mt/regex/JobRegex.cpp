@@ -245,22 +245,31 @@ int JobRegex::capi_regex_pkt_psql_internal (Relation rel, int attr_id,
     if (NULL == pkt_src_base) {
         return -1;
     }
+    elog(INFO, "Entering pkt internal..");
 
     void* pkt_src      = pkt_src_base;
     TupleDesc tupdesc  = RelationGetDescr (rel);
     uint16 lp_len = m_worker->m_tup_len;
+    elog (INFO, "start tup id is %d", start_tup_id);
+    elog (INFO, "tup num is %d", num_tups);
 
     for (int tup_num = 0; tup_num < num_tups; ++tup_num) {
-        HeapTupleHeader tuphdr = *(m_worker->m_tuples[start_tup_id + tup_num]);
-
+	//elog (INFO, "before get tuphdr");
+        HeapTupleHeader tuphdr = m_worker->m_tuples[start_tup_id + tup_num];
+	//elog (INFO, "tuphdr is at %p", (void*)tuphdr);
+	//elog (INFO, "after get tuphdr");
         // TODO: be careful about the packet id.
         // The packet id is supposed to be the row ID in the relation,
         // is this really the correct way to do this?
         int pkt_id = start_tup_id + tup_num;
 
         int attr_len = 0;
-        bytea* attr_ptr = DatumGetByteaP (get_attr (tuphdr, tupdesc, lp_len, attr_id, &attr_len));
-        attr_len = VARSIZE (attr_ptr) - VARHDRSZ;
+	//elog (INFO, "before datumgetbyteap");
+	char* attrChar = get_attr (tuphdr, tupdesc, lp_len, attr_id, &attr_len);
+        //elog (INFO, "after get_attr");
+	bytea* attr_ptr = DatumGetByteaP (attrChar);
+        //elog (INFO, "after datumgetbyteap");
+	attr_len = VARSIZE (attr_ptr) - VARHDRSZ;
         (*size_wo_hw_hdr) += attr_len;
         pkt_src = fill_one_packet (VARDATA (attr_ptr), attr_len, pkt_src, pkt_id);
         (*num_pkt)++;
@@ -319,8 +328,11 @@ int JobRegex::get_results (void* result, size_t num_matched_pkt, void* stat_dest
             pkt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 4) * 8);
         }
 
-        ((HeapTupleHeader**)result)[i] = m_tuples[(int)pkt_id];
-
+        ((HeapTupleHeader*)result)[i] = m_worker->m_tuples[(int)pkt_id];
+	if (i == 0) {
+	    elog (INFO, "result0 is at %p", ((HeapTupleHeader*)result)[0]);
+	    elog (INFO, "pkt id is %u", pkt_id);
+	}
         pkt_id = 0;
     }
 
@@ -343,7 +355,7 @@ int JobRegex::capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc)
 
     uint32_t reg_data = action_read (job_desc->context->dn, ACTION_STATUS_H, job_desc->thread_id);
     job_desc->num_matched_pkt = reg_data;
-    job_desc->results = (HeapTupleHeader**) palloc (reg_data * sizeof (HeapTupleHeader*));
+    job_desc->results = (HeapTupleHeader*) palloc (reg_data * sizeof (HeapTupleHeader));
 
     //elog (INFO, "Thread %d finished with %d matched packets", job_desc->thread_id, reg_data);
 
