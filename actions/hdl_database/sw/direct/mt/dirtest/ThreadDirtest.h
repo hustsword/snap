@@ -40,13 +40,12 @@ public:
     // Work with the jobs
     virtual void work_with_job (JobPtr in_job);
 
-    float get_band_width();
+    float get_thread_band_width();
 
     // Cleanup
     virtual void cleanup();
 
 private:
-    float m_band_width;
 };
 
 typedef boost::shared_ptr<ThreadDirtest> ThreadDirtestPtr;

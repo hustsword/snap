@@ -27,7 +27,8 @@ JobDirtest::JobDirtest()
       m_pkt_src_base (NULL),
       m_pkt_size (0),
       m_stat_dest_base (NULL),
-      m_stat_size (0)
+      m_stat_size (0),
+      m_band_width (0)
 {
     //printf ("create new dirtest job\n");
 }
@@ -42,7 +43,8 @@ JobDirtest::JobDirtest (int in_id, int in_thread_id)
       m_pkt_src_base (NULL),
       m_pkt_size (0),
       m_stat_dest_base (NULL),
-      m_stat_size (0)
+      m_stat_size (0),
+      m_band_width (0)
 {
     //printf("create new dirtest job on engine %d\n", in_thread_id);
 }
@@ -57,7 +59,8 @@ JobDirtest::JobDirtest (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mg
       m_pkt_src_base (NULL),
       m_pkt_size (0),
       m_stat_dest_base (NULL),
-      m_stat_size (0)
+      m_stat_size (0),
+      m_band_width (0)
 {
     //printf("create new dirtest job on engine %d\n", in_thread_id);
 }
@@ -72,7 +75,8 @@ JobDirtest::JobDirtest (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mg
       m_pkt_src_base (NULL),
       m_pkt_size (0),
       m_stat_dest_base (NULL),
-      m_stat_size (0)
+      m_stat_size (0),
+      m_band_width (0)
 {
     //printf("create new dirtest job on engine %d\n", in_thread_id);
 }
@@ -83,8 +87,8 @@ JobDirtest::~JobDirtest()
 
 int JobDirtest::run()
 {
-    //uint64_t start_time, elapsed_time;
-    //start_time = get_usec();
+    uint64_t start_time, elapsed_time;
+    start_time = get_usec();
     do {
         if (init()) {
             printf ("ERROR: Failed to perform regex job initializing\n");
@@ -110,6 +114,9 @@ int JobDirtest::run()
         }
     } while (0);
 
+    elapsed_time = get_usec() - start_time;
+    m_band_width = print_time (elapsed_time, m_pkt_size);
+
     if (result()) {
         printf ("ERROR: Failed to perform regex packet result harvesting\n");
         fail();
@@ -118,9 +125,7 @@ int JobDirtest::run()
 
     done();
 
-    //elapsed_time = get_usec() - start_time;
     //printf ("Eng %d finished with size %d ", m_thread_id, (int)m_pkt_size);
-    //print_time (elapsed_time, m_pkt_size);
 
     return 0;
 }
@@ -252,8 +257,8 @@ void JobDirtest::set_stat_dest_base (size_t in_stat_size)
     memset (m_stat_dest_base, 0, m_stat_size);
 }
 
-size_t JobDirtest::get_pkt_size()
+float JobDirtest::get_job_band_width()
 {
-    return m_pkt_size;
+    return m_band_width;
 }
 

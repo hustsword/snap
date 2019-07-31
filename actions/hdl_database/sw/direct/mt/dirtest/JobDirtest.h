@@ -72,7 +72,7 @@ public:
     // Set stat_dest_base for the job descripter
     void set_stat_dest_base (size_t in_stat_size);
 
-    size_t get_pkt_size();
+    float get_job_band_width();
 
 private:
     // Pointer to worker for adding job descriptors
@@ -94,6 +94,8 @@ private:
     void* m_stat_dest_base;
 
     size_t m_stat_size;
+
+    float m_band_width;
 };
 
 typedef boost::shared_ptr<JobDirtest> JobDirtestPtr;

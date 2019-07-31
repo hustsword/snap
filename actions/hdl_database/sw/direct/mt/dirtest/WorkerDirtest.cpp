@@ -109,7 +109,7 @@ float WorkerDirtest::get_sum_band_width()
 {
     float sum_band_width = 0;
     for (size_t i = 0; i < m_threads.size(); i++) {
-        sum_band_width += boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) ->get_band_width();
+        sum_band_width += boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_band_width();
     }
     return sum_band_width;
 }
