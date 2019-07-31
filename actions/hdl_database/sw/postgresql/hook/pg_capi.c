@@ -478,12 +478,14 @@ EndPGCAPIScan (CustomScanState* node)
     clock_gettime (CLOCK_REALTIME, &t_beg);
 
     // Clean up the jobs
+    /*
     for (int i = 0; i < capiss->capi_regex_num_jobs; i++) {
         capi_regex_job_cleanup (capiss->capi_regex_job_descs[i]);
         pfree (capiss->capi_regex_job_descs[i]);
     }
 
     pfree (capiss->capi_regex_job_descs);
+    */
 
     clock_gettime (CLOCK_REALTIME, &t_end_0);
     uint64_t diff_0 = diff_time (&t_beg, &t_end_0);
