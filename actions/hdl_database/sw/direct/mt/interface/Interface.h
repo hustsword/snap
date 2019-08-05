@@ -22,20 +22,20 @@ extern "C" {
 #endif
 #include "db_direct.h"
 enum test_mode {POLL = 0, INTERRUPT, INVALID};
-int start_regex_workers (int num_engines,  
-			int no_chk_offset, 
-			void* patt_src_base,
-			size_t patt_size,
-			void* pkt_src_base, 
-			size_t pkt_size, 
-			size_t stat_size,
-			struct snap_card* dn,
-			struct snap_action* act,
-			snap_action_flag_t attach_flags,
-			float* thread_total_band_width,
-			float* worker_band_width,
-			uint64_t* worker_runtime,
-			uint64_t* worker_cleanup_time);
+int start_regex_workers (int num_engines,
+	                 int num_job_per_thd,
+			 void* patt_src_base,
+			 size_t patt_size,
+			 const char* pkt_file_path,
+			 struct snap_card* dn,
+			 struct snap_action* act,
+			 snap_action_flag_t attach_flags,
+			 float* thread_total_band_width,
+			 uint64_t* thread_avg_buff_prep_time,
+                         uint64_t* thread_avg_regex_runtime,
+			 float* worker_band_width,
+			 uint64_t* worker_runtime,
+			 uint64_t* worker_cleanup_time);
 #ifdef __cplusplus
 }
 #endif

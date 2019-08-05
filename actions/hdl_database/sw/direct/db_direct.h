@@ -94,7 +94,7 @@ float print_time (uint64_t elapsed, uint64_t size);
 void* alloc_mem (int align, size_t size);
 void free_mem (void* a);
 
-void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr);
+void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_pkt_id);
 void* fill_one_pattern (const char* in_patt, void* in_patt_addr);
 
 void action_write (struct snap_card* h, uint32_t addr, uint32_t data);
@@ -122,11 +122,14 @@ int regex_scan (struct snap_card* dnc,
                     size_t stat_size,
                     int eng_id);
 struct snap_action* get_action (struct snap_card* handle,
-                                       snap_action_flag_t flags, int timeout);
+                                snap_action_flag_t flags, int timeout);
 
 void* sm_compile_file (const char* file_path, size_t* size);
-void* regex_scan_file (const char* file_path, size_t* size, size_t* size_for_sw);
+void regex_scan_file (const char* file_path, size_t* size_for_sw);
 int print_results (size_t num_results, void* stat_dest_base);
-int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no_chk_offset);
+int compare_num_matched_pkt (size_t num_matched_pkt);
+int compare_result_id (uint32_t result_id);
+//int compare_results (size_t num_matched_pkt, std::vector<uint32_t> result_id);
+//int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no_chk_offset);
 
 #endif	/* __SNAP_FW_EXA__ */

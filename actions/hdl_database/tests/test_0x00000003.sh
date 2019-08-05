@@ -11,4 +11,4 @@ fi
 #cp $ACTION_ROOT/tests/pattern.txt pattern.txt
 cp ./pattern.txt pattern.txt
 #$ACTION_ROOT/sw/direct/db_direct -f -t 10 $*
-../sw/direct/db_direct -f -t 10 $*
+../sw/direct/db_direct -t 10 $*

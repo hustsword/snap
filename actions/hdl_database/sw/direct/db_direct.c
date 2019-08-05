@@ -46,7 +46,7 @@
     } while (0)
 
 static uint32_t PATTERN_ID = 0;
-static uint32_t PACKET_ID = 0;
+//static uint32_t PACKET_ID = 0;
 //static const char* version = GIT_VERSION;
 static  int verbose_level = 0;
 
@@ -110,12 +110,12 @@ float print_time (uint64_t elapsed, uint64_t size)
         t = (int)elapsed / 1000;
         ft = (1000 / (float)t) * fsize;
         //VERBOSE0 (" end after %d msec (%0.3f MB/sec)\n", t, ft);
-	//VERBOSE0 ("%d msec %0.3f\n", t, ft);
+        //VERBOSE0 ("%d msec %0.3f\n", t, ft);
     } else {
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
         //VERBOSE0 (" end after %d usec (%0.3f MB/sec)\n", t, ft);
-	//VERBOSE0 ("%d usec %0.3f\n", t, ft);
+        //VERBOSE0 ("%d usec %0.3f\n", t, ft);
     }
     return ft;
 }
@@ -157,16 +157,16 @@ void free_mem (void* a)
 //    }
 //}
 
-void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
+void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_pkt_id)
 {
     unsigned char* pkt_base_addr = in_pkt_addr;
     int pkt_id;
     uint32_t bytes_used = 0;
     uint16_t pkt_len = size;
 
-    PACKET_ID++;
+    //PACKET_ID++;
      // The TAG ID
-    pkt_id = PACKET_ID;
+    pkt_id = in_pkt_id;
 
     VERBOSE2 ("PKT[%d] %s len %d\n", pkt_id, in_pkt, pkt_len);
 
@@ -662,7 +662,7 @@ void* sm_compile_file (const char* file_path, size_t* size)
     fp = fopen (file_path, "r");
 
     if (fp == NULL) {
-        VERBOSE0 ("PATTERN fle not existed %s\n", file_path);
+        VERBOSE0 ("PATTERN file not existed %s\n", file_path);
         exit (EXIT_FAILURE);
     }
 
@@ -696,7 +696,7 @@ void* sm_compile_file (const char* file_path, size_t* size)
     return patt_src_base;
 }
 
-void* regex_scan_file (const char* file_path, size_t* size, size_t* size_for_sw)
+void regex_scan_file (const char* file_path, size_t* size_for_sw)
 {
     FILE* fp = fopen (file_path, "r");
     char* line = NULL;
@@ -707,17 +707,17 @@ void* regex_scan_file (const char* file_path, size_t* size, size_t* size_for_sw)
     //size_t max_alloc_size = MAX_NUM_PKT * (64 + 2048);
     size_t pkt_num = get_file_line_count (fp);
     pkt_num = pkt_num < 4096 ? 4096 : pkt_num;
-    size_t max_alloc_size = pkt_num * (64 + 2048);
+    //size_t max_alloc_size = pkt_num * (64 + 2048);
 
-    void* pkt_src_base = alloc_mem (64, max_alloc_size);
-    void* pkt_src = pkt_src_base;
+    //void* pkt_src_base = alloc_mem (64, max_alloc_size);
+    //void* pkt_src = pkt_src_base;
 
-    VERBOSE1 ("PACKET Source Address Start at 0X%016lX\n", (uint64_t)pkt_src);
+    //VERBOSE1 ("PACKET Source Address Start at 0X%016lX\n", (uint64_t)pkt_src);
 
     fp = fopen (file_path, "r");
 
     if (fp == NULL) {
-        VERBOSE0 ("PACKET fle not existed %s\n", file_path);
+        VERBOSE0 ("PACKET file not existed %s\n", file_path);
         exit (EXIT_FAILURE);
     }
 
@@ -727,19 +727,19 @@ void* regex_scan_file (const char* file_path, size_t* size, size_t* size_for_sw)
         VERBOSE3 ("PACKET line read with length %zu :\n", read);
         VERBOSE3 ("%s\n", line);
         (*size_for_sw) += read;
-        pkt_src = fill_one_packet (line, read, pkt_src);
+        //pkt_src = fill_one_packet (line, read, pkt_src);
         // regex ref model
         regex_ref_push_packet (line);
-        VERBOSE3 ("PACKET Source Address 0X%016lX\n", (uint64_t)pkt_src);
+        //VERBOSE3 ("PACKET Source Address 0X%016lX\n", (uint64_t)pkt_src);
     }
 
-    VERBOSE1 ("Total size of packet buffer used: %ld\n", (uint64_t) (pkt_src - pkt_src_base));
+    //VERBOSE1 ("Total size of packet buffer used: %ld\n", (uint64_t) (pkt_src - pkt_src_base));
 
-    VERBOSE1 ("---------- Packet Buffer: %p\n", pkt_src_base);
+    //VERBOSE1 ("---------- Packet Buffer: %p\n", pkt_src_base);
 
-    if (verbose_level > 2) {
-        __hexdump (stdout, pkt_src_base, (pkt_src - pkt_src_base));
-    }
+    //if (verbose_level > 2) {
+      //  __hexdump (stdout, pkt_src_base, (pkt_src - pkt_src_base));
+    //}
 
     fclose (fp);
 
@@ -747,9 +747,9 @@ void* regex_scan_file (const char* file_path, size_t* size, size_t* size_for_sw)
         free (line);
     }
 
-    (*size) = pkt_src - pkt_src_base;
+    //(*size) = pkt_src - pkt_src_base;
 
-    return pkt_src_base;
+    //return pkt_src_base;
 }
 
 
@@ -788,7 +788,72 @@ int print_results (size_t num_results, void* stat_dest_base)
     return rc;
 }
 
+int compare_num_matched_pkt (size_t num_matched_pkt)
+{
+    int rc = 0;
 
+    if ((int)num_matched_pkt != regex_ref_get_num_matched_pkt()) {
+        VERBOSE0 ("ERROR! Num matched packets mismatch\n");
+        VERBOSE0 ("EXPECTED: %d\n", regex_ref_get_num_matched_pkt());
+        VERBOSE0 ("ACTUAL: %d\n", (int)num_matched_pkt);
+        rc = 1;
+    }
+
+    return rc;
+}
+
+int compare_result_id (uint32_t result_id)
+{
+    int rc = 0;
+    sm_stat ref_stat = regex_ref_get_result (result_id);
+
+    if (ref_stat.packet_id != result_id) {
+        VERBOSE1 ("PKT(HW): %7d\tPKT(SW): %7d", result_id, ref_stat.packet_id);
+        VERBOSE1 (" MISMATCHED!\n");
+        rc = 1;
+    } else {
+        VERBOSE1 ("PKT(HW): %7d\tPKT(SW): %7d", result_id, ref_stat.packet_id);
+        VERBOSE1 ("    MATCHED!\n");
+    }
+
+    return rc;
+}
+
+/*
+int compare_results (size_t num_matched_pkt, std::vector<uint32_t> result_id)
+{
+    int i = 0;
+    int rc = 0;
+
+    if ((int)num_matched_pkt != regex_ref_get_num_matched_pkt()) {
+        VERBOSE0 ("ERROR! Num matched packets mismatch\n");
+        VERBOSE0 ("EXPECTED: %d\n", regex_ref_get_num_matched_pkt());
+        VERBOSE0 ("ACTUAL: %d\n", (int)num_matched_pkt);
+        rc = 1;
+    }
+
+    VERBOSE1 ("---- Results (HW: hardware, SW: software) ----\n");
+    VERBOSE1 ("PKT(HW)   PKT(SW)");
+
+    for (i = 0; i < (int)num_matched_pkt; i++) {
+        sm_stat ref_stat = regex_ref_get_result (result_id[i]);
+
+        if (ref_stat.packet_id != result_id[i]) {
+            VERBOSE1 ("%7d\t%7d", result_id[i], ref_stat.packet_id);
+            VERBOSE1 (" MISMATCHED!\n");
+            rc = 1;
+        } else {
+            VERBOSE1 ("%7d\t%7d", result_id[i], ref_stat.packet_id);
+            VERBOSE1 ("    MATCHED!\n");
+        }
+    }
+
+    return rc;
+}
+*/
+
+//TODO
+/*
 int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no_chk_offset)
 {
     int i = 0, j = 0;
@@ -847,6 +912,7 @@ int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no_chk_of
 
     return rc;
 }
+*/
 
 int main (int argc, char* argv[])
 {
@@ -858,16 +924,16 @@ int main (int argc, char* argv[])
     //int rc = 1;
     uint64_t cir;
     int timeout = ACTION_WAIT_TIME;
-    int no_chk_offset = 0;
+    //int no_chk_offset = 0;
     snap_action_flag_t attach_flags = 0;
     struct snap_action* act = NULL;
     unsigned long ioctl_data;
     void* patt_src_base = NULL;
-    void* pkt_src_base = NULL;
+    //void* pkt_src_base = NULL;
     //void* pkt_src_base_0 = NULL;
     //void* stat_dest_base_0 = NULL;
     //size_t num_matched_pkt = 0;
-    size_t pkt_size = 0;
+    //size_t pkt_size = 0;
     size_t patt_size = 0;
     size_t pkt_size_for_sw = 0;
     uint64_t start_time;
@@ -889,12 +955,12 @@ int main (int argc, char* argv[])
             { "quiet",        no_argument,       NULL, 'q' },
             { "timeout",      required_argument, NULL, 't' },
             { "irq",          no_argument,       NULL, 'I' },
-            { "no_chk_offset", no_argument,       NULL, 'f' },
+           // { "no_chk_offset", no_argument,       NULL, 'f' },
             { "packet",       required_argument, NULL, 'p' },
             { "pattern",      required_argument, NULL, 'q' },
             { 0,              no_argument,       NULL, 0   },
         };
-        cmd = getopt_long (argc, argv, "C:t:p:q:Ifqvh",
+        cmd = getopt_long (argc, argv, "C:t:p:q:Iqvh",
                            long_options, &option_index);
 
         if (cmd == -1) {  /* all params processed ? */
@@ -926,9 +992,9 @@ int main (int argc, char* argv[])
             attach_flags = SNAP_ACTION_DONE_IRQ | SNAP_ATTACH_IRQ;
             break;
 
-        case 'f':      /* don't check offset */
-            no_chk_offset = 1;
-            break;
+        //case 'f':       don't check offset 
+          //  no_chk_offset = 1;
+          //  break;
 
         default:
             usage (argv[0]);
@@ -984,7 +1050,7 @@ int main (int argc, char* argv[])
 
     VERBOSE0 ("======== COMPILE PACKET FILE ========\n");
     // Compile the packets
-    pkt_src_base = regex_scan_file ("./packet.txt", &pkt_size, &pkt_size_for_sw);
+    regex_scan_file ("./packet.txt", &pkt_size_for_sw);
     VERBOSE0 ("======== COMPILE PACKET FILE DONE ========\n");
 
     VERBOSE0 ("======== SOFTWARE RUN ========\n");
@@ -1020,91 +1086,152 @@ int main (int argc, char* argv[])
 
     // Alloc state output buffer, aligned to 4K
     //int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt();
-    int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * ((pkt_size / 1024) * 2);
-    int stat_size = (real_stat_size % 4096 == 0) ? real_stat_size : real_stat_size + (4096 - (real_stat_size % 4096));
+    //int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * ((pkt_size / 1024) * 2);
+    //int stat_size = (real_stat_size % 4096 == 0) ? real_stat_size : real_stat_size + (4096 - (real_stat_size % 4096));
 
     // At least 4K for output buffer.
-    if (stat_size == 0) {
-        stat_size = 4096;
-    }
+    //if (stat_size == 0) {
+      //  stat_size = 4096;
+    //}
     
     VERBOSE1 ("======== HARDWARE RUN ========\n");
     
+    int num_jobs[3] = {1, 5, 10};
+
+    printf ("THD_BW: thread total band width (MB/sec)\n");
+    printf ("THD_BUFF: thread average buffer preparation time (usec)\n");
+    printf ("THD_RUN: thread average regex matching runtime (usec)\n");
+    printf ("WKR_BW: worker band width (MB/sec)\n");
+    printf ("WKR_RUN: worker runtime (usec)\n");
+    printf ("CLEANUP: worker cleanup time (usec)\n"); 
+    
     /*
     for (int num_eng_using = 1; num_eng_using <= num_engines; ++num_eng_using) {
-	float sum_thread_bw = 0, sum_worker_bw = 0;
-	uint64_t sum_worker_runtime = 0, sum_cleanup_time = 0;
-	float avg_thread_bw, avg_worker_bw;
-	uint64_t avg_worker_runtime, avg_cleanup_time;
-	float min_thread_bw = 0, max_thread_bw = 0, min_worker_bw = 0, max_worker_bw = 0;
-	uint64_t min_worker_runtime = 0, max_worker_runtime = 0, min_cleanup_time = 0, max_cleanup_time = 0;
-        for (int i = 0; i < 10; ++i) {
-            printf ("Iteration %d: ", i+1);
-	    float thread_bw, worker_bw;
-	    uint64_t worker_runtime, cleanup_time;
-            ERROR_CHECK (start_regex_workers (num_eng_using, no_chk_offset, patt_src_base, patt_size, pkt_src_base, pkt_size, stat_size,
-			    	              dn, act, attach_flags, &thread_bw, &worker_bw, &worker_runtime, &cleanup_time));
-	    if (i == 0) {
-                min_thread_bw = thread_bw;
-		max_thread_bw = thread_bw;
-		min_worker_bw = worker_bw;
-		max_worker_bw = worker_bw;
-		min_worker_runtime = worker_runtime;
-		max_worker_runtime = worker_runtime;
-		min_cleanup_time = cleanup_time;
-		max_cleanup_time = cleanup_time;
-	    }
-	    if (thread_bw < min_thread_bw) {
-	        min_thread_bw = thread_bw;
-	    } else if (thread_bw > max_thread_bw) {
-		max_thread_bw = thread_bw;
-	    }
-	    if (worker_bw < min_worker_bw) {
-		min_worker_bw = worker_bw;
-	    } else if (worker_bw > max_worker_bw) {
-		max_worker_bw = worker_bw;
-	    }
-	    if (worker_runtime < min_worker_runtime) {
-		min_worker_runtime = worker_runtime;
-	    } else if (worker_runtime > max_worker_runtime) {
-		max_worker_runtime = worker_runtime;
-	    }
-	    if (cleanup_time < min_cleanup_time) {
-		min_cleanup_time = cleanup_time;
-	    } else if (cleanup_time > max_cleanup_time) {
-		max_cleanup_time = cleanup_time;
-	    }
-	    sum_thread_bw += thread_bw;
-	    sum_worker_bw += worker_bw;
-	    sum_worker_runtime += worker_runtime;
-	    sum_cleanup_time += cleanup_time;
+	float thd_bw[3], wkr_bw[3];
+	uint64_t thd_buff[3], thd_run[3], wkr_run[3], cleanup[3];
+
+	for (int j = 0; j < 3; ++j) {
+            printf ("Working with %d jobs per thread.\n", num_jobs[j]);
+
+            float sum_thd_bw = 0, sum_wkr_bw = 0;
+            uint64_t sum_thd_buff = 0, sum_thd_run = 0, sum_wkr_run = 0, sum_cleanup = 0;
+            float min_thd_bw = 0, max_thd_bw = 0, min_wkr_bw = 0, max_wkr_bw = 0;
+	    uint64_t min_thd_buff = 0, max_thd_buff = 0, min_thd_run = 0, max_thd_run = 0;
+            uint64_t min_wkr_run = 0, max_wkr_run = 0, min_cleanup = 0, max_cleanup = 0;
+
+            for (int i = 0; i < 10; ++i) {
+                printf ("Iteration %d: ", i+1);
+                float thread_bw, worker_bw;
+                uint64_t thread_buff_prep, thread_runtime, worker_runtime, cleanup_time;
+
+                ERROR_CHECK (start_regex_workers (num_eng_using, num_jobs[j], patt_src_base, patt_size, "./packet.txt", dn, act, attach_flags, 
+                                              &thread_bw, &thread_buff_prep, &thread_runtime, &worker_bw, &worker_runtime, &cleanup_time));
+
+                if (i == 0) {
+                    min_thd_bw = thread_bw;
+                    max_thd_bw = thread_bw;
+		    min_thd_buff = thread_buff_prep;
+		    max_thd_buff = thread_buff_prep;
+		    min_thd_run = thread_runtime;
+		    max_thd_run = thread_runtime;
+                    min_wkr_bw = worker_bw;
+                    max_wkr_bw = worker_bw;
+                    min_wkr_run = worker_runtime;
+                    max_wkr_run = worker_runtime;
+                    min_cleanup = cleanup_time;
+                    max_cleanup = cleanup_time;
+                }
+
+                if (thread_bw < min_thd_bw) {
+                    min_thd_bw = thread_bw;
+                } else if (thread_bw > max_thd_bw) {
+                    max_thd_bw = thread_bw;
+                }
+
+		if (thread_buff_prep < min_thd_buff) {
+		    min_thd_buff = thread_buff_prep;
+		} else if (thread_buff_prep > max_thd_buff) {
+		    max_thd_buff = thread_buff_prep;
+		}
+
+		if (thread_runtime < min_thd_run) {
+		    min_thd_run = thread_runtime;
+		} else if (thread_runtime > max_thd_run) {
+		    max_thd_run = thread_runtime;
+		}
+
+		if (worker_bw < min_wkr_bw) {
+                    min_wkr_bw = worker_bw;
+                } else if (worker_bw > max_wkr_bw) {
+                    max_wkr_bw = worker_bw;
+                }
+
+                if (worker_runtime < min_wkr_run) {
+                    min_wkr_run = worker_runtime;
+                } else if (worker_runtime > max_wkr_run) {
+                    max_wkr_run = worker_runtime;
+                }
+
+                if (cleanup_time < min_cleanup) {
+                    min_cleanup = cleanup_time;
+                } else if (cleanup_time > max_cleanup) {
+                    max_cleanup = cleanup_time;
+                } 
+
+                sum_thd_bw += thread_bw;
+		sum_thd_buff += thread_buff_prep;
+		sum_thd_run += thread_runtime;
+                sum_wkr_bw += worker_bw;
+                sum_wkr_run += worker_runtime;
+                sum_cleanup += cleanup_time;
+            }
+
+            thd_bw[j] = (sum_thd_bw - min_thd_bw - max_thd_bw) / 8;
+	    thd_buff[j] = (sum_thd_buff - min_thd_buff - max_thd_buff) / 8;
+	    thd_run[j] = (sum_thd_run - min_thd_run - max_thd_run) / 8;
+            wkr_bw[j] = (sum_wkr_bw - min_wkr_bw - max_wkr_bw) / 8;
+            wkr_run[j] = (sum_wkr_run - min_wkr_run - max_wkr_run) / 8;
+            cleanup[j] = (sum_cleanup - min_cleanup - max_cleanup) / 8;
 	}
-	avg_thread_bw = (sum_thread_bw - min_thread_bw - max_thread_bw) / 8;
-	avg_worker_bw = (sum_worker_bw - min_worker_bw - max_worker_bw) / 8;
-	avg_worker_runtime = (sum_worker_runtime - min_worker_runtime - max_worker_runtime) / 8;
-	avg_cleanup_time = (sum_cleanup_time - min_cleanup_time - max_cleanup_time) / 8;
-	printf ("For %d engine(s), the average thread total band width is %0.3f MB/sec;\n", num_eng_using, avg_thread_bw);
-	printf ("the average worker band width is %0.3f MB/sec;\n", avg_worker_bw);
-	printf ("the average worker runtime is %lu usec;\n", avg_worker_runtime);
-	printf ("the average worker cleanup time is %lu usec.\n\n", avg_cleanup_time);
+
+	printf ("Number of engines used: %d\n", num_eng_using);
+	printf ("NUM_JOB   THD_BW    THD_BUFF  THD_RUN   WKR_BW    WKR_RUN   CLEANUP\n");
+	
+	for (int j = 0; j < 3; ++j) {
+	    printf ("%7d   %0.3f %9lu %9lu %0.3f %9lu %9lu\n", num_jobs[j], thd_bw[j], thd_buff[j], thd_run[j], wkr_bw[j], wkr_run[j], cleanup[j]);
+	}
     }
     */
     
-    for (int num_eng_using = 1; num_eng_using <= num_engines; ++num_eng_using) { 
-        float thread_bw, worker_bw;
-	uint64_t worker_runtime, cleanup_time;
-        ERROR_CHECK (start_regex_workers (num_eng_using, no_chk_offset, patt_src_base, patt_size, pkt_src_base, pkt_size, stat_size,
-			                  dn, act, attach_flags, &thread_bw, &worker_bw, &worker_runtime, &cleanup_time));
-        printf ("For %d engine(s), the thread total band width is %0.3f MB/sec;\n", num_eng_using, thread_bw);
-        printf ("the worker band width is %0.3f MB/sec;\n", worker_bw);
-	printf ("the worker runtime is %lu usec;\n", worker_runtime);
-	printf ("the worker cleanup time is %lu usec.\n\n", cleanup_time);
+    
+    for (int num_eng_using = 1; num_eng_using <= num_engines; ++num_eng_using) {
+	float thd_bw[3], wkr_bw[3];
+	uint64_t thd_buff_prep[3], thd_runtime[3], wkr_runtime[3], cleanup_time[3];
+
+        for (int i = 0; i < 3; ++i) {
+            printf ("Working with %d jobs per thread.\n", num_jobs[i]);
+
+            //float thread_bw, worker_bw;
+            //uint64_t thread_buff_prep_time, thread_runtime, worker_runtime, cleanup_time;
+
+	    ERROR_CHECK (start_regex_workers (num_eng_using, num_jobs[i], patt_src_base, patt_size, "./packet.txt", dn, act, attach_flags,
+                                              &thd_bw[i], &thd_buff_prep[i], &thd_runtime[i], &wkr_bw[i], &wkr_runtime[i], &cleanup_time[i]));
+        }
+
+	printf ("Number of engines used: %d\n", num_eng_using);
+	printf ("NUM_JOB   THD_BW    THD_BUFF  THD_RUN   WKR_BW    WKR_RUN   CLEANUP\n");
+	
+	for (int i = 0; i < 3; ++i) {
+	    printf ("%7d   %0.3f %9lu %9lu %0.3f %9lu %9lu\n", num_jobs[i], thd_bw[i], thd_buff_prep[i], thd_runtime[i], wkr_bw[i], wkr_runtime[i], cleanup_time[i]);
+	}
+	printf ("\n");
     }
+    
     
 fail:
     return -1;
     
-    free_mem (pkt_src_base);
+    //free_mem (pkt_src_base);
     free_mem (patt_src_base);
     snap_detach_action (act);
     // Unmap AFU MMIO registers, if previously mapped
@@ -1114,3 +1241,4 @@ __exit1:
     VERBOSE1 ("End of Test\n"); 
     return 0;
 }
+

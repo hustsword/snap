@@ -20,6 +20,7 @@
 #include <iostream>
 #include "JobBase.h"
 #include "WorkerDirtest.h"
+#include "ThreadDirtest.h"
 
 class JobDirtest : public JobBase
 {
@@ -45,6 +46,9 @@ public:
     // Set pointer to worker
     void set_worker (WorkerDirtestPtr in_worker);
 
+    // Set pointer to thread
+    void set_thread (ThreadDirtestPtr in_thread);
+
     // Get pointer to worker
     WorkerDirtestPtr get_worker();
 
@@ -57,47 +61,66 @@ public:
     // Perform the regex scan
     int scan();
 
-    // Get the result
-    int result();
+    // Set packet buffer address for the job
+    int set_packet_buffer (void* in_pkt_src_base, size_t in_max_alloc_pkt_size);
+
+    // Set result buffer address for the job
+    int set_result_buffer (void* in_stat_dest_base, size_t in_stat_size);
+
+    // Get number of matched packets from this job
+    size_t get_num_matched_pkt();
+
+    // Get the time used for preparing pattern and packet buffers
+    uint64_t get_buff_prep_time();
+
+    // Get runtime of regex scanning of this job
+    uint64_t get_job_runtime();
 
     // Cleanup allocated memories
     virtual void cleanup();
 
-    // Set result compare if it checks offset
-    void set_no_chk_offset (int in_no_chk_offset);
-
-    // Set pkt_src_base for the job descripter
-    void set_pkt_src_base (void* in_pkt_src_base, size_t in_pkt_size);
-
-    // Set stat_dest_base for the job descripter
-    void set_stat_dest_base (size_t in_stat_size);
-
-    float get_job_band_width();
+    // Get packet buffers from file to m_pkt_src_base
+    int fetch_pkt_from_file();
 
 private:
-    // Pointer to worker for adding job descriptors
+    // Pointer to the worker
     WorkerDirtestPtr m_worker;
 
+    // Pointer to the thread
+    ThreadDirtestPtr m_thread;
 
+    // Number of matched packets in this job
     size_t m_num_matched_pkt;
 
-    int m_no_chk_offset;
-
+    // Pattern buffer base address for this job
     void* m_patt_src_base;
 
+    // Pattern size
     size_t m_patt_size;
 
+    // Packet buffer base address for this job
     void* m_pkt_src_base;
 
+    // Packet size for this job
     size_t m_pkt_size;
 
+    // Maximum allocated packet size of the buffer
+    size_t m_max_alloc_pkt_size;
+
+    // Result buffer base address for this job
     void* m_stat_dest_base;
 
+    // Result buffer size
     size_t m_stat_size;
 
-    float m_band_width;
+    // Time used for preparing pattern and packet buffers
+    uint64_t m_buff_prep_time;
+   
+    // Runtime of regex matching of this job
+    uint64_t m_runtime;
 };
 
 typedef boost::shared_ptr<JobDirtest> JobDirtestPtr;
 
 #endif
+

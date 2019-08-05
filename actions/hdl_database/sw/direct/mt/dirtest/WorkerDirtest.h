@@ -52,13 +52,29 @@ public:
     // Copy pattern buffer to worker
     void set_patt_src_base (void* in_patt_src_base, size_t in_patt_size);
 
+    // Set the packet file
+    void set_pkt_file (const char* in_pkt_file_path);
+
     // Get the pattern buffer pointer
     void* get_pattern_buffer();
+
+    // Get the path to the packet file
+    const char* get_pkt_file_path();
+
+    // Get the line count of the packet file
+    int get_line_count();
+
+    // Check the results of each thread
+    int check_results();
 
     // Get the size of the pattern buffer
     size_t get_pattern_buffer_size();
 
+    // Get total band width of all threads in this worker
     float get_sum_band_width();
+
+    // Get the average time breakdown of all thread works
+    void get_time_breakdown (uint64_t* buff_prep_time, uint64_t* regex_runtime);
 
     // Clean up any threads created for this worker
     virtual void cleanup();
@@ -72,9 +88,16 @@ private:
 
     // Size of the regex pattern buffer
     size_t m_patt_size;
+
+    // File containing packets/lines to be matched
+    const char* m_pkt_file_path;
+
+    // Line count of the packet file
+    int m_pkt_file_line_count;
 };
 
 typedef boost::shared_ptr<WorkerDirtest> WorkerDirtestPtr;
 
 #endif
+
 

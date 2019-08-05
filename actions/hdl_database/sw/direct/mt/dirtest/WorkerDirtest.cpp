@@ -19,11 +19,12 @@
 #include "ThreadDirtest.h"
 #include "constants.h"
 
-WorkerDirtest::WorkerDirtest (HardwareManagerPtr in_hw_mgr, /* Relation in_relation, int in_attr_id, */ bool in_debug)
+WorkerDirtest::WorkerDirtest (HardwareManagerPtr in_hw_mgr, bool in_debug)
     : WorkerBase (in_hw_mgr),
       m_interrupt (true),
       m_patt_src_base (NULL),
-      m_patt_size (0)
+      m_patt_size (0),
+      m_pkt_file_line_count (0)
 {
     //printf("create dirtest worker\n");
     m_job_manager_en = false;
@@ -95,6 +96,14 @@ void WorkerDirtest::set_patt_src_base (void* in_patt_src_base, size_t in_patt_si
     memcpy (m_patt_src_base, in_patt_src_base, m_patt_size);
 }
 
+void WorkerDirtest::set_pkt_file (const char* in_pkt_file_path)
+{
+    m_pkt_file_path = in_pkt_file_path;
+    FILE* fp = fopen (in_pkt_file_path, "r");
+    m_pkt_file_line_count = get_file_line_count (fp);
+    fclose (fp);
+}
+
 void* WorkerDirtest::get_pattern_buffer()
 {
     return m_patt_src_base;
@@ -105,6 +114,29 @@ size_t WorkerDirtest::get_pattern_buffer_size()
     return m_patt_size;
 }
 
+const char* WorkerDirtest::get_pkt_file_path()
+{
+    return m_pkt_file_path;
+}
+
+int WorkerDirtest::get_line_count()
+{
+    return m_pkt_file_line_count;
+}
+
+int WorkerDirtest::check_results()
+{
+    int rc = 0;
+    for (size_t i = 0; i < m_threads.size(); i++) {
+	//printf ("Worker trying to compare result for thread %zu\n", i);
+        if (boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> result()) {
+            rc = 1;
+        }
+	//printf ("Worker finished checking result of thread %zu\n", i);
+    }
+    return rc;
+}
+
 float WorkerDirtest::get_sum_band_width()
 {
     float sum_band_width = 0;
@@ -112,6 +144,20 @@ float WorkerDirtest::get_sum_band_width()
         sum_band_width += boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_band_width();
     }
     return sum_band_width;
+}
+
+void WorkerDirtest::get_time_breakdown (uint64_t* buff_prep_time, uint64_t* regex_runtime)
+{
+    uint64_t sum_buff_prep_time = 0, sum_regex_runtime = 0;
+    size_t num_threads = m_threads.size();
+
+    for (size_t i = 0; i < num_threads; i++) {
+        sum_buff_prep_time += boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_buff_prep_time();
+        sum_regex_runtime += boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_runtime();
+    }
+
+    *buff_prep_time = sum_buff_prep_time / num_threads;
+    *regex_runtime = sum_regex_runtime / num_threads;
 }
 
 void WorkerDirtest::cleanup()
