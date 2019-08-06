@@ -307,6 +307,7 @@ CreatePGCAPIScanState (CustomScan* custom_plan)
 
     capiss->capi_regex_num_jobs = pgcapi_num_jobs;
     capiss->capi_regex_num_threads = pgcapi_num_threads;
+    capiss->capi_regex_num_engines = pgcapi_num_engines;
 
     for (int i = 0; i < capiss->capi_regex_num_jobs; i++) {
         capiss->capi_regex_job_descs[i] = (CAPIRegexJobDescriptor*) palloc0 (sizeof (CAPIRegexJobDescriptor));
@@ -577,6 +578,18 @@ _PG_init (void)
                              &pgcapi_num_threads,
                              1,
                              1, 128,
+                             PGC_SUSET,
+                             GUC_UNIT,
+                             NULL,
+                             NULL,
+                             NULL);
+
+    DefineCustomIntVariable ("PGCAPIscan.num_engines",
+                             "Number of engines to perform CAPI scan",
+                             NULL,
+                             &pgcapi_num_engines,
+                             1,
+                             1, 8,
                              PGC_SUSET,
                              GUC_UNIT,
                              NULL,

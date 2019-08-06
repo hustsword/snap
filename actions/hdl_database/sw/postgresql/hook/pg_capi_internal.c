@@ -705,7 +705,7 @@ int capi_regex_job_init (CAPIRegexJobDescriptor* job_desc,
     job_desc->curr_result_id        = 0;
     job_desc->start_blk_id          = 0;
     job_desc->num_blks              = 0;
-    job_desc->thread_id             = 0;
+    job_desc->engine_id             = 0;
     job_desc->t_init                = 0;
     job_desc->t_init                = 0;
     job_desc->t_regex_patt          = 0;
@@ -749,7 +749,7 @@ int capi_regex_scan (CAPIRegexJobDescriptor* job_desc)
                                   job_desc->patt_size,
                                   job_desc->pkt_size,
                                   job_desc->stat_size,
-                                  job_desc->thread_id)) {
+                                  job_desc->engine_id)) {
 
         ereport (ERROR,
                  (errcode (ERRCODE_INVALID_PARAMETER_VALUE),
@@ -828,11 +828,11 @@ int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc)
 
     // Wait for transaction to be done.
     do {
-        action_read (job_desc->context->dn, ACTION_STATUS_L, job_desc->thread_id);
+        action_read (job_desc->context->dn, ACTION_STATUS_L, job_desc->engine_id);
         count++;
     } while (count < 10);
 
-    uint32_t reg_data = action_read (job_desc->context->dn, ACTION_STATUS_H, job_desc->thread_id);
+    uint32_t reg_data = action_read (job_desc->context->dn, ACTION_STATUS_H, job_desc->engine_id);
     job_desc->num_matched_pkt = reg_data;
     job_desc->results = (uint32_t*) palloc (reg_data * sizeof (uint32_t));
 

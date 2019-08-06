@@ -23,6 +23,9 @@ extern "C" {
 #include "pg_capi.h"
 enum test_mode {POLL = 0, INTERRUPT, INVALID};
 int start_regex_workers (PGCAPIScanState* in_capiss);
+void read_buffers (Buffer&* buffers, Relation relation, int & num_blks, size_t & num_tups);
+void release_buffers (Buffer* buffers, int num_blks);
+
 #ifdef __cplusplus
 }
 #endif

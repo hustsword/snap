@@ -121,8 +121,8 @@ typedef struct CAPIRegexJobDescriptor_s {
     // Number of tuples (postgresql tuples) for this job
     size_t num_tuples;
 
-    // The thread id of this job descriptor
-    int thread_id;
+    // The id of the engine associated with this job
+    int engine_id;
 
     // Perf statistics (in nano seconds);
     int64_t t_init;

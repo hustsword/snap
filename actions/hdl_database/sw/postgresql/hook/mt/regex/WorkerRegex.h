@@ -52,6 +52,9 @@ public:
     // Set if we are going to use interrupt or polling
     void set_mode (bool in_interrupt);
 
+    // Set buffers
+    void set_buffers (Buffer* buffers);
+
     // Compile the regex pattern
     int regex_compile (const char* in_patt);
 
@@ -77,15 +80,21 @@ public:
     // Clean up any threads created for this worker
     virtual void cleanup();
 
-    // Read all buffers of this relation
-    void read_buffers();
-
-    // Release all buffers of this relation
-    void release_buffers();
-
     // A container to hold all buffer pointers of this relation,
     // make it public so it can be referenced with minimum cost.
     Buffer* m_buffers;
+
+    // The id of the engine associated with this worker
+    int m_engine;
+
+    // Start job id
+    int m_job_id_base;
+
+    // Start thread id
+    int m_thd_id_base;
+
+    // The mutex used inside the worker to sync between different threads within the worker
+    boost::mutex m_mutex;
 
 private:
     // Use interrupt or poll to check thread done?
@@ -108,6 +117,7 @@ private:
 
     // Total number of tuples in the relation
     size_t m_num_tuples;
+
 };
 
 typedef boost::shared_ptr<WorkerRegex> WorkerRegexPtr;

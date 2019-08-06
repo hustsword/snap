@@ -75,9 +75,8 @@ int JobRegex::run()
     } while (0);
 
     do {
-        // TODO: Only 1 job is allowed to access hardware at a time.
-        //boost::lock_guard<boost::mutex> lock (ThreadBase::m_global_mutex);
-
+        // TODO: Only 1 job is allowed to access an engine at a time.
+        boost::lock_guard<boost::mutex> lock (m_worker->m_mutex);
         if (scan()) {
             elog (ERROR, "Failed to perform regex scanning");
             fail();
@@ -141,11 +140,11 @@ int JobRegex::init()
         return -1;
     }
 
-    // Assign the thread id to this job descriptor
-    m_job_desc->thread_id = m_thread_id;
+    // Assign the engine id to this job descriptor
+    m_job_desc->engine_id = m_worker->m_engine;
 
     // Reset the engine
-    m_hw_mgr->reset_engine (m_thread_id);
+    m_hw_mgr->reset_engine (m_worker->m_engine);
     
     return 0;
 }

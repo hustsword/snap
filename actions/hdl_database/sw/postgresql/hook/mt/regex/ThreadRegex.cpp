@@ -84,6 +84,7 @@ void ThreadRegex::set_blk_info (int in_base, int in_num)
 
 int ThreadRegex::get_num_blks_per_job (int in_job_id, int* out_start_blk_id)
 {
+    in_job_id -= m_worker->m_job_id_base;
     int num_jobs = m_jobs.size();
     int num_blks_per_job = 0;
 

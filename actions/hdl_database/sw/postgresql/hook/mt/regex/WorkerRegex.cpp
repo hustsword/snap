@@ -21,7 +21,7 @@
 
 using namespace boost::chrono;
 
-WorkerRegex::WorkerRegex (HardwareManagerPtr in_hw_mgr, Relation in_relation, int in_attr_id, bool in_debug)
+WorkerRegex::WorkerRegex (HardwareManagerPtr in_hw_mgr, Relation in_relation, int in_attr_id, bool in_debug, int in_engine, int in_num_blks, int in_num_tuples, int in_job_id, int in_thd_id)
     : WorkerBase (in_hw_mgr),
       m_buffers (NULL),
       m_interrupt (true),
@@ -29,8 +29,11 @@ WorkerRegex::WorkerRegex (HardwareManagerPtr in_hw_mgr, Relation in_relation, in
       m_patt_size (0),
       m_relation (in_relation),
       m_attr_id (in_attr_id),
-      m_num_blks (0),
-      m_num_tuples (0)
+      m_engine (in_engine),
+      m_num_blks (in_num_blks),
+      m_num_tuples (in_num_tuples),
+      m_job_id_base (in_job_id),
+      m_thd_id_base (in_thd_id)
 {
     m_job_manager_en = false;
 
@@ -47,6 +50,11 @@ WorkerRegex::~WorkerRegex()
 void WorkerRegex::set_mode (bool in_interrupt)
 {
     m_interrupt = in_interrupt;
+}
+
+void WorkerRegex::set_buffers (Buffer* buffers)
+{
+    m_buffers = buffers;
 }
 
 int WorkerRegex::init()
@@ -140,6 +148,7 @@ int WorkerRegex::get_attr_id()
 
 int WorkerRegex::get_num_blks_per_thread (int in_thread_id, int* out_start_blk_id)
 {
+    in_thread_id -= m_thd_id_base;
     int num_threads = m_threads.size();
 
     if (m_num_blks <= 0) {
@@ -172,6 +181,7 @@ int WorkerRegex::get_num_blks_per_thread (int in_thread_id, int* out_start_blk_i
 
 size_t WorkerRegex::get_num_tuples_per_thread (int in_thread_id)
 {
+    in_thread_id -= m_thd_id_base;
     int num_threads = m_threads.size();
 
     if (m_num_tuples <= 0) {
@@ -203,7 +213,7 @@ size_t WorkerRegex::get_num_tuples_per_thread (int in_thread_id)
 void WorkerRegex::cleanup()
 {
     free_mem (m_patt_src_base);
-    release_buffers();
+    //release_buffers();
     m_hw_mgr = NULL;
 
     high_resolution_clock::time_point t_start = high_resolution_clock::now();
@@ -219,37 +229,5 @@ void WorkerRegex::cleanup()
     m_threads.clear();
 }
 
-void WorkerRegex::read_buffers()
-{
-    capi_regex_check_relation (m_relation);
 
-    m_num_blks = RelationGetNumberOfBlocksInFork (m_relation, MAIN_FORKNUM);
-
-    m_buffers = (Buffer*) palloc0 (sizeof (Buffer) * m_num_blks);
-
-    for (int blk_num = 0; blk_num < m_num_blks; ++blk_num) {
-        Buffer buf = ReadBufferExtended (m_relation, MAIN_FORKNUM, blk_num, RBM_NORMAL, NULL);
-
-        Page page = (Page) BufferGetPage (buf);
-        int num_lines = PageGetMaxOffsetNumber (page);
-        m_num_tuples += num_lines;
-
-        m_buffers[blk_num] = buf;
-    }
-
-    elog (INFO, "Read %d buffers from relation", m_num_blks);
-    elog (INFO, "Read %zu tuples from relation", m_num_tuples);
-}
-
-void WorkerRegex::release_buffers()
-{
-    if (m_buffers) {
-        for (int blk_num = 0; blk_num < m_num_blks; ++blk_num) {
-            Buffer buf = m_buffers[blk_num];
-            ReleaseBuffer (buf);
-        }
-
-        pfree (m_buffers);
-    }
-}
 
