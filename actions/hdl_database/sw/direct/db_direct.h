@@ -129,7 +129,5 @@ void regex_scan_file (const char* file_path, size_t* size_for_sw);
 int print_results (size_t num_results, void* stat_dest_base);
 int compare_num_matched_pkt (size_t num_matched_pkt);
 int compare_result_id (uint32_t result_id);
-//int compare_results (size_t num_matched_pkt, std::vector<uint32_t> result_id);
-//int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no_chk_offset);
 
 #endif	/* __SNAP_FW_EXA__ */

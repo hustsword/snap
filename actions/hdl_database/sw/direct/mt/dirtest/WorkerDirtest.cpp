@@ -101,7 +101,6 @@ void WorkerDirtest::set_patt_src_base (void* in_patt_src_base, size_t in_patt_si
 void WorkerDirtest::set_pkt_src_base (const char* in_pkt_file_path, int num_job_per_thread)
 {
     FILE* fp = fopen (in_pkt_file_path, "r");
-    //int start_line_id = 0;
     char* line = NULL;
     size_t len = 0;
     ssize_t read;
@@ -133,7 +132,6 @@ void WorkerDirtest::set_pkt_src_base (const char* in_pkt_file_path, int num_job_
     while ((read = getline (&line, &len, fp)) != -1) {
 	if (curr_job_id != num_job_per_thread - 1 && 
 	    lines_read == (curr_job_id + 1) * (m_pkt_file_line_count / num_job_per_thread)) {
-	    //printf ("Start filling packet of job %d\n", curr_job_id+1);
 	    job_pkt_sizes[curr_job_id] = (unsigned char*) pkt_src - (unsigned char*) job_pkt_src_bases[curr_job_id];
             curr_job_id++;
 	    job_pkt_src_bases[curr_job_id] = pkt_src;
@@ -151,9 +149,6 @@ void WorkerDirtest::set_pkt_src_base (const char* in_pkt_file_path, int num_job_
     }
 
     job_pkt_sizes[curr_job_id] = (unsigned char*)pkt_src - (unsigned char*) job_pkt_src_bases[curr_job_id];
-    //printf ("packet size of the last job is %zu\n", job_pkt_sizes[job_pkt_sizes.size() - 1]);
-
-    //printf ("Total size of packet buffer used: %ld\n", (uint64_t) (pkt_src - m_pkt_src_base));
 
     //printf ("---------- Packet Buffer: %p\n", m_pkt_src_base);
 
@@ -171,16 +166,6 @@ void WorkerDirtest::set_pkt_src_base (const char* in_pkt_file_path, int num_job_
 
     m_pkt_size = (unsigned char*)pkt_src - (unsigned char*)m_pkt_src_base;
 }
-
-/*
-void WorkerDirtest::set_pkt_file (const char* in_pkt_file_path)
-{
-    m_pkt_file_path = in_pkt_file_path;
-    FILE* fp = fopen (in_pkt_file_path, "r");
-    m_pkt_file_line_count = get_file_line_count (fp);
-    fclose (fp);
-}
-*/
 
 void* WorkerDirtest::get_pattern_buffer()
 {
@@ -210,32 +195,6 @@ size_t WorkerDirtest::get_packet_buffer_size (int in_job_id)
     return job_pkt_sizes[in_job_id];
 }
 
-/*
-size_t WorkerDirtest::get_thread_alloc_size()
-{
-    if (job_pkt_sizes.empty()) {
-	printf ("ERROR: no packet recorded, check again\n");
-	return -1;
-    }
-
-    if (job_pkt_sizes[job_pkt_sizes.size() - 1] == 0) {
-	printf ("ERROR: packet size too small. Get panic\n");
-	return -1;
-    }
-
-    size_t thread_alloc_size = job_pkt_sizes[job_pkt_sizes.size() - 1];
-    thread_alloc_size = thread_alloc_size < 4096*(2048+64) ? 4096*(2048+64) : thread_alloc_size;
-    return thread_alloc_size;
-}
-*/
-
-/*
-const char* WorkerDirtest::get_pkt_file_path()
-{
-    return m_pkt_file_path;
-}
-*/
-
 int WorkerDirtest::get_line_count()
 {
     return m_pkt_file_line_count;
@@ -246,25 +205,15 @@ int WorkerDirtest::check_results()
 {
     int rc = 0;
     for (size_t i = 0; i < m_threads.size(); i++) {
-	//printf ("Worker trying to compare result for thread %zu\n", i);
         if (boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> result()) {
             rc = 1;
         }
-	//printf ("Worker finished checking result of thread %zu\n", i);
     }
     return rc;
 }
 
 size_t WorkerDirtest::get_worker_pkt_size()
 {
-    /*
-    size_t worker_pkt_size = 0;
-    for (size_t i = 0; i < m_threads.size(); i++) {
-	worker_pkt_size += boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_pkt_size();
-    }
-    return worker_pkt_size;
-    */
-
     return m_pkt_size;
 }
 
@@ -275,32 +224,15 @@ float WorkerDirtest::get_sum_band_width()
     for (size_t i = 0; i < m_threads.size(); i++) {
         sum_band_width += boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_band_width();
     }
-    printf ("Thread total band width is %0.3f MB/sec.\n", sum_band_width);
+    //printf ("Thread total band width is %0.3f MB/sec.\n", sum_band_width);
     return sum_band_width;
 }
 
-/*
-void WorkerDirtest::get_time_breakdown (uint64_t* buff_prep_time, uint64_t* regex_runtime)
-{
-    uint64_t sum_buff_prep_time = 0, sum_regex_runtime = 0;
-    size_t num_threads = m_threads.size();
-
-    for (size_t i = 0; i < num_threads; i++) {
-        sum_buff_prep_time += boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_buff_prep_time();
-        sum_regex_runtime += boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_runtime();
-    }
-
-    *buff_prep_time = sum_buff_prep_time / num_threads;
-    *regex_runtime = sum_regex_runtime / num_threads;
-}
-*/
-
 void WorkerDirtest::cleanup()
 {
-    printf("clean up worker\n");
+    //printf("clean up worker\n");
     free_mem (m_patt_src_base);
     free_mem (m_pkt_src_base);
-    // release_buffers();
 
     for (size_t i = 0; i < m_threads.size(); i++) {
         m_threads[i]->cleanup();

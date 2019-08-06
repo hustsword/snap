@@ -639,6 +639,7 @@ void usage (const char* prog)
               "    -q, --pattern        Pattern file for matching\n"
 	      "    -e, --num_eng        set number of engines to use\n"
 	      "    -j, --num_job        set number of jobs per thread\n"
+	      "    -r, --repeat         set number of repeat tests\n"
               , prog);
 }
 
@@ -821,101 +822,6 @@ int compare_result_id (uint32_t result_id)
     return rc;
 }
 
-/*
-int compare_results (size_t num_matched_pkt, std::vector<uint32_t> result_id)
-{
-    int i = 0;
-    int rc = 0;
-
-    if ((int)num_matched_pkt != regex_ref_get_num_matched_pkt()) {
-        VERBOSE0 ("ERROR! Num matched packets mismatch\n");
-        VERBOSE0 ("EXPECTED: %d\n", regex_ref_get_num_matched_pkt());
-        VERBOSE0 ("ACTUAL: %d\n", (int)num_matched_pkt);
-        rc = 1;
-    }
-
-    VERBOSE1 ("---- Results (HW: hardware, SW: software) ----\n");
-    VERBOSE1 ("PKT(HW)   PKT(SW)");
-
-    for (i = 0; i < (int)num_matched_pkt; i++) {
-        sm_stat ref_stat = regex_ref_get_result (result_id[i]);
-
-        if (ref_stat.packet_id != result_id[i]) {
-            VERBOSE1 ("%7d\t%7d", result_id[i], ref_stat.packet_id);
-            VERBOSE1 (" MISMATCHED!\n");
-            rc = 1;
-        } else {
-            VERBOSE1 ("%7d\t%7d", result_id[i], ref_stat.packet_id);
-            VERBOSE1 ("    MATCHED!\n");
-        }
-    }
-
-    return rc;
-}
-*/
-
-//TODO
-/*
-int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no_chk_offset)
-{
-    int i = 0, j = 0;
-    uint16_t offset = 0;
-    uint32_t pkt_id = 0;
-    uint32_t patt_id = 0;
-    int rc = 0;
-
-    if ((int)num_matched_pkt != regex_ref_get_num_matched_pkt()) {
-        VERBOSE0 ("ERROR! Num matched packets mismatch\n");
-        VERBOSE0 ("EXPECTED: %d\n", regex_ref_get_num_matched_pkt());
-        VERBOSE0 ("ACTUAL: %d\n", (int)num_matched_pkt);
-        rc = 1;
-    }
-
-    VERBOSE1 ("---- Results (HW: hardware, SW: software) ----\n");
-    VERBOSE1 ("PKT(HW) PATT(HW) OFFSET(HW) PKT(SW) PATT(SW) OFFSET(SW)\n");
-
-    for (i = 0; i < (int)num_matched_pkt; i++) {
-        for (j = 0; j < 4; j++) {
-            patt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << j * 8);
-        }
-
-        for (j = 4; j < 8; j++) {
-            pkt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 4) * 8);
-        }
-
-        for (j = 8; j < 10; j++) {
-            offset |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 2) * 8);
-        }
-
-        sm_stat ref_stat = regex_ref_get_result (pkt_id);
-
-        //VERBOSE1("%9d\t%8d\t%9d\t%9d\t%8d\t%9d", pkt_id, patt_id, offset,
-        //        ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
-
-        if ((ref_stat.packet_id != pkt_id) ||
-            (ref_stat.pattern_id != patt_id) ||
-            ((ref_stat.offset != offset) && (no_chk_offset == 0))) {
-            VERBOSE0 ("%7d\t%6d\t%7d\t%7d\t%6d\t%9d", pkt_id, patt_id, offset,
-                      ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
-
-            VERBOSE0 (" MISMATCH!\n");
-            rc = 1;
-        } else {
-            VERBOSE1 ("%7d\t%6d\t%7d\t%7d\t%6d\t%7d", pkt_id, patt_id, offset,
-                      ref_stat.packet_id, ref_stat.pattern_id, ref_stat.offset);
-
-            VERBOSE1 ("    MATCHED!\n");
-        }
-
-        patt_id = 0;
-        pkt_id = 0;
-        offset = 0;
-    }
-
-    return rc;
-}
-*/
-
 int main (int argc, char* argv[])
 {
     //printf("main start\n");
@@ -928,6 +834,7 @@ int main (int argc, char* argv[])
     int timeout = ACTION_WAIT_TIME;
     int num_eng_using = 1;
     int num_job_per_thd = 1;
+    int num_repeat = 1;
     //int no_chk_offset = 0;
     snap_action_flag_t attach_flags = 0;
     struct snap_action* act = NULL;
@@ -964,9 +871,10 @@ int main (int argc, char* argv[])
             { "pattern",      required_argument, NULL, 'q' },
 	    { "num_eng",      required_argument, NULL, 'e' },
 	    { "num_job",      required_argument, NULL, 'j' },
+	    { "repeat",       required_argument, NULL, 'r' },
             { 0,              no_argument,       NULL, 0   },
         };
-        cmd = getopt_long (argc, argv, "C:t:p:q:e:j:Iqvh",
+        cmd = getopt_long (argc, argv, "C:t:p:q:e:j:r:Iqvh",
                            long_options, &option_index);
 
         if (cmd == -1) {  /* all params processed ? */
@@ -1004,6 +912,10 @@ int main (int argc, char* argv[])
 	
 	case 'j':
 	    num_job_per_thd = strtol (optarg, (char**)NULL, 0);
+	    break;
+
+	case 'r':
+	    num_repeat = strtol (optarg, (char**)NULL, 0);
 	    break;
 
         //case 'f':       don't check offset 
@@ -1098,16 +1010,6 @@ int main (int argc, char* argv[])
 
     VERBOSE0 ("Running with %d %dx%d regex engine(s), revision: %d\n", num_engines, num_pkt_pipes, num_patt_pipes, revision);
 
-    // Alloc state output buffer, aligned to 4K
-    //int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt();
-    //int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * ((pkt_size / 1024) * 2);
-    //int stat_size = (real_stat_size % 4096 == 0) ? real_stat_size : real_stat_size + (4096 - (real_stat_size % 4096));
-
-    // At least 4K for output buffer.
-    //if (stat_size == 0) {
-      //  stat_size = 4096;
-    //}
-    
     VERBOSE1 ("======== HARDWARE RUN ========\n");
     
     if (num_eng_using > num_engines) {
@@ -1115,152 +1017,40 @@ int main (int argc, char* argv[])
 	goto fail;
     }
 
-    //int num_jobs[3] = {1, 5, 10};
-
     printf ("THD_BW: thread total band width (MB/sec)\n");
-    //printf ("THD_BUFF: thread average buffer preparation time (usec)\n");
-    //printf ("THD_RUN: thread average regex matching runtime (usec)\n");
     printf ("WKR_BW: worker band width (MB/sec)\n");
     printf ("WKR_RUN: worker runtime (usec)\n");
     printf ("CLEANUP: worker cleanup time (usec)\n"); 
 
-    printf ("Working with %d engines, %d jobs per thread.\n", num_eng_using, num_job_per_thd);
+    printf ("Working with %d engines, %d jobs per thread, %d repeating tests.\n", num_eng_using, num_job_per_thd, num_repeat);
 
-    float thd_bw, wkr_bw;
-    uint64_t wkr_runtime, cleanup_time;
+    float sum_thd_bw = 0, sum_wkr_bw = 0;
+    uint64_t sum_wkr_runtime = 0, sum_cleanup_time = 0;
     
-    ERROR_CHECK (start_regex_workers (num_eng_using, num_job_per_thd, patt_src_base, patt_size, "./packet.txt", dn, act, attach_flags,
-                                      &thd_bw, &wkr_bw, &wkr_runtime, &cleanup_time));
+    for (int i = 0; i < num_repeat; ++i) {
+	printf ("------- Iteration %d -------\n", i+1);
+	float thd_bw, wkr_bw;
+	uint64_t wkr_runtime, cleanup_time;
+        ERROR_CHECK (start_regex_workers (num_eng_using, num_job_per_thd, patt_src_base, patt_size, "./packet.txt", dn, act, attach_flags,
+                                          &thd_bw, &wkr_bw, &wkr_runtime, &cleanup_time));
+	sum_thd_bw += thd_bw;
+	sum_wkr_bw += wkr_bw;
+	sum_wkr_runtime += wkr_runtime;
+	sum_cleanup_time += cleanup_time;
+    }
+
+    float avg_thd_bw = sum_thd_bw / num_repeat;
+    float avg_wkr_bw = sum_wkr_bw / num_repeat;
+    uint64_t avg_wkr_runtime = sum_wkr_runtime / num_repeat;
+    uint64_t avg_cleanup_time = sum_cleanup_time / num_repeat;
 
     printf ("NUM_ENG   NUM_JOB   THD_BW    WKR_BW    WKR_RUN   CLEANUP\n");
-    printf ("%7d   %7d   %0.3f %0.3f %9lu %9lu\n", num_eng_using, num_job_per_thd, thd_bw, wkr_bw, wkr_runtime, cleanup_time);
+    printf ("%7d   %7d   %0.3f %0.3f %9lu %9lu\n", num_eng_using, num_job_per_thd, avg_thd_bw, avg_wkr_bw, avg_wkr_runtime, avg_cleanup_time);
     printf ("\n");
-    
-    /*
-    for (int num_eng_using = 1; num_eng_using <= num_engines; ++num_eng_using) {
-	float thd_bw[3], wkr_bw[3];
-	uint64_t thd_buff[3], thd_run[3], wkr_run[3], cleanup[3];
-
-	for (int j = 0; j < 3; ++j) {
-            printf ("Working with %d jobs per thread.\n", num_jobs[j]);
-
-            float sum_thd_bw = 0, sum_wkr_bw = 0;
-            uint64_t sum_thd_buff = 0, sum_thd_run = 0, sum_wkr_run = 0, sum_cleanup = 0;
-            float min_thd_bw = 0, max_thd_bw = 0, min_wkr_bw = 0, max_wkr_bw = 0;
-	    uint64_t min_thd_buff = 0, max_thd_buff = 0, min_thd_run = 0, max_thd_run = 0;
-            uint64_t min_wkr_run = 0, max_wkr_run = 0, min_cleanup = 0, max_cleanup = 0;
-
-            for (int i = 0; i < 10; ++i) {
-                printf ("Iteration %d: ", i+1);
-                float thread_bw, worker_bw;
-                uint64_t thread_buff_prep, thread_runtime, worker_runtime, cleanup_time;
-
-                ERROR_CHECK (start_regex_workers (num_eng_using, num_jobs[j], patt_src_base, patt_size, "./packet.txt", dn, act, attach_flags, 
-                                              &thread_bw, &thread_buff_prep, &thread_runtime, &worker_bw, &worker_runtime, &cleanup_time));
-
-                if (i == 0) {
-                    min_thd_bw = thread_bw;
-                    max_thd_bw = thread_bw;
-		    min_thd_buff = thread_buff_prep;
-		    max_thd_buff = thread_buff_prep;
-		    min_thd_run = thread_runtime;
-		    max_thd_run = thread_runtime;
-                    min_wkr_bw = worker_bw;
-                    max_wkr_bw = worker_bw;
-                    min_wkr_run = worker_runtime;
-                    max_wkr_run = worker_runtime;
-                    min_cleanup = cleanup_time;
-                    max_cleanup = cleanup_time;
-                }
-
-                if (thread_bw < min_thd_bw) {
-                    min_thd_bw = thread_bw;
-                } else if (thread_bw > max_thd_bw) {
-                    max_thd_bw = thread_bw;
-                }
-
-		if (thread_buff_prep < min_thd_buff) {
-		    min_thd_buff = thread_buff_prep;
-		} else if (thread_buff_prep > max_thd_buff) {
-		    max_thd_buff = thread_buff_prep;
-		}
-
-		if (thread_runtime < min_thd_run) {
-		    min_thd_run = thread_runtime;
-		} else if (thread_runtime > max_thd_run) {
-		    max_thd_run = thread_runtime;
-		}
-
-		if (worker_bw < min_wkr_bw) {
-                    min_wkr_bw = worker_bw;
-                } else if (worker_bw > max_wkr_bw) {
-                    max_wkr_bw = worker_bw;
-                }
-
-                if (worker_runtime < min_wkr_run) {
-                    min_wkr_run = worker_runtime;
-                } else if (worker_runtime > max_wkr_run) {
-                    max_wkr_run = worker_runtime;
-                }
-
-                if (cleanup_time < min_cleanup) {
-                    min_cleanup = cleanup_time;
-                } else if (cleanup_time > max_cleanup) {
-                    max_cleanup = cleanup_time;
-                } 
-
-                sum_thd_bw += thread_bw;
-		sum_thd_buff += thread_buff_prep;
-		sum_thd_run += thread_runtime;
-                sum_wkr_bw += worker_bw;
-                sum_wkr_run += worker_runtime;
-                sum_cleanup += cleanup_time;
-            }
-
-            thd_bw[j] = (sum_thd_bw - min_thd_bw - max_thd_bw) / 8;
-	    thd_buff[j] = (sum_thd_buff - min_thd_buff - max_thd_buff) / 8;
-	    thd_run[j] = (sum_thd_run - min_thd_run - max_thd_run) / 8;
-            wkr_bw[j] = (sum_wkr_bw - min_wkr_bw - max_wkr_bw) / 8;
-            wkr_run[j] = (sum_wkr_run - min_wkr_run - max_wkr_run) / 8;
-            cleanup[j] = (sum_cleanup - min_cleanup - max_cleanup) / 8;
-	}
-
-	printf ("Number of engines used: %d\n", num_eng_using);
-	printf ("NUM_JOB   THD_BW    THD_BUFF  THD_RUN   WKR_BW    WKR_RUN   CLEANUP\n");
-	
-	for (int j = 0; j < 3; ++j) {
-	    printf ("%7d   %0.3f %9lu %9lu %0.3f %9lu %9lu\n", num_jobs[j], thd_bw[j], thd_buff[j], thd_run[j], wkr_bw[j], wkr_run[j], cleanup[j]);
-	}
-    }
-    
-    for (int num_eng_using = 1; num_eng_using <= num_engines; ++num_eng_using) {
-	float thd_bw[3], wkr_bw[3];
-	uint64_t wkr_runtime[3], cleanup_time[3];
-
-        for (int i = 0; i < 3; ++i) {
-            printf ("Working with %d jobs per thread.\n", num_jobs[i]);
-
-            //float thread_bw, worker_bw;
-            //uint64_t thread_buff_prep_time, thread_runtime, worker_runtime, cleanup_time;
-
-	    ERROR_CHECK (start_regex_workers (num_eng_using, num_jobs[i], patt_src_base, patt_size, "./packet.txt", dn, act, attach_flags,
-                                              &thd_bw[i], &wkr_bw[i], &wkr_runtime[i], &cleanup_time[i]));
-        }
-
-	printf ("Number of engines used: %d\n", num_eng_using);
-	printf ("NUM_JOB   THD_BW    WKR_BW    WKR_RUN   CLEANUP\n");
-	
-	for (int i = 0; i < 3; ++i) {
-	    printf ("%7d   %0.3f %0.3f %9lu %9lu\n", num_jobs[i], thd_bw[i], wkr_bw[i], wkr_runtime[i], cleanup_time[i]);
-	}
-	printf ("\n");
-    }
-    */
     
 fail:
     return -1;
     
-    //free_mem (pkt_src_base);
     free_mem (patt_src_base);
     snap_detach_action (act);
     // Unmap AFU MMIO registers, if previously mapped

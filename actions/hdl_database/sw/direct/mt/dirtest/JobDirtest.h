@@ -46,9 +46,6 @@ public:
     // Set pointer to worker
     void set_worker (WorkerDirtestPtr in_worker);
 
-    // Set pointer to thread
-    //void set_thread (ThreadDirtestPtr in_thread);
-
     // Get pointer to worker
     WorkerDirtestPtr get_worker();
 
@@ -70,27 +67,12 @@ public:
     // Get number of matched packets from this job
     size_t get_num_matched_pkt();
 
-    // Get the packet size of this job
-    //size_t get_pkt_size();
-
-    // Get the time used for preparing pattern and packet buffers
-    //uint64_t get_buff_prep_time();
-
-    // Get runtime of regex scanning of this job
-    //uint64_t get_job_runtime();
-
     // Cleanup allocated memories
     virtual void cleanup();
-
-    // Get packet buffers from file to m_pkt_src_base
-    //int fetch_pkt_from_file();
 
 private:
     // Pointer to the worker
     WorkerDirtestPtr m_worker;
-
-    // Pointer to the thread
-    //ThreadDirtestPtr m_thread;
 
     // Number of matched packets in this job
     size_t m_num_matched_pkt;
@@ -115,12 +97,6 @@ private:
 
     // Result buffer size
     size_t m_stat_size;
-
-    // Time used for preparing pattern and packet buffers
-    //uint64_t m_buff_prep_time;
-   
-    // Runtime of regex matching of this job
-    //uint64_t m_runtime;
 };
 
 typedef boost::shared_ptr<JobDirtest> JobDirtestPtr;

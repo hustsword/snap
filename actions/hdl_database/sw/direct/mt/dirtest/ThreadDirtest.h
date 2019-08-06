@@ -41,12 +41,6 @@ public:
     // Set pointer to worker
     void set_worker (WorkerDirtestPtr in_worker);
 
-    // Set buffers base and number of blocks
-    //void set_line_info (int in_base, int in_num);
-
-    // Get the number of buffers (blocks) for different job
-    //int get_num_lines_per_job (int in_job_id, int* out_start_blk_id);
-
     // Allocate the reused packet buffer and result buffer for this thread
     int allocate_buffers();
 
@@ -55,17 +49,6 @@ public:
 
     // Compare result with software
     int result();
-
-    /*
-    // Get the actual packet size of this thread
-    size_t get_thread_pkt_size();
-
-    // Get total time used for preparing pattern and packet buffers of all jobs
-    uint64_t get_thread_buff_prep_time();
-
-    // Get total regex matching runtime of all jobs
-    uint64_t get_thread_runtime();
-    */
 
     // Calculate the band_width of this thread
     float get_thread_band_width();
@@ -77,12 +60,6 @@ public:
     int harvest_result_from_job (JobPtr in_job);
 
 private:
-    // Base address of worker's buffers for this thread
-    //int m_buffers_base;
-
-    // Total number of lines in file
-    //int m_file_line_count;
-
     // Packet buffer base address for this thread
     void* m_pkt_src_base;
     
@@ -98,9 +75,6 @@ private:
     // Total number of matched packets
     size_t m_num_matched_pkt;
 
-    // Total time used for preparing pattern and packet buffers of all jobs
-    //uint64_t m_buff_prep_time;
-    
     // Total regex matching runtime of all jobs
     uint64_t m_runtime;
 
