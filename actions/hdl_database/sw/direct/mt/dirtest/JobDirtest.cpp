@@ -20,7 +20,7 @@
 JobDirtest::JobDirtest()
     : JobBase(),
       m_worker (NULL),
-      m_thread (NULL),
+      //m_thread (NULL),
       m_num_matched_pkt (0),
       m_patt_src_base (NULL),
       m_patt_size (0),
@@ -28,9 +28,9 @@ JobDirtest::JobDirtest()
       m_pkt_size (0),
       m_max_alloc_pkt_size (0),
       m_stat_dest_base (NULL),
-      m_stat_size (0),
-      m_buff_prep_time (0),
-      m_runtime (0)
+      m_stat_size (0)//,
+      //m_buff_prep_time (0),
+      //m_runtime (0)
 {
     //printf ("create new dirtest job\n");
 }
@@ -38,7 +38,7 @@ JobDirtest::JobDirtest()
 JobDirtest::JobDirtest (int in_id, int in_thread_id)
     : JobBase (in_id, in_thread_id),
       m_worker (NULL),
-      m_thread (NULL),
+      //m_thread (NULL),
       m_num_matched_pkt (0),
       m_patt_src_base (NULL),
       m_patt_size (0),
@@ -46,9 +46,9 @@ JobDirtest::JobDirtest (int in_id, int in_thread_id)
       m_pkt_size (0),
       m_max_alloc_pkt_size (0),
       m_stat_dest_base (NULL),
-      m_stat_size (0),
-      m_buff_prep_time (0),
-      m_runtime (0)
+      m_stat_size (0)//,
+      //m_buff_prep_time (0),
+      //m_runtime (0)
 {
     //printf("create new dirtest job on engine %d\n", in_thread_id);
 }
@@ -56,7 +56,7 @@ JobDirtest::JobDirtest (int in_id, int in_thread_id)
 JobDirtest::JobDirtest (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mgr)
     : JobBase (in_id, in_thread_id, in_hw_mgr),
       m_worker (NULL),
-      m_thread (NULL),
+      //m_thread (NULL),
       m_num_matched_pkt (0),
       m_patt_src_base (NULL),
       m_patt_size (0),
@@ -64,9 +64,9 @@ JobDirtest::JobDirtest (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mg
       m_pkt_size (0),
       m_max_alloc_pkt_size (0),
       m_stat_dest_base (NULL),
-      m_stat_size (0),
-      m_buff_prep_time (0),
-      m_runtime (0)
+      m_stat_size (0)//,
+      //m_buff_prep_time (0),
+      //m_runtime (0)
 {
     //printf("create new dirtest job on engine %d\n", in_thread_id);
 }
@@ -74,7 +74,7 @@ JobDirtest::JobDirtest (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mg
 JobDirtest::JobDirtest (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mgr, bool in_debug)
     : JobBase (in_id, in_thread_id, in_hw_mgr, in_debug),
       m_worker (NULL),
-      m_thread (NULL),
+      //m_thread (NULL),
       m_num_matched_pkt (0),
       m_patt_src_base (NULL),
       m_patt_size (0),
@@ -82,9 +82,9 @@ JobDirtest::JobDirtest (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mg
       m_pkt_size (0),
       m_max_alloc_pkt_size (0),
       m_stat_dest_base (NULL),
-      m_stat_size (0),
-      m_buff_prep_time (0),
-      m_runtime (0)
+      m_stat_size (0)//,
+      //m_buff_prep_time (0),
+      //m_runtime (0)
 {
     //printf("create new dirtest job on engine %d\n", in_thread_id);
 }
@@ -95,9 +95,9 @@ JobDirtest::~JobDirtest()
 
 int JobDirtest::run()
 {
-    uint64_t start_time, elapsed_time;
+    //uint64_t start_time, elapsed_time;
 
-    start_time = get_usec();
+    //uint64_t t0 = get_usec();
 
     do {
         if (init()) {
@@ -113,10 +113,10 @@ int JobDirtest::run()
         }
     } while (0);
 
-    elapsed_time = get_usec() - start_time;
-    m_buff_prep_time = elapsed_time;
+    //uint64_t t1 = get_usec();
+    //printf ("Eng %d Job %d: finished buffer preparing after %lu usec\n", m_thread_id, m_id, t1 - t0);
 
-    start_time = get_usec();
+    //start_time = get_usec();
 
     do {
         // TODO: Only 1 job is allowed to access hardware at a time.
@@ -129,19 +129,9 @@ int JobDirtest::run()
         }
     } while (0);
 
-    //printf ("Eng %d Job %d: Finished scanning, getting runtime\n", m_thread_id, m_id);
-    elapsed_time = get_usec() - start_time;
-    m_runtime = elapsed_time;
-    //printf ("Eng %d Job %d: Finished getting runtime. Regex Runtime is: %lu usec\n", m_thread_id, m_id, m_runtime);
+    //uint64_t t2 = get_usec();
+    //printf ("Eng %d Job %d: finished scanning after %lu usec\n", m_thread_id, m_id, t2 - t1);
 
-    /*
-    if (result()) {
-        printf ("ERROR: Failed to perform regex packet result harvesting\n");
-        fail();
-        return -1;
-    }
-    */
-    
     done();
 
     //printf ("Eng %d Job %d finished with size %zu\n", m_thread_id, m_id, m_pkt_size);
@@ -154,10 +144,12 @@ void JobDirtest::set_worker (WorkerDirtestPtr in_worker)
     m_worker = in_worker;
 }
 
+/*
 void JobDirtest::set_thread (ThreadDirtestPtr in_thread)
 {
     m_thread = in_thread;
 }
+*/
 
 WorkerDirtestPtr JobDirtest::get_worker()
 {
@@ -172,10 +164,11 @@ int JobDirtest::init()
         return -1;
     }
 
+    /*
     if (NULL == m_thread) {
         printf ("ERROR: Thread points to NULL, cannot perform regex job init\n");
         return -1;
-    }
+    } */
 
     if (NULL == m_hw_mgr) {
         printf ("ERROR: Hardware manager points to NULL, cannot perform regex job init\n");
@@ -209,10 +202,21 @@ int JobDirtest::packet()
         return -1;
     }
 
+    //uint64_t t0 = get_usec();
+
+    m_pkt_size = m_worker->get_packet_buffer_size (m_id);
+    memcpy (m_pkt_src_base, m_worker->get_packet_buffer (m_id), m_pkt_size);
+    //printf ("Eng %d Job %d: packet size is %zu\n", m_thread_id, m_id, m_pkt_size);
+
+    //uint64_t t1 = get_usec();
+    //printf ("Eng %d Job %d: finished memcpy after %lu usec\n", m_thread_id, m_id, t1 - t0);
+
+    /*
     if (fetch_pkt_from_file()) {
         printf ("ERROR: Fail to prepare packet buffer\n");
         return -1;
     }
+    */
 
     return 0;
 }
@@ -291,6 +295,12 @@ size_t JobDirtest::get_num_matched_pkt()
     return m_num_matched_pkt;
 }
 
+/*
+size_t JobDirtest::get_pkt_size()
+{
+    return m_pkt_size;
+}
+
 uint64_t JobDirtest::get_buff_prep_time()
 {
     return m_buff_prep_time;
@@ -300,6 +310,7 @@ uint64_t JobDirtest::get_job_runtime()
 {
     return m_runtime;
 }
+*/
 
 void JobDirtest::cleanup()
 {
@@ -308,9 +319,10 @@ void JobDirtest::cleanup()
     //free_mem (m_stat_dest_base);
     m_hw_mgr = NULL;
     m_worker = NULL;
-    m_thread = NULL;
+    //m_thread = NULL;
 }
 
+/*
 int JobDirtest::fetch_pkt_from_file()
 {
     FILE* fp = fopen (m_worker->get_pkt_file_path(), "r");
@@ -344,11 +356,11 @@ int JobDirtest::fetch_pkt_from_file()
 
     //printf ("---------- Packet Buffer: %p\n", m_pkt_src_base);
 
-    /*
+    
     if (verbose_level > 2) {
         __hexdump (stdout, pkt_src_base, (pkt_src - m_pkt_src_base));
     }
-    */
+    
 
     fclose (fp);
 
@@ -360,6 +372,7 @@ int JobDirtest::fetch_pkt_from_file()
 
     return 0;
 }
+*/
 
 /*
 void JobDirtest::set_no_chk_offset (int in_no_chk_offset)

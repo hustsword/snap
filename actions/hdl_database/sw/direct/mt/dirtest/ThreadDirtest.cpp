@@ -20,14 +20,14 @@
 
 ThreadDirtest::ThreadDirtest()
     : ThreadBase (0, 600),
-      m_buffers_base (0),
-      m_file_line_count (0),
+      //m_buffers_base (0),
+      //m_file_line_count (0),
       m_pkt_src_base (NULL),
       m_max_alloc_pkt_size (0),
       m_stat_dest_base (NULL),
       m_stat_size (0),
       m_num_matched_pkt (0),
-      m_buff_prep_time (0),
+      //m_buff_prep_time (0),
       m_runtime (0),
       m_worker (NULL)
 {
@@ -36,14 +36,14 @@ ThreadDirtest::ThreadDirtest()
 
 ThreadDirtest::ThreadDirtest (int in_id)
     : ThreadBase (in_id),
-      m_buffers_base (0),
-      m_file_line_count (0),
+      //m_buffers_base (0),
+      //m_file_line_count (0),
       m_pkt_src_base (NULL),
       m_max_alloc_pkt_size (0),
       m_stat_dest_base (NULL),
       m_stat_size (0),
       m_num_matched_pkt (0),
-      m_buff_prep_time (0),
+      //m_buff_prep_time (0),
       m_runtime (0),
       m_worker (NULL)
 {
@@ -52,14 +52,14 @@ ThreadDirtest::ThreadDirtest (int in_id)
 
 ThreadDirtest::ThreadDirtest (int in_id, int in_timeout)
     : ThreadBase (in_id, in_timeout),
-      m_buffers_base (0),
-      m_file_line_count (0),
+      //m_buffers_base (0),
+      //m_file_line_count (0),
       m_pkt_src_base (NULL),
       m_max_alloc_pkt_size (0),
       m_stat_dest_base (NULL),
       m_stat_size (0),
       m_num_matched_pkt (0),
-      m_buff_prep_time (0),
+      //m_buff_prep_time (0),
       m_runtime (0),
       m_worker (NULL)
 {
@@ -79,10 +79,10 @@ int ThreadDirtest::init()
        // }
     //}
 
-    int thd_start_line_id = 0;
-    int thd_num_lines = m_worker->get_line_count();
+    //int thd_start_line_id = 0;
+    //m_file_line_count = m_worker->get_line_count();
 
-    set_line_info (thd_start_line_id, thd_num_lines);
+    //set_line_info (thd_start_line_id, thd_num_lines);
     allocate_buffers();
 
     return 0;
@@ -93,12 +93,14 @@ void ThreadDirtest::set_worker (WorkerDirtestPtr in_worker)
     m_worker = in_worker;
 }
 
+/*
 void ThreadDirtest::set_line_info (int in_base, int in_file_line_count)
 {
-    m_buffers_base = in_base;
+    //m_buffers_base = in_base;
     m_file_line_count = in_file_line_count;
 }
-
+*/
+/*
 int ThreadDirtest::get_num_lines_per_job (int in_job_id, int* out_start_line_id)
 {
     int num_jobs = m_jobs.size();
@@ -131,14 +133,16 @@ int ThreadDirtest::get_num_lines_per_job (int in_job_id, int* out_start_line_id)
 
     return num_lines_per_job;
 }
+*/
 
 int ThreadDirtest::allocate_buffers()
 {
     int num_jobs = m_jobs.size();
 
+    /*
     if (m_file_line_count <= 0) {
         return -1;
-    }
+    } */
 
     if (num_jobs <= 0) {
         return -1;
@@ -147,13 +151,15 @@ int ThreadDirtest::allocate_buffers()
     // TODO: is there a way to know exactly how many tuples we have before iterating all buffers?
     //uint64_t total_row_count = m_worker->get_num_tuples_per_thread (m_id);
     //uint64_t row_count = total_row_count / num_jobs + 1;
-    int max_lines_per_job = m_file_line_count / num_jobs + m_file_line_count % num_jobs;
+    int file_line_count = m_worker->get_line_count();
+    int max_lines_per_job = file_line_count / num_jobs + file_line_count % num_jobs;
 
     // Allocate the packet buffer
     // The max size that should be alloc
     // TODO: assume maximum size in packet buffer for tuples is 2048 bytes
-    size_t line_size = 2048 + 64;
-    size_t max_alloc_size = (max_lines_per_job < 4096 ? 4096 : max_lines_per_job) * line_size;
+    //size_t line_size = 2048 + 64;
+    size_t max_alloc_size = (max_lines_per_job < 4096 ? 4096 : max_lines_per_job) * (2048 + 64);
+    //size_t max_alloc_size = m_worker->get_thread_alloc_size();
     m_pkt_src_base = alloc_mem (64, max_alloc_size);
     m_max_alloc_pkt_size = max_alloc_size;
 
@@ -193,8 +199,10 @@ void ThreadDirtest::work_with_job (JobPtr in_job)
         return;
     }
 
+    uint64_t start_time, elapsed_time;
+    start_time = get_usec();
+
     do {
-	//if (m_pkt_src_base == NULL) printf("pkt_src_base is NULL before setting packet buffer to job\n");
         if (job->set_packet_buffer (m_pkt_src_base, m_max_alloc_pkt_size)) {
             printf ("ERROR: Failed to set packet buffer for job %d\n", job->get_id());
             return;
@@ -206,9 +214,9 @@ void ThreadDirtest::work_with_job (JobPtr in_job)
         }
     } while (0);
 
-    //uint64_t start_time, elapsed_time;
-    //start_time = get_usec();
-
+    //uint64_t t1 = get_usec();
+    //printf ("Eng %d Job %d: finished buffer setting after %lu usec\n", m_id, job->get_id(), t1 - start_time);
+    
     do {
         if (job->run()) {
             printf ("ERROR: Failed to run the JobDirtest\n");
@@ -216,11 +224,9 @@ void ThreadDirtest::work_with_job (JobPtr in_job)
         }
     } while (0);
 
-    //printf ("Eng %d getting time breakdowns from Job %d\n", m_id, job->get_id());
-    m_buff_prep_time += job->get_buff_prep_time();
-    m_runtime += job->get_job_runtime();
-    //printf ("Eng %d finished getting time breakdown from Job %d\n", m_id, job->get_id());
-
+    //uint64_t t2 = get_usec();
+    //printf ("Eng %d Job %d: finished running after %lu usec\n", m_id, job->get_id(), t2 - t1);
+    
     //printf ("Eng %d harvesting results from Job %d\n", m_id, job->get_id());
     do {
         if (harvest_result_from_job (job)) {
@@ -230,8 +236,10 @@ void ThreadDirtest::work_with_job (JobPtr in_job)
     } while (0);
     //printf ("Eng %d finished harvesting results from Job %d\n", m_id, job->get_id());
 
-    //elapsed_time = get_usec() - start_time;
-    //m_runtime += elapsed_time;
+    elapsed_time = get_usec() - start_time;
+    //uint64_t t3 = get_usec();
+    //printf ("Eng %d Job %d: finished harvesting result after %lu usec\n", m_id, job->get_id(), t3 - t2);
+    m_runtime += elapsed_time;
 
     return;
 }
@@ -256,6 +264,16 @@ int ThreadDirtest::result()
     return rc;
 }
 
+/*
+size_t ThreadDirtest::get_thread_pkt_size()
+{
+    size_t total_pkt_size = 0;
+    for (size_t i = 0; i < m_jobs.size(); i++) {
+	total_pkt_size += boost::dynamic_pointer_cast<JobDirtest> (m_jobs[i]) -> get_pkt_size();
+    }
+    return total_pkt_size;
+}
+
 uint64_t ThreadDirtest::get_thread_buff_prep_time()
 {
     return m_buff_prep_time;
@@ -265,12 +283,16 @@ uint64_t ThreadDirtest::get_thread_runtime()
 {
     return m_runtime;
 }
+*/
+
 
 float ThreadDirtest::get_thread_band_width()
 {
-    size_t total_pkt_size = m_file_line_count * (2048 + 64);
-    float thread_band_width = print_time (m_runtime, total_pkt_size);
+    size_t total_pkt_size = m_worker->get_worker_pkt_size();
+    float thread_band_width = print_time (m_runtime, (uint64_t)total_pkt_size);
+    printf ("Eng %d has band width %0.3f MB/sec (runtime: %lu us, pkt_size: %zu).\n", m_id, thread_band_width, m_runtime, total_pkt_size);
     return thread_band_width;
+    
     /*
     float job_total_band_width = 0;
     for (size_t i = 0; i < m_jobs.size(); i++) {
@@ -282,7 +304,7 @@ float ThreadDirtest::get_thread_band_width()
 
 void ThreadDirtest::cleanup()
 {
-    //printf("Eng %d: clean up thread\n", m_id);
+    printf("Eng %d: clean up thread\n", m_id);
     free_mem (m_pkt_src_base);
     free_mem (m_stat_dest_base);
 

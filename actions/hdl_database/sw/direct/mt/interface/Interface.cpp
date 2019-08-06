@@ -34,8 +34,8 @@ int start_regex_workers (int num_engines,
                          struct snap_action* act,
                          snap_action_flag_t attach_flags,
                          float* thread_total_band_width,
-			 uint64_t* thread_avg_buff_prep_time,
-                         uint64_t* thread_avg_regex_runtime,
+			 //uint64_t* thread_avg_buff_prep_time,
+                         //uint64_t* thread_avg_regex_runtime,
                          float* worker_band_width,
                          uint64_t* worker_runtime,
                          uint64_t* worker_cleanup_time)
@@ -51,7 +51,7 @@ int start_regex_workers (int num_engines,
     ERROR_CHECK (hw_mgr->init());
     //printf ("Copy pattern to hardware\n");
     worker->set_patt_src_base (patt_src_base, patt_size);
-    worker->set_pkt_file (pkt_file_path);
+    worker->set_pkt_src_base (pkt_file_path, num_job_per_thd);
 
     //printf ("Create %d thread(s) for this worker\n", num_engines);
     //printf ("Create %d job(s) for each thread\n", num_job_per_thd);
@@ -64,7 +64,7 @@ int start_regex_workers (int num_engines,
         for (int j = 0; j < num_job_per_thd; j++) {
             JobDirtestPtr job = boost::make_shared<JobDirtest> (j, i, hw_mgr, false);
             job->set_worker (worker);
-	    job->set_thread (thd);
+	    //job->set_thread (thd);
             thd->add_job (job);
         }
 
@@ -89,18 +89,18 @@ int start_regex_workers (int num_engines,
         // Multithreading ends at here
 	
         *thread_total_band_width = worker->get_sum_band_width();
-	worker->get_time_breakdown (thread_avg_buff_prep_time, thread_avg_regex_runtime);
+	//worker->get_time_breakdown (thread_avg_buff_prep_time, thread_avg_regex_runtime);
         //printf ("%0.3f\n", *thread_total_band_width);
 	
         elapsed_time = get_usec() - start_time;
-        //printf ("Work finished after %lu microseconds (us)\n", elapsed_time);
+        printf ("Work finished after %lu microseconds (us)\n", elapsed_time);
         *worker_runtime = elapsed_time;
-	uint64_t worker_total_pkt_size = worker->get_line_count() * (2048 + 64) * num_engines;
-	*worker_band_width = print_time (*worker_runtime, worker_total_pkt_size);
+	uint64_t worker_total_pkt_size = (uint64_t) worker->get_worker_pkt_size();
+	*worker_band_width = print_time (*worker_runtime / num_engines, worker_total_pkt_size);
 
-        //printf ("Worker checking results\n");
+        printf ("Worker checking results...");
 	ERROR_CHECK (worker->check_results());
-	//printf ("Worker finished checking results\n");
+	printf ("Worker finished checking results\n");
 
         start_time = get_usec();
         // Cleanup objects created for this procedure

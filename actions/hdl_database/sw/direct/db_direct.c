@@ -637,6 +637,8 @@ void usage (const char* prog)
               "    -I, --irq            Enable Action Done Interrupt (default No Interrupts)\n"
               "    -p, --packet         Packet file for matching\n"
               "    -q, --pattern        Pattern file for matching\n"
+	      "    -e, --num_eng        set number of engines to use\n"
+	      "    -j, --num_job        set number of jobs per thread\n"
               , prog);
 }
 
@@ -924,6 +926,8 @@ int main (int argc, char* argv[])
     //int rc = 1;
     uint64_t cir;
     int timeout = ACTION_WAIT_TIME;
+    int num_eng_using = 1;
+    int num_job_per_thd = 1;
     //int no_chk_offset = 0;
     snap_action_flag_t attach_flags = 0;
     struct snap_action* act = NULL;
@@ -958,9 +962,11 @@ int main (int argc, char* argv[])
            // { "no_chk_offset", no_argument,       NULL, 'f' },
             { "packet",       required_argument, NULL, 'p' },
             { "pattern",      required_argument, NULL, 'q' },
+	    { "num_eng",      required_argument, NULL, 'e' },
+	    { "num_job",      required_argument, NULL, 'j' },
             { 0,              no_argument,       NULL, 0   },
         };
-        cmd = getopt_long (argc, argv, "C:t:p:q:Iqvh",
+        cmd = getopt_long (argc, argv, "C:t:p:q:e:j:Iqvh",
                            long_options, &option_index);
 
         if (cmd == -1) {  /* all params processed ? */
@@ -991,6 +997,14 @@ int main (int argc, char* argv[])
         case 'I':      /* irq */ 
             attach_flags = SNAP_ACTION_DONE_IRQ | SNAP_ATTACH_IRQ;
             break;
+
+	case 'e':
+	    num_eng_using = strtol (optarg, (char**)NULL, 0);
+	    break;
+	
+	case 'j':
+	    num_job_per_thd = strtol (optarg, (char**)NULL, 0);
+	    break;
 
         //case 'f':       don't check offset 
           //  no_chk_offset = 1;
@@ -1096,14 +1110,31 @@ int main (int argc, char* argv[])
     
     VERBOSE1 ("======== HARDWARE RUN ========\n");
     
-    int num_jobs[3] = {1, 5, 10};
+    if (num_eng_using > num_engines) {
+	printf ("ERROR: number of engines in command is larger than number of engines. At most %d engines available.\n", num_engines);
+	goto fail;
+    }
+
+    //int num_jobs[3] = {1, 5, 10};
 
     printf ("THD_BW: thread total band width (MB/sec)\n");
-    printf ("THD_BUFF: thread average buffer preparation time (usec)\n");
-    printf ("THD_RUN: thread average regex matching runtime (usec)\n");
+    //printf ("THD_BUFF: thread average buffer preparation time (usec)\n");
+    //printf ("THD_RUN: thread average regex matching runtime (usec)\n");
     printf ("WKR_BW: worker band width (MB/sec)\n");
     printf ("WKR_RUN: worker runtime (usec)\n");
     printf ("CLEANUP: worker cleanup time (usec)\n"); 
+
+    printf ("Working with %d engines, %d jobs per thread.\n", num_eng_using, num_job_per_thd);
+
+    float thd_bw, wkr_bw;
+    uint64_t wkr_runtime, cleanup_time;
+    
+    ERROR_CHECK (start_regex_workers (num_eng_using, num_job_per_thd, patt_src_base, patt_size, "./packet.txt", dn, act, attach_flags,
+                                      &thd_bw, &wkr_bw, &wkr_runtime, &cleanup_time));
+
+    printf ("NUM_ENG   NUM_JOB   THD_BW    WKR_BW    WKR_RUN   CLEANUP\n");
+    printf ("%7d   %7d   %0.3f %0.3f %9lu %9lu\n", num_eng_using, num_job_per_thd, thd_bw, wkr_bw, wkr_runtime, cleanup_time);
+    printf ("\n");
     
     /*
     for (int num_eng_using = 1; num_eng_using <= num_engines; ++num_eng_using) {
@@ -1201,12 +1232,10 @@ int main (int argc, char* argv[])
 	    printf ("%7d   %0.3f %9lu %9lu %0.3f %9lu %9lu\n", num_jobs[j], thd_bw[j], thd_buff[j], thd_run[j], wkr_bw[j], wkr_run[j], cleanup[j]);
 	}
     }
-    */
-    
     
     for (int num_eng_using = 1; num_eng_using <= num_engines; ++num_eng_using) {
 	float thd_bw[3], wkr_bw[3];
-	uint64_t thd_buff_prep[3], thd_runtime[3], wkr_runtime[3], cleanup_time[3];
+	uint64_t wkr_runtime[3], cleanup_time[3];
 
         for (int i = 0; i < 3; ++i) {
             printf ("Working with %d jobs per thread.\n", num_jobs[i]);
@@ -1215,18 +1244,18 @@ int main (int argc, char* argv[])
             //uint64_t thread_buff_prep_time, thread_runtime, worker_runtime, cleanup_time;
 
 	    ERROR_CHECK (start_regex_workers (num_eng_using, num_jobs[i], patt_src_base, patt_size, "./packet.txt", dn, act, attach_flags,
-                                              &thd_bw[i], &thd_buff_prep[i], &thd_runtime[i], &wkr_bw[i], &wkr_runtime[i], &cleanup_time[i]));
+                                              &thd_bw[i], &wkr_bw[i], &wkr_runtime[i], &cleanup_time[i]));
         }
 
 	printf ("Number of engines used: %d\n", num_eng_using);
-	printf ("NUM_JOB   THD_BW    THD_BUFF  THD_RUN   WKR_BW    WKR_RUN   CLEANUP\n");
+	printf ("NUM_JOB   THD_BW    WKR_BW    WKR_RUN   CLEANUP\n");
 	
 	for (int i = 0; i < 3; ++i) {
-	    printf ("%7d   %0.3f %9lu %9lu %0.3f %9lu %9lu\n", num_jobs[i], thd_bw[i], thd_buff_prep[i], thd_runtime[i], wkr_bw[i], wkr_runtime[i], cleanup_time[i]);
+	    printf ("%7d   %0.3f %0.3f %9lu %9lu\n", num_jobs[i], thd_bw[i], wkr_bw[i], wkr_runtime[i], cleanup_time[i]);
 	}
 	printf ("\n");
     }
-    
+    */
     
 fail:
     return -1;
