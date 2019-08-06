@@ -164,7 +164,6 @@ void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_p
     uint32_t bytes_used = 0;
     uint16_t pkt_len = size;
 
-    //PACKET_ID++;
      // The TAG ID
     pkt_id = in_pkt_id;
 
@@ -706,16 +705,8 @@ void regex_scan_file (const char* file_path, size_t* size_for_sw)
     size_t len = 0;
     ssize_t read;
 
-    // The max size that should be alloc
-    //size_t max_alloc_size = MAX_NUM_PKT * (64 + 2048);
     size_t pkt_num = get_file_line_count (fp);
     pkt_num = pkt_num < 4096 ? 4096 : pkt_num;
-    //size_t max_alloc_size = pkt_num * (64 + 2048);
-
-    //void* pkt_src_base = alloc_mem (64, max_alloc_size);
-    //void* pkt_src = pkt_src_base;
-
-    //VERBOSE1 ("PACKET Source Address Start at 0X%016lX\n", (uint64_t)pkt_src);
 
     fp = fopen (file_path, "r");
 
@@ -730,29 +721,14 @@ void regex_scan_file (const char* file_path, size_t* size_for_sw)
         VERBOSE3 ("PACKET line read with length %zu :\n", read);
         VERBOSE3 ("%s\n", line);
         (*size_for_sw) += read;
-        //pkt_src = fill_one_packet (line, read, pkt_src);
-        // regex ref model
         regex_ref_push_packet (line);
-        //VERBOSE3 ("PACKET Source Address 0X%016lX\n", (uint64_t)pkt_src);
     }
-
-    //VERBOSE1 ("Total size of packet buffer used: %ld\n", (uint64_t) (pkt_src - pkt_src_base));
-
-    //VERBOSE1 ("---------- Packet Buffer: %p\n", pkt_src_base);
-
-    //if (verbose_level > 2) {
-      //  __hexdump (stdout, pkt_src_base, (pkt_src - pkt_src_base));
-    //}
 
     fclose (fp);
 
     if (line) {
         free (line);
     }
-
-    //(*size) = pkt_src - pkt_src_base;
-
-    //return pkt_src_base;
 }
 
 
