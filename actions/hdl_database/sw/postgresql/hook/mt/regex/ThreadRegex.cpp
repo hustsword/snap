@@ -84,7 +84,9 @@ void ThreadRegex::set_blk_info (int in_base, int in_num)
 
 int ThreadRegex::get_num_blks_per_job (int in_job_id, int* out_start_blk_id)
 {
-    in_job_id -= m_worker->m_job_id_base;
+    //elog (INFO, "inside thread %d get_num_blks_per_job, job is %d", m_id, in_job_id);
+    //elog (INFO, "m_buffer_base is %d", m_buffers_base);
+    //in_job_id -= m_worker->m_job_id_base;
     int num_jobs = m_jobs.size();
     int num_blks_per_job = 0;
 
@@ -104,8 +106,9 @@ int ThreadRegex::get_num_blks_per_job (int in_job_id, int* out_start_blk_id)
         // Need to revisit this behavior.
         return -1;
     }
-
+    //elog (INFO, "blks_per_job is %d", blks_per_job);
     *out_start_blk_id = m_buffers_base + in_job_id * blks_per_job;
+    //elog (INFO, "out_start_blk_id is %d", *out_start_blk_id);
 
     num_blks_per_job = blks_per_job;
 
@@ -124,7 +127,7 @@ int ThreadRegex::allocate_buffers()
     uint64_t total_row_count = m_worker->get_num_tuples_per_thread (m_id);
     uint64_t row_count = 2 * total_row_count / (num_jobs + 1);
 
-    elog (INFO, "row count for Thread %d is: %lu", m_id, row_count);
+    //elog (INFO, "row count for Thread %d is: %lu", m_id, row_count);
 
     // Allocate the packet buffer
     // The max size that should be alloc

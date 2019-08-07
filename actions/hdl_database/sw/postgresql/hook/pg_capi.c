@@ -29,6 +29,7 @@ PG_MODULE_MAGIC;
 static bool enable_PGCAPIscan;
 static int pgcapi_num_jobs;
 static int pgcapi_num_threads;
+static int pgcapi_num_engines;
 static set_rel_pathlist_hook_type set_rel_pathlist_next = NULL;
 
 /* function declarations */
@@ -412,9 +413,9 @@ new_job:
     int curr_job_id = capiss->capi_regex_curr_job;
     CAPIRegexJobDescriptor* job_desc = capiss->capi_regex_job_descs[curr_job_id];
 
-    elog (INFO, "Harvesting on job %d (total jobs %d) result %d (total results %d)",
-            capiss->capi_regex_curr_job, capiss->capi_regex_num_jobs,
-            job_desc->curr_result_id, (int)job_desc->num_matched_pkt);
+    //elog (INFO, "Harvesting on job %d (total jobs %d) result %d (total results %d)",
+    //        capiss->capi_regex_curr_job, capiss->capi_regex_num_jobs,
+    //        job_desc->curr_result_id, (int)job_desc->num_matched_pkt);
 
     if (job_desc->curr_result_id >= ((int)job_desc->num_matched_pkt - 1)) {
         (capiss->capi_regex_curr_job)++;

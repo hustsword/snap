@@ -129,7 +129,9 @@ int JobRegex::init()
     m_job_desc->patt_size = m_worker->get_pattern_buffer_size();
     int start_blk_id = 0;
     int num_blks = m_thread->get_num_blks_per_job (m_id, &start_blk_id);
-    
+    //elog (INFO, "number of blocks for thread %d job %d is %d", m_thread_id, m_id, num_blks);
+    //elog (INFO, "start block id is %d", start_blk_id);
+
     // Get the blocks for this job
     m_job_desc->num_blks = num_blks;
     m_job_desc->start_blk_id = start_blk_id;

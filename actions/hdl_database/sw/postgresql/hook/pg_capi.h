@@ -71,6 +71,7 @@ typedef struct PGCAPIScanState_s {
     int                      capi_regex_curr_job;
     int                      capi_regex_num_jobs;
     int                      capi_regex_num_threads;
+    int                      capi_regex_num_engines;
 } PGCAPIScanState;
 
 #endif  /* PG_CAPI_H */
