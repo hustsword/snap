@@ -67,6 +67,9 @@ public:
     // Get number of matched packets from this job
     size_t get_num_matched_pkt();
 
+    // Release the buffers of the job
+    void release_buffer();
+
     // Cleanup allocated memories
     virtual void cleanup();
 

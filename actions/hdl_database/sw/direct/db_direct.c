@@ -787,8 +787,8 @@ int compare_result_id (uint32_t result_id)
     sm_stat ref_stat = regex_ref_get_result (result_id);
 
     if (ref_stat.packet_id != result_id) {
-        VERBOSE1 ("PKT(HW): %7d\tPKT(SW): %7d", result_id, ref_stat.packet_id);
-        VERBOSE1 (" MISMATCHED!\n");
+        VERBOSE0 ("PKT(HW): %7d\tPKT(SW): %7d", result_id, ref_stat.packet_id);
+        VERBOSE0 (" MISMATCHED!\n");
         rc = 1;
     } else {
         VERBOSE1 ("PKT(HW): %7d\tPKT(SW): %7d", result_id, ref_stat.packet_id);

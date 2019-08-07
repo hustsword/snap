@@ -82,7 +82,7 @@ private:
     WorkerDirtestPtr m_worker;
 
     // Vector that stores results from all jobs
-    std::vector<uint32_t> m_result_id;
+    //std::vector<uint32_t> m_result_id;
 };
 
 typedef boost::shared_ptr<ThreadDirtest> ThreadDirtestPtr;

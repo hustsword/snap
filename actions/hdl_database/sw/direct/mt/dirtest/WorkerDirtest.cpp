@@ -231,9 +231,6 @@ float WorkerDirtest::get_sum_band_width()
 void WorkerDirtest::cleanup()
 {
     //printf("clean up worker\n");
-    free_mem (m_patt_src_base);
-    free_mem (m_pkt_src_base);
-
     for (size_t i = 0; i < m_threads.size(); i++) {
         m_threads[i]->cleanup();
     }
@@ -241,5 +238,8 @@ void WorkerDirtest::cleanup()
     m_threads.clear();
     job_pkt_src_bases.clear();
     job_pkt_sizes.clear();
+
+    free_mem (m_patt_src_base);
+    free_mem (m_pkt_src_base);
 }
 

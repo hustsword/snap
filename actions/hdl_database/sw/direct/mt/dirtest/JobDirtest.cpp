@@ -247,6 +247,13 @@ size_t JobDirtest::get_num_matched_pkt()
     return m_num_matched_pkt;
 }
 
+void JobDirtest::release_buffer()
+{
+    m_patt_src_base = NULL;
+    m_pkt_src_base = NULL;
+    m_stat_dest_base = NULL;
+}
+
 void JobDirtest::cleanup()
 {
     //printf("Eng %d: clean up job %d\n", m_thread_id, m_id);

@@ -149,6 +149,9 @@ void ThreadDirtest::work_with_job (JobPtr in_job)
         }
     } while (0);
 
+    elapsed_time = get_usec() - start_time;
+    m_runtime += elapsed_time;
+
     do {
         if (harvest_result_from_job (job)) {
             printf ("ERROR: Failed to harvest result\n");
@@ -156,9 +159,11 @@ void ThreadDirtest::work_with_job (JobPtr in_job)
         }
     } while (0);
     //printf ("Eng %d finished harvesting results from Job %d\n", m_id, job->get_id());
+    
+    job->release_buffer();
 
-    elapsed_time = get_usec() - start_time;
-    m_runtime += elapsed_time;
+    //elapsed_time = get_usec() - start_time;
+    //m_runtime += elapsed_time;
 
     return;
 }
@@ -173,12 +178,16 @@ int ThreadDirtest::result()
     }
 
     //printf ("Eng %d: start comparing result IDs with software\n", m_id);
+    /*
     for (size_t i = 0; i < m_result_id.size(); i++) {
         if (compare_result_id (m_result_id[i])) {
             rc = 1;
         }
+    } */
+    
+    if (rc) {
+        printf ("ERROR: Miscompare detected on Eng %d\n", m_id);
     }
-    //printf ("Eng %d: finished comparing result IDs with rc = %d\n", m_id, rc);
 
     return rc;
 }
@@ -193,19 +202,19 @@ float ThreadDirtest::get_thread_band_width()
 void ThreadDirtest::cleanup()
 {
     //printf("Eng %d: clean up thread\n", m_id);
-    free_mem (m_pkt_src_base);
-    free_mem (m_stat_dest_base);
-
     for (size_t i = 0; i < m_jobs.size(); i++) {
         m_jobs[i]->cleanup();
     }
 
     m_jobs.clear();
-    m_result_id.clear();
+
+    free_mem (m_pkt_src_base);
+    free_mem (m_stat_dest_base);
 }
 
 int ThreadDirtest::harvest_result_from_job (JobPtr in_job)
 {
+    int rc = 0;
     int i = 0, j = 0;
     uint32_t pkt_id = 0;
     JobDirtestPtr job = boost::dynamic_pointer_cast<JobDirtest> (in_job);
@@ -217,7 +226,12 @@ int ThreadDirtest::harvest_result_from_job (JobPtr in_job)
             pkt_id |= (((uint8_t*)m_stat_dest_base)[i * 10 + j] << (j % 4) * 8);
         }
 
-        m_result_id.push_back(pkt_id);
+        //m_result_id.push_back(pkt_id);
+	
+	if (compare_result_id (pkt_id)) {
+            printf ("ERROR: MISMATCH detected on Eng %d!\n", m_id);
+	    rc = 1;
+	}
 
         pkt_id = 0;
     }
@@ -225,6 +239,6 @@ int ThreadDirtest::harvest_result_from_job (JobPtr in_job)
 
     m_num_matched_pkt += job_num_matched_pkt;
 
-    return 0;
+    return rc;
 }
 

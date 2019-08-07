@@ -91,8 +91,8 @@ int start_regex_workers (int num_engines,
 	
         elapsed_time = get_usec() - start_time;
         *worker_runtime = elapsed_time;
-	uint64_t worker_total_pkt_size = (uint64_t) worker->get_worker_pkt_size();
-	*worker_band_width = print_time (*worker_runtime / num_engines, worker_total_pkt_size);
+	uint64_t worker_total_pkt_size = (uint64_t) worker->get_worker_pkt_size() * num_engines;
+	*worker_band_width = print_time (*worker_runtime, worker_total_pkt_size);
 
 	ERROR_CHECK (worker->check_results());
 
