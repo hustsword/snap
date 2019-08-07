@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+#include <fstream>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+
 #include "boost/make_shared.hpp"
 #include "boost/shared_ptr.hpp"
 #include "boost/chrono.hpp"
@@ -184,6 +189,21 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
         elog (INFO, "Cleanup finished after %lu microseconds (us)", (uint64_t) duration2);
 
         elog (DEBUG1, "Worker done!");
+
+        high_resolution_clock::time_point t_before_write = high_resolution_clock::now();
+        std::ofstream out_file;
+        out_file.open("part_perf_me.csv", std::ios::app);
+        out_file << in_capiss->capi_regex_num_threads << " threads ";
+        out_file << in_capiss->capi_regex_num_jobs << " jobs,";
+        out_file << (float) duration1 / 1000 << ",";
+        out_file << (float) duration2 / 1000;
+        out_file << "\n";
+        out_file.close();
+        high_resolution_clock::time_point t_after_write = high_resolution_clock::now();
+
+        auto duration_w = duration_cast<microseconds> (t_after_write - t_before_write).count();
+        elog (INFO, "Writing takes %lu microseconds (us)", (uint64_t) duration_w);
+        
     } while (0);
 
     return 0;
