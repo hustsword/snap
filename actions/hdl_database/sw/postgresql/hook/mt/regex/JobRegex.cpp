@@ -77,12 +77,13 @@ int JobRegex::run()
     do {
         // TODO: Only 1 job is allowed to access an engine at a time.
         boost::lock_guard<boost::mutex> lock (m_worker->m_mutex);
-        if (scan()) {
+        //elog (INFO, "thread %d job %d is in lock scan()", m_thread_id, m_id);
+	if (scan()) {
             elog (ERROR, "Failed to perform regex scanning");
             fail();
             return -1;
         }
-	    //elog (DEBUG3, "Thread %d Job %d: Finish scan()..", m_thread_id, m_id);
+	//elog (INFO, "Thread %d Job %d: Finish scan()..", m_thread_id, m_id);
     } while (0);
 
     if (result()) {

@@ -60,10 +60,10 @@ void WorkerBase::start()
 
     //m_check_thread = boost::make_shared<boost::thread> (&WorkerBase::check_thread_done, this);
 
-    for (int i = 0; i < (int)m_threads.size(); i++) {
-        elog (INFO, "join Thread %d", i);
-        m_threads[i]->join();
-    }
+    //for (int i = 0; i < (int)m_threads.size(); i++) {
+    //    elog (INFO, "join Thread %d", i);
+    //    m_threads[i]->join();
+    //}
 
     //m_check_thread->join();
 }

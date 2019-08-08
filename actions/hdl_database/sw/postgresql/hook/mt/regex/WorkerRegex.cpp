@@ -146,6 +146,13 @@ int WorkerRegex::get_attr_id()
     return m_attr_id;
 }
 
+void WorkerRegex::end()
+{
+    for (int i = 0; i < (int)m_threads.size(); i++) {
+	m_threads[i]->join();
+    }
+}
+
 int WorkerRegex::get_num_blks_per_thread (int in_thread_id, int* out_start_blk_id)
 {
     in_thread_id -= m_thd_id_base;

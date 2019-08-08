@@ -51,10 +51,6 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
                   in_capiss->capi_regex_num_engines, hw_mgr->get_num_engines());
         }
 
-        elog (INFO, "Total %d job(s) for this worker", in_capiss->capi_regex_num_jobs);
-        elog (INFO, "Create %d thread(s) for this worker", in_capiss->capi_regex_num_threads);
-
-
         Buffer* buffers = NULL;
         int num_blks = 0;
         size_t num_tups = 0;
@@ -162,6 +158,9 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
         for (auto worker_p = workers.begin(); worker_p != workers.end(); worker_p++) {
             (*worker_p)->start();
         }
+	for (auto worker_p = workers.begin(); worker_p != workers.end(); worker_p++) {
+	    (*worker_p)->end();
+	}
 
         // Multithreading ends at here
 

@@ -85,6 +85,9 @@ public:
     // Clean up any threads created for this worker
     virtual void cleanup();
 
+    // Join all threads
+    void end();
+
     // A container to hold all buffer pointers of this relation,
     // make it public so it can be referenced with minimum cost.
     Buffer* m_buffers;
