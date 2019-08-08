@@ -29,13 +29,15 @@ int start_regex_workers (int num_engines,
                          int num_job_per_thd,
                          void* patt_src_base,
                          size_t patt_size,
-                         const char* pkt_file_path,
+			 size_t pkt_size,
+                         //const char* pkt_file_path,
+			 void** job_pkt_src_bases,
+			 size_t* job_pkt_sizes,
+			 int file_line_count,
                          struct snap_card* dn,
                          struct snap_action* act,
                          snap_action_flag_t attach_flags,
                          float* thread_total_band_width,
-			 //uint64_t* thread_avg_buff_prep_time,
-                         //uint64_t* thread_avg_regex_runtime,
                          float* worker_band_width,
                          uint64_t* worker_runtime,
                          uint64_t* worker_cleanup_time)
@@ -50,7 +52,8 @@ int start_regex_workers (int num_engines,
     ERROR_CHECK (hw_mgr->init());
     printf ("Set buffers to worker...\n");
     worker->set_patt_src_base (patt_src_base, patt_size);
-    worker->set_pkt_src_base (pkt_file_path, num_job_per_thd);
+    //worker->set_pkt_src_base (pkt_file_path, num_job_per_thd);
+    worker->set_pkt_src_base (job_pkt_src_bases, job_pkt_sizes, pkt_size, file_line_count);
     printf ("Finish setting buffers\n");
 
     //printf ("Create %d thread(s) for this worker\n", num_engines);
@@ -91,7 +94,7 @@ int start_regex_workers (int num_engines,
 	
         elapsed_time = get_usec() - start_time;
         *worker_runtime = elapsed_time;
-	uint64_t worker_total_pkt_size = (uint64_t) worker->get_worker_pkt_size() * num_engines;
+	uint64_t worker_total_pkt_size = (uint64_t) pkt_size  * num_engines;
 	*worker_band_width = print_time (*worker_runtime, worker_total_pkt_size);
 
 	ERROR_CHECK (worker->check_results());

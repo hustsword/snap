@@ -162,9 +162,6 @@ void ThreadDirtest::work_with_job (JobPtr in_job)
     
     job->release_buffer();
 
-    //elapsed_time = get_usec() - start_time;
-    //m_runtime += elapsed_time;
-
     return;
 }
 
@@ -176,14 +173,6 @@ int ThreadDirtest::result()
     if (compare_num_matched_pkt (m_num_matched_pkt)) {
         rc = 1;
     }
-
-    //printf ("Eng %d: start comparing result IDs with software\n", m_id);
-    /*
-    for (size_t i = 0; i < m_result_id.size(); i++) {
-        if (compare_result_id (m_result_id[i])) {
-            rc = 1;
-        }
-    } */
     
     if (rc) {
         printf ("ERROR: Miscompare detected on Eng %d\n", m_id);
@@ -192,11 +181,9 @@ int ThreadDirtest::result()
     return rc;
 }
 
-float ThreadDirtest::get_thread_band_width()
+uint64_t ThreadDirtest::get_thread_runtime()
 {
-    size_t total_pkt_size = m_worker->get_worker_pkt_size();
-    float thread_band_width = print_time (m_runtime, (uint64_t)total_pkt_size);
-    return thread_band_width;
+    return m_runtime;
 }
 
 void ThreadDirtest::cleanup()
@@ -226,8 +213,6 @@ int ThreadDirtest::harvest_result_from_job (JobPtr in_job)
             pkt_id |= (((uint8_t*)m_stat_dest_base)[i * 10 + j] << (j % 4) * 8);
         }
 
-        //m_result_id.push_back(pkt_id);
-	
 	if (compare_result_id (pkt_id)) {
             printf ("ERROR: MISMATCH detected on Eng %d!\n", m_id);
 	    rc = 1;

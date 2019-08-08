@@ -53,7 +53,7 @@ public:
     void set_patt_src_base (void* in_patt_src_base, size_t in_patt_size);
 
     // Allocate packet buffers
-    void set_pkt_src_base (const char* in_pkt_file_path, int num_job_per_thread);
+    void set_pkt_src_base (void** in_job_pkt_src_bases, size_t* in_job_pkt_sizes, size_t in_pkt_size, int in_pkt_file_line_count);
 
     // Get the pattern buffer pointer
     void* get_pattern_buffer();
@@ -69,12 +69,6 @@ public:
 
     // Get the size of the packet buffer
     size_t get_packet_buffer_size (int in_job_id);
-
-    // Get the size of packet buffer needed for each thread
-    size_t get_thread_alloc_size();
-
-    // Get the total actual packet size from all threads
-    size_t get_worker_pkt_size();
 
     // Check the results of each thread
     int check_results();
@@ -95,20 +89,14 @@ private:
     // Size of the regex pattern buffer
     size_t m_patt_size;
 
-    // Pointer to the packet buffer
-    void* m_pkt_src_base;
-
     // Size of the packet buffer
     size_t m_pkt_size;
 
     // Pointers to regex packet buffers for each job
-    std::vector<void*> job_pkt_src_bases;
+    void** m_job_pkt_src_bases;
 
     // Sizes of the regex packet buffers for each job
-    std::vector<size_t> job_pkt_sizes;
-
-    // File containing packets/lines to be matched
-    //const char* m_pkt_file_path;
+    size_t* m_job_pkt_sizes;
 
     // Line count of the packet file
     int m_pkt_file_line_count;

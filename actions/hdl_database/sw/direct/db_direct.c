@@ -698,15 +698,26 @@ void* sm_compile_file (const char* file_path, size_t* size)
     return patt_src_base;
 }
 
-void regex_scan_file (const char* file_path, size_t* size_for_sw)
+void* regex_scan_file (const char* file_path, size_t* size, size_t* size_for_sw,
+	               int num_jobs, void** job_pkt_src_bases, size_t* job_sizes, int* pkt_count)
 {
     FILE* fp = fopen (file_path, "r");
     char* line = NULL;
     size_t len = 0;
     ssize_t read;
+    int lines_read = 0;
+    int curr_job_id = 0;
 
-    size_t pkt_num = get_file_line_count (fp);
-    pkt_num = pkt_num < 4096 ? 4096 : pkt_num;
+    // The max size that should be alloc
+    //size_t max_alloc_size = MAX_NUM_PKT * (64 + 2048);
+    *pkt_count = get_file_line_count (fp);
+    size_t pkt_num = *pkt_count < 4096 ? 4096 : *pkt_count;
+    size_t max_alloc_size = pkt_num * (64 + 2048);
+
+    void* pkt_src_base = alloc_mem (64, max_alloc_size);
+    void* pkt_src = pkt_src_base;
+
+    VERBOSE1 ("PACKET Source Address Start at 0X%016lX\n", (uint64_t)pkt_src);
 
     fp = fopen (file_path, "r");
 
@@ -715,13 +726,42 @@ void regex_scan_file (const char* file_path, size_t* size_for_sw)
         exit (EXIT_FAILURE);
     }
 
+    for (int i = 0; i < num_jobs; i++) {
+	job_pkt_src_bases[i] = NULL;
+	job_sizes[i] = 0;
+    }
+
+    job_pkt_src_bases[0] = pkt_src_base;
+
     while ((read = getline (&line, &len, fp)) != -1) {
+	if (curr_job_id != num_jobs - 1 &&
+	    lines_read == (curr_job_id + 1) * (pkt_num / num_jobs)) {
+	    job_sizes[curr_job_id] = (unsigned char*) pkt_src - (unsigned char*) job_pkt_src_bases[curr_job_id];
+	    curr_job_id++;
+	    job_pkt_src_bases[curr_job_id] = pkt_src;
+	}
+
         remove_newline (line);
         read--;
         VERBOSE3 ("PACKET line read with length %zu :\n", read);
         VERBOSE3 ("%s\n", line);
         (*size_for_sw) += read;
+        pkt_src = fill_one_packet (line, read, pkt_src, lines_read + 1);
+        // regex ref model
         regex_ref_push_packet (line);
+        VERBOSE3 ("PACKET Source Address 0X%016lX\n", (uint64_t)pkt_src);
+
+	lines_read++;
+    }
+
+    job_sizes[curr_job_id] = (unsigned char*)pkt_src - (unsigned char*) job_pkt_src_bases[curr_job_id];
+
+    VERBOSE1 ("Total size of packet buffer used: %ld\n", (uint64_t) (pkt_src - pkt_src_base));
+
+    VERBOSE1 ("---------- Packet Buffer: %p\n", pkt_src_base);
+
+    if (verbose_level > 2) {
+        __hexdump (stdout, pkt_src_base, (pkt_src - pkt_src_base));
     }
 
     fclose (fp);
@@ -729,8 +769,11 @@ void regex_scan_file (const char* file_path, size_t* size_for_sw)
     if (line) {
         free (line);
     }
-}
 
+    (*size) = pkt_src - pkt_src_base;
+
+    return pkt_src_base;
+}
 
 int print_results (size_t num_results, void* stat_dest_base)
 {
@@ -816,13 +859,16 @@ int main (int argc, char* argv[])
     struct snap_action* act = NULL;
     unsigned long ioctl_data;
     void* patt_src_base = NULL;
-    //void* pkt_src_base = NULL;
+    void* pkt_src_base = NULL;
     //void* pkt_src_base_0 = NULL;
     //void* stat_dest_base_0 = NULL;
     //size_t num_matched_pkt = 0;
-    //size_t pkt_size = 0;
+    size_t pkt_size = 0;
     size_t patt_size = 0;
     size_t pkt_size_for_sw = 0;
+    void** job_pkt_src_bases;
+    size_t* job_pkt_sizes;
+    int pkt_count = 0;
     uint64_t start_time;
     uint64_t elapsed_time;
     //uint32_t reg_data;
@@ -951,8 +997,11 @@ int main (int argc, char* argv[])
     VERBOSE0 ("======== COMPILE PATTERN FILE DONE ========\n");
 
     VERBOSE0 ("======== COMPILE PACKET FILE ========\n");
+    job_pkt_src_bases = (void**) malloc (num_job_per_thd * sizeof (void*));
+    job_pkt_sizes = (size_t*) malloc (num_job_per_thd * sizeof (size_t));
+
     // Compile the packets
-    regex_scan_file ("./packet.txt", &pkt_size_for_sw);
+    pkt_src_base = regex_scan_file ("./packet.txt", &pkt_size, &pkt_size_for_sw, num_job_per_thd, job_pkt_src_bases, job_pkt_sizes, &pkt_count);
     VERBOSE0 ("======== COMPILE PACKET FILE DONE ========\n");
 
     VERBOSE0 ("======== SOFTWARE RUN ========\n");
@@ -1007,8 +1056,8 @@ int main (int argc, char* argv[])
 	printf ("------- Iteration %d -------\n", i+1);
 	float thd_bw, wkr_bw;
 	uint64_t wkr_runtime, cleanup_time;
-        ERROR_CHECK (start_regex_workers (num_eng_using, num_job_per_thd, patt_src_base, patt_size, "./packet.txt", dn, act, attach_flags,
-                                          &thd_bw, &wkr_bw, &wkr_runtime, &cleanup_time));
+        ERROR_CHECK (start_regex_workers (num_eng_using, num_job_per_thd, patt_src_base, patt_size, pkt_size, job_pkt_src_bases, job_pkt_sizes, pkt_count,
+				          dn, act, attach_flags, &thd_bw, &wkr_bw, &wkr_runtime, &cleanup_time));
 	sum_thd_bw += thd_bw;
 	sum_wkr_bw += wkr_bw;
 	sum_wkr_runtime += wkr_runtime;
@@ -1028,6 +1077,13 @@ fail:
     return -1;
     
     free_mem (patt_src_base);
+    free_mem (pkt_src_base);
+    if (job_pkt_src_bases) {
+	free (job_pkt_src_bases);
+    }
+    if (job_pkt_sizes) {
+	free (job_pkt_sizes);
+    }
     snap_detach_action (act);
     // Unmap AFU MMIO registers, if previously mapped
     VERBOSE2 ("Free Card Handle: %p\n", dn);

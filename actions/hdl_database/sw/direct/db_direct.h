@@ -125,7 +125,7 @@ struct snap_action* get_action (struct snap_card* handle,
                                 snap_action_flag_t flags, int timeout);
 
 void* sm_compile_file (const char* file_path, size_t* size);
-void regex_scan_file (const char* file_path, size_t* size_for_sw);
+void* regex_scan_file (const char* file_path, size_t* size, size_t* size_for_sw, int num_jobs, void** job_pkt_src_bases, size_t* job_sizes, int* pkt_count);
 int print_results (size_t num_results, void* stat_dest_base);
 int compare_num_matched_pkt (size_t num_matched_pkt);
 int compare_result_id (uint32_t result_id);

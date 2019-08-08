@@ -50,8 +50,8 @@ public:
     // Compare result with software
     int result();
 
-    // Calculate the band_width of this thread
-    float get_thread_band_width();
+    // Get the runtime of this thread
+    uint64_t get_thread_runtime();
 
     // Cleanup
     virtual void cleanup();
@@ -80,9 +80,6 @@ private:
 
     // Pointer to worker
     WorkerDirtestPtr m_worker;
-
-    // Vector that stores results from all jobs
-    //std::vector<uint32_t> m_result_id;
 };
 
 typedef boost::shared_ptr<ThreadDirtest> ThreadDirtestPtr;
