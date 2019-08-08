@@ -1062,6 +1062,8 @@ int main (int argc, char* argv[])
 	sum_wkr_bw += wkr_bw;
 	sum_wkr_runtime += wkr_runtime;
 	sum_cleanup_time += cleanup_time;
+
+	sleep (1);
     }
 
     float avg_thd_bw = sum_thd_bw / num_repeat;
@@ -1076,14 +1078,14 @@ int main (int argc, char* argv[])
 fail:
     return -1;
     
-    free_mem (patt_src_base);
-    free_mem (pkt_src_base);
     if (job_pkt_src_bases) {
 	free (job_pkt_src_bases);
     }
     if (job_pkt_sizes) {
 	free (job_pkt_sizes);
     }
+    free_mem (patt_src_base);
+    free_mem (pkt_src_base);
     snap_detach_action (act);
     // Unmap AFU MMIO registers, if previously mapped
     VERBOSE2 ("Free Card Handle: %p\n", dn);

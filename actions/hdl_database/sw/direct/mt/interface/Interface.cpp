@@ -50,11 +50,11 @@ int start_regex_workers (int num_engines,
     worker->set_mode (false);
 
     ERROR_CHECK (hw_mgr->init());
-    printf ("Set buffers to worker...\n");
+
+    //printf ("Set buffers to worker...\n");
     worker->set_patt_src_base (patt_src_base, patt_size);
-    //worker->set_pkt_src_base (pkt_file_path, num_job_per_thd);
     worker->set_pkt_src_base (job_pkt_src_bases, job_pkt_sizes, pkt_size, file_line_count);
-    printf ("Finish setting buffers\n");
+    //printf ("Finish setting buffers\n");
 
     //printf ("Create %d thread(s) for this worker\n", num_engines);
     //printf ("Create %d job(s) for each thread\n", num_job_per_thd);
