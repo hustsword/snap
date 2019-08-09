@@ -346,10 +346,11 @@ BeginPGCAPIScan (CustomScanState* node, EState* estate, int eflags)
 
         if (nodeTag (arg2) == T_Const) {
             Const* t_const = (Const*) arg2;
-            bytea* t_ptr = DatumGetByteaP (t_const->constvalue);
-            elog (DEBUG1, "Arg2 Size: %lu", VARSIZE_ANY_EXHDR (t_ptr));
-            elog (DEBUG1, "Arg2: %s", VARDATA (t_ptr));
-            capiss->capi_regex_pattern = VARDATA (t_ptr);
+            //bytea* t_ptr = DatumGetByteaP (t_const->constvalue);
+            //elog (DEBUG1, "Arg2 Size: %lu", VARSIZE_ANY_EXHDR (t_ptr));
+            //elog (DEBUG1, "Arg2: %s", VARDATA (t_ptr));
+            char* t_ptr = DatumGetCString(DirectFunctionCall1(textout, t_const->constvalue));
+	    capiss->capi_regex_pattern = t_ptr;
         }
     }
 
@@ -396,7 +397,7 @@ PGCAPIAccessCustomScan (CustomScanState* node)
     PGCAPIScanState*  capiss = (PGCAPIScanState*) node;
     HeapScanDesc    scan;
     TupleTableSlot* slot;
-    char**       values;
+    //char**       values;
     Relation relation = capiss->css.ss.ss_currentRelation;
 
 new_job:
@@ -408,9 +409,9 @@ new_job:
     int curr_job_id = capiss->capi_regex_curr_job;
     CAPIRegexJobDescriptor* job_desc = capiss->capi_regex_job_descs[curr_job_id];
 
-    //elog (INFO, "Harvesting on job %d (total jobs %d) result %d (total results %d)",
-    //        capiss->capi_regex_curr_job, capiss->capi_regex_num_jobs,
-    //        job_desc->curr_result_id, (int)job_desc->num_matched_pkt);
+    elog (INFO, "Harvesting on job %d (total jobs %d) result %d (total results %d)",
+            capiss->capi_regex_curr_job, capiss->capi_regex_num_jobs,
+            job_desc->curr_result_id, (int)job_desc->num_matched_pkt);
 
     if (job_desc->curr_result_id >= ((int)job_desc->num_matched_pkt - 1)) {
         (capiss->capi_regex_curr_job)++;

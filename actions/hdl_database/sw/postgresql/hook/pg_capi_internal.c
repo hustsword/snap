@@ -407,8 +407,8 @@ int action_regex (struct snap_card* h,
         usleep (1000);
 
         count ++;
-        if ((count % 1000) == 0) {
-            //elog (INFO, "Heart beat on hardware pattern polling");
+        if ((count % 5000) == 0) {
+            elog (INFO, "Heart beat on hardware pattern polling");
         }
     } while (1);
 
@@ -439,8 +439,8 @@ int action_regex (struct snap_card* h,
         usleep (1000);
 
         count ++;
-        if ((count % 1000) == 0) {
-            //elog (INFO, "Heart beat on hardware status polling");
+        if ((count % 5000) == 0) {
+            elog (INFO, "Heart beat on hardware status polling");
         }
     } while (1);
     
@@ -472,8 +472,8 @@ int action_regex (struct snap_card* h,
         }
 
         count ++;
-        if ((count % 1000) == 0) {
-            //elog (INFO, "Heart beat on hardware draining polling");
+        if ((count % 5000) == 0) {
+            elog (INFO, "Heart beat on hardware draining polling");
         }
     } while (1);
 

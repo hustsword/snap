@@ -121,7 +121,7 @@ int ThreadRegex::allocate_buffers()
 
     // TODO: is there a way to know exactly how many tuples we have before iterating all buffers?
     uint64_t total_row_count = m_num_tups;
-    uint64_t row_count = total_row_count / num_jobs + 1;
+    uint64_t row_count = 2 * total_row_count / (num_jobs + 1);
 
 
     // Allocate the packet buffer
