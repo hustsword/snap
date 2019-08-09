@@ -997,11 +997,11 @@ int main (int argc, char* argv[])
     VERBOSE0 ("======== COMPILE PATTERN FILE DONE ========\n");
 
     VERBOSE0 ("======== COMPILE PACKET FILE ========\n");
-    job_pkt_src_bases = (void**) malloc (num_job_per_thd * sizeof (void*));
-    job_pkt_sizes = (size_t*) malloc (num_job_per_thd * sizeof (size_t));
+    job_pkt_src_bases = (void**) malloc (num_job_per_thd * num_eng_using * sizeof (void*));
+    job_pkt_sizes = (size_t*) malloc (num_job_per_thd * num_eng_using * sizeof (size_t));
 
     // Compile the packets
-    pkt_src_base = regex_scan_file ("./packet.txt", &pkt_size, &pkt_size_for_sw, num_job_per_thd, job_pkt_src_bases, job_pkt_sizes, &pkt_count);
+    pkt_src_base = regex_scan_file ("./packet.txt", &pkt_size, &pkt_size_for_sw, num_job_per_thd * num_eng_using, job_pkt_src_bases, job_pkt_sizes, &pkt_count);
     VERBOSE0 ("======== COMPILE PACKET FILE DONE ========\n");
 
     VERBOSE0 ("======== SOFTWARE RUN ========\n");
@@ -1042,39 +1042,41 @@ int main (int argc, char* argv[])
 	goto fail;
     }
 
-    printf ("THD_BW: thread total band width (MB/sec)\n");
-    printf ("WKR_BW: worker band width (MB/sec)\n");
-    printf ("WKR_RUN: worker runtime (usec)\n");
-    printf ("CLEANUP: worker cleanup time (usec)\n"); 
-
     printf ("Working with %d engines, %d jobs per thread, %d repeating tests.\n", num_eng_using, num_job_per_thd, num_repeat);
 
-    float sum_thd_bw = 0, sum_wkr_bw = 0;
-    uint64_t sum_wkr_runtime = 0, sum_cleanup_time = 0;
+    float sum_thd_scan_bw = 0, sum_wkr_bw = 0, sum_total_bw = 0;
+    uint64_t sum_buff = 0, sum_scan = 0, sum_cleanup = 0;
+    float sum_sd_buff = 0, sum_sd_scan = 0;
     
     for (int i = 0; i < num_repeat; ++i) {
-	printf ("------- Iteration %d -------\n", i+1);
-	float thd_bw, wkr_bw;
-	uint64_t wkr_runtime, cleanup_time;
+	printf ("------- Iteration %d -------\n", i + 1);
+	float thd_scan_bw, wkr_bw, total_bw;
+	uint64_t max_buff, max_scan, cleanup_time;
+	float sd_buff, sd_scan;
+
         ERROR_CHECK (start_regex_workers (num_eng_using, num_job_per_thd, patt_src_base, patt_size, pkt_size, job_pkt_src_bases, job_pkt_sizes, pkt_count,
-				          dn, act, attach_flags, &thd_bw, &wkr_bw, &wkr_runtime, &cleanup_time));
-	sum_thd_bw += thd_bw;
-	sum_wkr_bw += wkr_bw;
-	sum_wkr_runtime += wkr_runtime;
-	sum_cleanup_time += cleanup_time;
+				          dn, act, attach_flags, &thd_scan_bw, &wkr_bw, &total_bw, &max_buff, &sd_buff, &max_scan, &sd_scan, &cleanup_time));
+
+	sum_thd_scan_bw += thd_scan_bw;
+	sum_wkr_bw      += wkr_bw;
+	sum_total_bw    += total_bw;
+	sum_buff        += max_buff;
+	sum_sd_buff     += sd_buff;
+	sum_scan        += max_scan;
+	sum_sd_scan     += sd_scan;
+	sum_cleanup     += cleanup_time;
 
 	sleep (1);
     }
 
-    float avg_thd_bw = sum_thd_bw / num_repeat;
-    float avg_wkr_bw = sum_wkr_bw / num_repeat;
-    uint64_t avg_wkr_runtime = sum_wkr_runtime / num_repeat;
-    uint64_t avg_cleanup_time = sum_cleanup_time / num_repeat;
+    printf ("NUM_ENG: %d\tNUM_JOB: %d\n", num_eng_using, num_job_per_thd);
+    printf ("THD SCAN BW: %0.3f (MB/sec)\n", sum_thd_scan_bw / num_repeat);
+    printf ("WKR BW:      %0.3f (MB/sec)\n", sum_wkr_bw      / num_repeat);
+    printf ("TOTAL BW:    %0.3f (MB/sec)\n", sum_total_bw    / num_repeat);
+    printf ("BUFF PREP:   %lu (usec)\t(STD DEV: %0.3f)\n", sum_buff / num_repeat, sum_sd_buff / num_repeat);
+    printf ("SCAN:        %lu (usec)\t(STD DEV: %0.3f)\n", sum_scan / num_repeat, sum_sd_scan / num_repeat);
+    printf ("CLEANUP:     %lu (usec)\n\n", sum_cleanup / num_repeat);
 
-    printf ("NUM_ENG   NUM_JOB   THD_BW    WKR_BW    WKR_RUN   CLEANUP\n");
-    printf ("%7d   %7d   %0.3f %0.3f %9lu %9lu\n", num_eng_using, num_job_per_thd, avg_thd_bw, avg_wkr_bw, avg_wkr_runtime, avg_cleanup_time);
-    printf ("\n");
-    
 fail:
     return -1;
     

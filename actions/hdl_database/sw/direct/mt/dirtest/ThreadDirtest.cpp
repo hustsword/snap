@@ -25,7 +25,6 @@ ThreadDirtest::ThreadDirtest()
       m_stat_dest_base (NULL),
       m_stat_size (0),
       m_num_matched_pkt (0),
-      m_runtime (0),
       m_worker (NULL)
 {
     //printf("create dirtest thread\n");
@@ -38,7 +37,6 @@ ThreadDirtest::ThreadDirtest (int in_id)
       m_stat_dest_base (NULL),
       m_stat_size (0),
       m_num_matched_pkt (0),
-      m_runtime (0),
       m_worker (NULL)
 {
     //printf("create dirtest thread on engine %d\n", in_id);
@@ -51,7 +49,6 @@ ThreadDirtest::ThreadDirtest (int in_id, int in_timeout)
       m_stat_dest_base (NULL),
       m_stat_size (0),
       m_num_matched_pkt (0),
-      m_runtime (0),
       m_worker (NULL)
 {
     //printf("create dirtest thread on engine %d\n", in_id);
@@ -81,8 +78,7 @@ int ThreadDirtest::allocate_buffers()
     }
 
     // TODO: is there a way to know exactly how many tuples we have before iterating all buffers?
-    int file_line_count = m_worker->get_line_count();
-    int max_lines_per_job = file_line_count / num_jobs + file_line_count % num_jobs;
+    int max_lines_per_job = m_worker->get_max_line_count();
 
     // Allocate the packet buffer
     // The max size that should be alloc
@@ -127,9 +123,6 @@ void ThreadDirtest::work_with_job (JobPtr in_job)
         return;
     }
 
-    uint64_t start_time, elapsed_time;
-    start_time = get_usec();
-
     do {
         if (job->set_packet_buffer (m_pkt_src_base, m_max_alloc_pkt_size)) {
             printf ("ERROR: Failed to set packet buffer for job %d\n", job->get_id());
@@ -149,9 +142,6 @@ void ThreadDirtest::work_with_job (JobPtr in_job)
         }
     } while (0);
 
-    elapsed_time = get_usec() - start_time;
-    m_runtime += elapsed_time;
-
     do {
         if (harvest_result_from_job (job)) {
             printf ("ERROR: Failed to harvest result\n");
@@ -165,25 +155,27 @@ void ThreadDirtest::work_with_job (JobPtr in_job)
     return;
 }
 
-int ThreadDirtest::result()
+size_t ThreadDirtest::get_thread_num_matched_pkt()
 {
-    int rc = 0;
-
-    //printf ("Eng %d: compare number of matched packets with software\n", m_id);
-    if (compare_num_matched_pkt (m_num_matched_pkt)) {
-        rc = 1;
-    }
-    
-    if (rc) {
-        printf ("ERROR: Miscompare detected on Eng %d\n", m_id);
-    }
-
-    return rc;
+    return m_num_matched_pkt;
 }
 
-uint64_t ThreadDirtest::get_thread_runtime()
+uint64_t ThreadDirtest::get_thread_buff_prep_time()
 {
-    return m_runtime;
+    uint64_t total_buff_prep_time = 0;
+    for (size_t i = 0; i < m_jobs.size(); i++) {
+	total_buff_prep_time += boost::dynamic_pointer_cast<JobDirtest> (m_jobs[i]) -> get_buff_prep_time();
+    }
+    return total_buff_prep_time;
+}
+
+uint64_t ThreadDirtest::get_thread_scan_time()
+{
+    uint64_t total_scan_time = 0;
+    for (size_t i = 0; i < m_jobs.size(); i++) {
+	total_scan_time += boost::dynamic_pointer_cast<JobDirtest> (m_jobs[i]) -> get_scan_time();
+    }
+    return total_scan_time;
 }
 
 void ThreadDirtest::cleanup()

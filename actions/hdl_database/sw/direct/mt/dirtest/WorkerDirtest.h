@@ -53,28 +53,34 @@ public:
     void set_patt_src_base (void* in_patt_src_base, size_t in_patt_size);
 
     // Allocate packet buffers
-    void set_pkt_src_base (void** in_job_pkt_src_bases, size_t* in_job_pkt_sizes, size_t in_pkt_size, int in_pkt_file_line_count);
+    void set_pkt_src_base (void** in_job_pkt_src_bases,
+		           size_t* in_job_pkt_sizes,
+			   int in_num_job_per_thd, 
+			   int in_pkt_file_line_count);
 
     // Get the pattern buffer pointer
     void* get_pattern_buffer();
 
     // Get the packet buffer pointer
-    void* get_packet_buffer (int in_job_id);
-
-    // Get the line count of the packet file
-    int get_line_count();
+    void* get_packet_buffer (int in_job_id, int in_thread_id);
 
     // Get the size of the pattern buffer
     size_t get_pattern_buffer_size();
 
     // Get the size of the packet buffer
-    size_t get_packet_buffer_size (int in_job_id);
+    size_t get_packet_buffer_size (int in_job_id, int in_thread_id);
+
+    // Get the maximum lines to be processed by one job
+    int get_max_line_count();
 
     // Check the results of each thread
     int check_results();
 
-    // Get total band width of all threads in this worker
-    float get_sum_band_width();
+    // Get performance data from threads
+    void get_thread_perf_data (uint64_t* max_buff_prep_time, 
+			       uint64_t* max_scan_time,
+		               float* sd_buff_prep_time, 
+			       float* sd_scan_time);
 
     // Clean up any threads created for this worker
     virtual void cleanup();
@@ -89,14 +95,14 @@ private:
     // Size of the regex pattern buffer
     size_t m_patt_size;
 
-    // Size of the packet buffer
-    size_t m_pkt_size;
-
     // Pointers to regex packet buffers for each job
     void** m_job_pkt_src_bases;
 
     // Sizes of the regex packet buffers for each job
     size_t* m_job_pkt_sizes;
+
+    // Number of jobs for each thread
+    int m_num_job_per_thd;
 
     // Line count of the packet file
     int m_pkt_file_line_count;

@@ -30,17 +30,20 @@ int start_regex_workers (int num_engines,
                          void* patt_src_base,
                          size_t patt_size,
 			 size_t pkt_size,
-                         //const char* pkt_file_path,
 			 void** job_pkt_src_bases,
 			 size_t* job_pkt_sizes,
 			 int file_line_count,
                          struct snap_card* dn,
                          struct snap_action* act,
                          snap_action_flag_t attach_flags,
-                         float* thread_total_band_width,
-                         float* worker_band_width,
-                         uint64_t* worker_runtime,
-                         uint64_t* worker_cleanup_time)
+                         float* thd_scan_bw,
+                         float* wkr_bw,
+			 float* total_bw,
+                         uint64_t* max_buff,
+			 float* sd_buff,
+			 uint64_t* max_scan,
+			 float* sd_scan,
+                         uint64_t* cleanup_time)
 {
     //printf ("Running on regex worker\n");
 
@@ -53,7 +56,7 @@ int start_regex_workers (int num_engines,
 
     //printf ("Set buffers to worker...\n");
     worker->set_patt_src_base (patt_src_base, patt_size);
-    worker->set_pkt_src_base (job_pkt_src_bases, job_pkt_sizes, pkt_size, file_line_count);
+    worker->set_pkt_src_base (job_pkt_src_bases, job_pkt_sizes, num_job_per_thd, file_line_count);
     //printf ("Finish setting buffers\n");
 
     //printf ("Create %d thread(s) for this worker\n", num_engines);
@@ -90,12 +93,12 @@ int start_regex_workers (int num_engines,
         worker->start();
         // Multithreading ends at here
 	
-        *thread_total_band_width = worker->get_sum_band_width();
-	
         elapsed_time = get_usec() - start_time;
-        *worker_runtime = elapsed_time;
-	uint64_t worker_total_pkt_size = (uint64_t) pkt_size  * num_engines;
-	*worker_band_width = print_time (*worker_runtime, worker_total_pkt_size);
+	uint64_t worker_runtime = elapsed_time;
+	*wkr_bw = print_time (worker_runtime, (uint64_t)pkt_size);
+
+	worker->get_thread_perf_data (max_buff, max_scan, sd_buff, sd_scan);
+	*thd_scan_bw = print_time (*max_scan, (uint64_t)pkt_size);
 
 	ERROR_CHECK (worker->check_results());
 
@@ -104,11 +107,12 @@ int start_regex_workers (int num_engines,
         hw_mgr->cleanup();
         worker->cleanup();
         elapsed_time = get_usec() - start_time;
-        *worker_cleanup_time = elapsed_time;
+        *cleanup_time = elapsed_time;
+	*total_bw = print_time (worker_runtime + *cleanup_time, (uint64_t)pkt_size);
 
-        printf ("Work finished after %lu usec (%0.3f MB/sec). ", *worker_runtime, *worker_band_width);
+        printf ("Work finished after %lu usec (%0.3f MB/sec). ", worker_runtime, *wkr_bw);
 
-        printf ("Cleanup finished after %lu microseconds (us)\n", *worker_cleanup_time);
+        printf ("Cleanup finished after %lu microseconds (us)\n", *cleanup_time);
 
         //printf ("Worker done!\n");
     } while (0);

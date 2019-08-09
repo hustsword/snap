@@ -26,7 +26,6 @@ int start_regex_workers (int num_engines,
 	                 int num_job_per_thd,
 			 void* patt_src_base,
 			 size_t patt_size,
-			 //const char* pkt_file_path,
 			 size_t pkt_size,
 			 void** job_pkt_src_bases,
 			 size_t* job_pkt_sizes,
@@ -34,10 +33,14 @@ int start_regex_workers (int num_engines,
 			 struct snap_card* dn,
 			 struct snap_action* act,
 			 snap_action_flag_t attach_flags,
-			 float* thread_total_band_width,
-			 float* worker_band_width,
-			 uint64_t* worker_runtime,
-			 uint64_t* worker_cleanup_time);
+			 float* thd_scan_bw,
+			 float* wkr_bw,
+			 float* total_bw,
+			 uint64_t* max_buff,
+			 float* sd_buff,
+			 uint64_t* max_scan,
+			 float* sd_scan,
+			 uint64_t* cleanup_time);
 #ifdef __cplusplus
 }
 #endif

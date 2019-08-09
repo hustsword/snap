@@ -27,7 +27,9 @@ JobDirtest::JobDirtest()
       m_pkt_size (0),
       m_max_alloc_pkt_size (0),
       m_stat_dest_base (NULL),
-      m_stat_size (0)
+      m_stat_size (0),
+      m_buff_prep_time (0),
+      m_scan_time (0)
 {
     //printf ("create new dirtest job\n");
 }
@@ -42,7 +44,9 @@ JobDirtest::JobDirtest (int in_id, int in_thread_id)
       m_pkt_size (0),
       m_max_alloc_pkt_size (0),
       m_stat_dest_base (NULL),
-      m_stat_size (0)
+      m_stat_size (0),
+      m_buff_prep_time (0),
+      m_scan_time (0)
 {
     //printf("create new dirtest job on engine %d\n", in_thread_id);
 }
@@ -57,7 +61,9 @@ JobDirtest::JobDirtest (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mg
       m_pkt_size (0),
       m_max_alloc_pkt_size (0),
       m_stat_dest_base (NULL),
-      m_stat_size (0)
+      m_stat_size (0),
+      m_buff_prep_time (0),
+      m_scan_time (0)
 {
     //printf("create new dirtest job on engine %d\n", in_thread_id);
 }
@@ -72,7 +78,9 @@ JobDirtest::JobDirtest (int in_id, int in_thread_id, HardwareManagerPtr in_hw_mg
       m_pkt_size (0),
       m_max_alloc_pkt_size (0),
       m_stat_dest_base (NULL),
-      m_stat_size (0)
+      m_stat_size (0),
+      m_buff_prep_time (0),
+      m_scan_time (0)
 {
     //printf("create new dirtest job on engine %d\n", in_thread_id);
 }
@@ -83,9 +91,8 @@ JobDirtest::~JobDirtest()
 
 int JobDirtest::run()
 {
-    //uint64_t start_time, elapsed_time;
-
-    //uint64_t t0 = get_usec();
+    uint64_t start_time, elapsed_time;
+    start_time = get_usec();
 
     do {
         if (init()) {
@@ -101,10 +108,11 @@ int JobDirtest::run()
         }
     } while (0);
 
-    //uint64_t t1 = get_usec();
-    //printf ("Eng %d Job %d: finished buffer preparing after %lu usec\n", m_thread_id, m_id, t1 - t0);
+    elapsed_time = get_usec() - start_time;
+    m_buff_prep_time = elapsed_time;
+    //printf ("Eng %d Job %d: finished buffer preparing after %lu usec\n", m_thread_id, m_id, m_buff_prep_time);
 
-    //start_time = get_usec();
+    start_time = get_usec();
 
     do {
         // TODO: Only 1 job is allowed to access hardware at a time.
@@ -117,8 +125,9 @@ int JobDirtest::run()
         }
     } while (0);
 
-    //uint64_t t2 = get_usec();
-    //printf ("Eng %d Job %d: finished scanning after %lu usec\n", m_thread_id, m_id, t2 - t1);
+    elapsed_time = get_usec() - start_time;
+    m_scan_time = elapsed_time;
+    //printf ("Eng %d Job %d: finished scanning after %lu usec\n", m_thread_id, m_id, m_scan_time);
 
     done();
 
@@ -177,14 +186,9 @@ int JobDirtest::packet()
         return -1;
     }
 
-    //uint64_t t0 = get_usec();
-
-    m_pkt_size = m_worker->get_packet_buffer_size (m_id);
-    memcpy (m_pkt_src_base, m_worker->get_packet_buffer (m_id), m_pkt_size);
+    m_pkt_size = m_worker->get_packet_buffer_size (m_id, m_thread_id);
+    memcpy (m_pkt_src_base, m_worker->get_packet_buffer (m_id, m_thread_id), m_pkt_size);
     //printf ("Eng %d Job %d: packet size is %zu\n", m_thread_id, m_id, m_pkt_size);
-
-    //uint64_t t1 = get_usec();
-    //printf ("Eng %d Job %d: finished memcpy after %lu usec\n", m_thread_id, m_id, t1 - t0);
 
     return 0;
 }
@@ -245,6 +249,16 @@ int JobDirtest::set_result_buffer (void* in_stat_dest_base, size_t in_stat_size)
 size_t JobDirtest::get_num_matched_pkt()
 {
     return m_num_matched_pkt;
+}
+
+uint64_t JobDirtest::get_buff_prep_time()
+{
+    return m_buff_prep_time;
+}
+
+uint64_t JobDirtest::get_scan_time()
+{
+    return m_scan_time;
 }
 
 void JobDirtest::release_buffer()

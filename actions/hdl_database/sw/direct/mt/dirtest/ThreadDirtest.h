@@ -47,11 +47,14 @@ public:
     // Work with the jobs
     virtual void work_with_job (JobPtr in_job);
 
-    // Compare result with software
-    int result();
+    // Get number of matched packet on this thread
+    size_t get_thread_num_matched_pkt();
 
-    // Get the runtime of this thread
-    uint64_t get_thread_runtime();
+    // Get total buffer preparation time of all jobs
+    uint64_t get_thread_buff_prep_time();
+    
+    // Get total regex scan time of all jobs
+    uint64_t get_thread_scan_time();
 
     // Cleanup
     virtual void cleanup();
@@ -74,9 +77,6 @@ private:
 
     // Total number of matched packets
     size_t m_num_matched_pkt;
-
-    // Total regex matching runtime of all jobs
-    uint64_t m_runtime;
 
     // Pointer to worker
     WorkerDirtestPtr m_worker;

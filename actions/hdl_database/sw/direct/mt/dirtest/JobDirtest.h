@@ -67,6 +67,12 @@ public:
     // Get number of matched packets from this job
     size_t get_num_matched_pkt();
 
+    // Get time used for buffer preparing (memcpy)
+    uint64_t get_buff_prep_time();
+
+    // Get time used for regex scanning
+    uint64_t get_scan_time();
+
     // Release the buffers of the job
     void release_buffer();
 
@@ -100,6 +106,12 @@ private:
 
     // Result buffer size
     size_t m_stat_size;
+
+    // Time used for buffer preparing (memcpy)
+    uint64_t m_buff_prep_time;
+
+    // Time used for regex scanning
+    uint64_t m_scan_time;
 };
 
 typedef boost::shared_ptr<JobDirtest> JobDirtestPtr;
