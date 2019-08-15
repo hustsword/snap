@@ -1,4 +1,3 @@
-
 ## Env Variables
 
 set action_root [lindex $argv 0]
@@ -35,8 +34,13 @@ puts "                        Generating host_axi_interconnect_0 ......"
 create_ip -name axi_interconnect -vendor xilinx.com -library ip -version 1.7 -module_name host_axi_interconnect_0 > $log_file
 set_property -dict [list CONFIG.AXI_ADDR_WIDTH {64} \
 CONFIG.INTERCONNECT_DATA_WIDTH {512} \
-CONFIG.M00_AXI_DATA_WIDTH {512}] \
+CONFIG.M00_AXI_DATA_WIDTH {512} \
+CONFIG.M00_AXI_WRITE_ISSUING {32} \
+CONFIG.M00_AXI_READ_ISSUING {32} \
+CONFIG.M00_AXI_WRITE_FIFO_DEPTH {512} \
+CONFIG.M00_AXI_READ_FIFO_DEPTH {512}] \
 [get_ips host_axi_interconnect_0] > $log_file
+#CONFIG.M00_AXI_REGISTER {1}]
 
 # Set data width for each slave
 set_property CONFIG.NUM_SLAVE_PORTS ${num_kernels} [get_ips host_axi_interconnect_0] > $log_file
@@ -44,6 +48,16 @@ set i 0
 while {$i < ${num_kernels}} {
     set s_config [format "S%02d_AXI_DATA_WIDTH" $i]
     set_property CONFIG.${s_config} {512} [get_ips host_axi_interconnect_0] > $log_file
+    set s_config [format "S%02d_AXI_WRITE_ACCEPTANCE" $i]
+    set_property CONFIG.${s_config} {32} [get_ips host_axi_interconnect_0] > $log_file
+    set s_config [format "S%02d_AXI_READ_ACCEPTANCE" $i]
+    set_property CONFIG.${s_config} {32} [get_ips host_axi_interconnect_0] > $log_file
+    set s_config [format "S%02d_AXI_WRITE_FIFO_DEPTH" $i]
+    set_property CONFIG.${s_config} {512} [get_ips host_axi_interconnect_0] > $log_file
+    set s_config [format "S%02d_AXI_READ_FIFO_DEPTH" $i]
+    set_property CONFIG.${s_config} {512} [get_ips host_axi_interconnect_0] > $log_file
+    #set s_config [format "S%02d_AXI_REGISTER" $i]
+    #set_property CONFIG.${s_config} {1} [get_ips host_axi_interconnect_0] > $log_file
     incr i
 }
 
@@ -97,3 +111,4 @@ generate_target all [get_files $src_dir/axi_wid_fifo/axi_wid_fifo.xci] > $log_fi
 
 close_project
 puts "\[CREATE_DATABASE_FRAMEWORK_IPs..........\] done  [clock format [clock seconds] -format {%T %a %b %d %Y}]"
+
