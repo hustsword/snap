@@ -106,9 +106,8 @@ int ThreadRegex::get_num_blks_per_job (int in_job_id, int* out_start_blk_id)
         // Need to revisit this behavior.
         return -1;
     }
-    //elog (INFO, "blks_per_job is %d", blks_per_job);
+
     *out_start_blk_id = m_buffers_base + in_job_id * blks_per_job;
-    //elog (INFO, "out_start_blk_id is %d", *out_start_blk_id);
 
     num_blks_per_job = blks_per_job;
 
@@ -125,9 +124,7 @@ int ThreadRegex::allocate_buffers()
 
     // TODO: is there a way to know exactly how many tuples we have before iterating all buffers?
     uint64_t total_row_count = m_worker->get_num_tuples_per_thread (m_id);
-    uint64_t row_count = 2 * total_row_count / (num_jobs + 1);
-
-    //elog (INFO, "row count for Thread %d is: %lu", m_id, row_count);
+    uint64_t row_count = 2 * total_row_count / (num_jobs + 1);  // count more rows than we need to ensure correctness
 
     // Allocate the packet buffer
     // The max size that should be alloc
@@ -202,14 +199,9 @@ void ThreadRegex::cleanup()
     for (size_t i = 0; i < m_jobs.size(); i++) {
         m_jobs[i]->cleanup();
     }
+
     m_jobs.clear();
 
     m_worker = NULL;
     m_thread = NULL;
 }
-
-int ThreadRegex::get_id()
-{
-    return m_id;
-}
-

@@ -51,9 +51,6 @@ public:
     // Allocate the reused packet buffer and result buffer for this thread
     int allocate_buffers();
 
-    // Get the id of this thread
-    int get_id();
-
     // Work with the jobs
     virtual void work_with_job (JobPtr in_job);
 

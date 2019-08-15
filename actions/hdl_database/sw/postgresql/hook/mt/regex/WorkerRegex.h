@@ -36,11 +36,11 @@ public:
                  Relation in_relation,
                  int in_attr_id,
                  bool in_debug,
-		 int in_engine,
-		 int in_num_blks,
-		 int in_num_tuples,
-		 int in_job_id,
-		 int in_thd_id);
+                 int in_engine,
+                 int in_num_blks,
+                 int in_num_tuples,
+                 int in_job_id,
+                 int in_thd_id);
 
     // Destructor of the worker base
     ~WorkerRegex();

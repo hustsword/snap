@@ -84,7 +84,7 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
                 num_blks_this = num_blks_last;
             }
 
-	    elog (INFO, "number of blocks for worker %d is %d", h, num_blks_this);
+            elog (INFO, "number of blocks for worker %d is %d", h, num_blks_this);
 
             WorkerRegexPtr worker = boost::make_shared<WorkerRegex> (hw_mgr,
                                     in_capiss->css.ss.ss_currentRelation,
@@ -93,12 +93,12 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
                                     h,
                                     num_blks_this,
                                     num_tups_this,
-				    start_job_for_worker,
-				    start_thd_for_worker);
+                                    start_job_for_worker,
+                                    start_thd_for_worker);
 
             worker->set_mode (false);
             worker->set_buffers (buffers + start_blk_for_worker);
-	    elog (INFO, "Buffer start location is %d", start_blk_for_worker);
+            elog (INFO, "Buffer start location is %d", start_blk_for_worker);
 
             elog (DEBUG1, "Compile pattern");
             ERROR_CHECK (worker->regex_compile (in_capiss->capi_regex_pattern));
@@ -110,12 +110,9 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
 
                 // Assign jobs to each thread
                 int job_start_id = start_job_for_worker + (num_jobs_each / num_thds_each) * i;
-		elog (INFO, "job start id for worker %d thread %d is %d", h, i, job_start_id);
+                elog (INFO, "job start id for worker %d thread %d is %d", h, i, job_start_id);
                 int num_jobs_in_thd = num_jobs_each / num_thds_each;
 
-                // if (i != 0 && i == in_capiss->capi_regex_num_threads - 1) {
-                //     num_jobs_in_thd += in_capiss->capi_regex_num_jobs % num_jobs_in_thd;
-                // }
 
                 for (int j = 0; j < num_jobs_in_thd; j++) {
                     // Create 1 job
@@ -158,9 +155,10 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
         for (auto worker_p = workers.begin(); worker_p != workers.end(); worker_p++) {
             (*worker_p)->start();
         }
-	for (auto worker_p = workers.begin(); worker_p != workers.end(); worker_p++) {
-	    (*worker_p)->end();
-	}
+
+        for (auto worker_p = workers.begin(); worker_p != workers.end(); worker_p++) {
+            (*worker_p)->end();
+        }
 
         // Multithreading ends at here
 
@@ -189,6 +187,7 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
 
         elog (DEBUG1, "Worker done!");
 
+        /* Uncomment if need write performance to files
         high_resolution_clock::time_point t_before_write = high_resolution_clock::now();
         std::ofstream out_file;
         out_file.open("part_perf_me.csv", std::ios::app);
@@ -202,7 +201,8 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
 
         auto duration_w = duration_cast<microseconds> (t_after_write - t_before_write).count();
         elog (INFO, "Writing takes %lu microseconds (us)", (uint64_t) duration_w);
-        
+        */
+
     } while (0);
 
     return 0;

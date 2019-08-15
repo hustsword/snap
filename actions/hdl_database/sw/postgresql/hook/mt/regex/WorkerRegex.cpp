@@ -149,7 +149,7 @@ int WorkerRegex::get_attr_id()
 void WorkerRegex::end()
 {
     for (int i = 0; i < (int)m_threads.size(); i++) {
-	m_threads[i]->join();
+        m_threads[i]->join();
     }
 }
 
