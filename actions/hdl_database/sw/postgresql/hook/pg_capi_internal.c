@@ -58,11 +58,11 @@ void print_time (uint64_t elapsed, uint64_t size)
     if (elapsed > 10000) {
         t = (int)elapsed / 1000;
         ft = (1000 / (float)t) * fsize;
-        elog (INFO, " end after %d msec (%0.3f MB/sec)\n", t, ft);
+        elog (DEBUG1, " end after %d msec (%0.3f MB/sec)\n", t, ft);
     } else {
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
-        elog (INFO, " end after %d usec (%0.3f MB/sec)\n", t, ft);
+        elog (DEBUG1, " end after %d usec (%0.3f MB/sec)\n", t, ft);
     }
 }
 
@@ -77,18 +77,18 @@ void print_time_text (const char* text, uint64_t elapsed, uint64_t size)
         ft = (1000 / (float)t) * fsize;
 
         if (0 == size) {
-            elog (INFO, "%s run time: %d msec", text, t);
+            elog (DEBUG1, "%s run time: %d msec", text, t);
         } else {
-            elog (INFO, "%s run time: %d msec (%0.3f MB/sec)", text, t, ft);
+            elog (DEBUG1, "%s run time: %d msec (%0.3f MB/sec)", text, t, ft);
         }
     } else {
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
 
         if (0 == size) {
-            elog (INFO, "%s run time:  %d usec", text, t);
+            elog (DEBUG1, "%s run time:  %d usec", text, t);
         } else {
-            elog (INFO, "%s run time:  %d usec (%0.3f MB/sec)", text, t, ft);
+            elog (DEBUG1, "%s run time:  %d usec (%0.3f MB/sec)", text, t, ft);
         }
     }
 }
@@ -138,7 +138,7 @@ void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_p
     uint16_t pkt_len = size;
 
     if (((uint64_t)pkt_base_addr & 0x3FULL) != 0) {
-        elog (INFO, "WARNING: Address %p is not 64B aligned", pkt_base_addr);
+        elog (DEBUG1, "WARNING: Address %p is not 64B aligned", pkt_base_addr);
     }
 
     // The frame header
@@ -408,7 +408,7 @@ int action_regex (struct snap_card* h,
 
         count ++;
         if ((count % 5000) == 0) {
-            elog (INFO, "Heart beat on hardware pattern polling");
+            elog (DEBUG1, "Heart beat on hardware pattern polling");
         }
     } while (1);
 
@@ -440,7 +440,7 @@ int action_regex (struct snap_card* h,
 
         count ++;
         if ((count % 5000) == 0) {
-            elog (INFO, "Heart beat on hardware status polling");
+            elog (DEBUG1, "Heart beat on hardware status polling");
         }
     } while (1);
     
@@ -473,7 +473,7 @@ int action_regex (struct snap_card* h,
 
         count ++;
         if ((count % 5000) == 0) {
-            elog (INFO, "Heart beat on hardware draining polling");
+            elog (DEBUG1, "Heart beat on hardware draining polling");
         }
     } while (1);
 
@@ -768,10 +768,10 @@ int print_results (size_t num_results, void* stat_dest_base)
     uint32_t patt_id = 0;
     int rc = 0;
 
-    elog (INFO, "---- Result buffer address: %p ----\n", stat_dest_base);
-    elog (INFO, "---- Number of result items: %zu ----\n", num_results);
-    elog (INFO, "---- Results (HW: hardware) ----\n");
-    elog (INFO, "PKT(HW) PATT(HW) OFFSET(HW)\n");
+    elog (DEBUG1, "---- Result buffer address: %p ----\n", stat_dest_base);
+    elog (DEBUG1, "---- Number of result items: %zu ----\n", num_results);
+    elog (DEBUG1, "---- Results (HW: hardware) ----\n");
+    elog (DEBUG1, "PKT(HW) PATT(HW) OFFSET(HW)\n");
 
     for (i = 0; i < (int)num_results; i++) {
         for (j = 0; j < 4; j++) {
@@ -786,7 +786,7 @@ int print_results (size_t num_results, void* stat_dest_base)
             offset |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 2) * 8);
         }
 
-        elog (INFO, "%7d\t%6d\t%7d\n", pkt_id, patt_id, offset);
+        elog (DEBUG1, "%7d\t%6d\t%7d\n", pkt_id, patt_id, offset);
 
         patt_id = 0;
         pkt_id = 0;

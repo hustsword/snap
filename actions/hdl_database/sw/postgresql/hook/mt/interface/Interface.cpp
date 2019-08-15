@@ -53,8 +53,8 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
     elog (DEBUG1, "Compile pattern");
     ERROR_CHECK (worker->regex_compile (in_capiss->capi_regex_pattern));
 
-    elog (INFO, "Total %d job(s) for this worker", in_capiss->capi_regex_num_jobs);
-    elog (INFO, "Create %d thread(s) for this worker", in_capiss->capi_regex_num_threads);
+    elog (DEBUG1, "Total %d job(s) for this worker", in_capiss->capi_regex_num_jobs);
+    elog (DEBUG1, "Create %d thread(s) for this worker", in_capiss->capi_regex_num_threads);
 
     if (in_capiss->capi_regex_num_threads > hw_mgr->get_num_engines()) {
         elog (ERROR, "Number of threads %d is greater than number of engines %d",
@@ -119,10 +119,10 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
         auto duration1_5 = duration_cast<microseconds> (t_end2 - t_end1_5).count();
         auto duration2 = duration_cast<microseconds> (t_end2 - t_end1).count();
 
-        elog (INFO, "Read buffers finished after %lu microseconds (us)", (uint64_t) duration0);
-        elog (INFO, "Work finished after %lu microseconds (us)", (uint64_t) duration1);
-        elog (INFO, "Worker Cleanup finished after %lu microseconds (us)", (uint64_t) duration1_5);
-        elog (INFO, "Cleanup finished after %lu microseconds (us)", (uint64_t) duration2);
+        elog (DEBUG1, "Read buffers finished after %lu microseconds (us)", (uint64_t) duration0);
+        elog (DEBUG1, "Work finished after %lu microseconds (us)", (uint64_t) duration1);
+        elog (DEBUG1, "Worker Cleanup finished after %lu microseconds (us)", (uint64_t) duration1_5);
+        elog (DEBUG1, "Cleanup finished after %lu microseconds (us)", (uint64_t) duration2);
 
         high_resolution_clock::time_point t_before_write = high_resolution_clock::now();
         std::ofstream out_file;
@@ -136,7 +136,7 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
         high_resolution_clock::time_point t_after_write = high_resolution_clock::now();
 
         auto duration_w = duration_cast<microseconds> (t_after_write - t_before_write).count();
-        elog (INFO, "Writing takes %lu microseconds (us)", (uint64_t) duration_w);
+        elog (DEBUG1, "Writing takes %lu microseconds (us)", (uint64_t) duration_w);
 
         elog (DEBUG1, "Worker done!");
     } while (0);

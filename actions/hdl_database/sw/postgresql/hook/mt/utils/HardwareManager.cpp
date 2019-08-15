@@ -66,11 +66,11 @@ int HardwareManager::init()
     int num_engines = (int) ((hw_version & 0x0000FF00) >> 8);
     int revision = (int) (hw_version & 0x000000FF);
 
-    elog (INFO, "Running with %d %dx%d regex engine(s), revision: %d", num_engines, num_pkt_pipes, num_patt_pipes, revision);
+    elog (DEBUG1, "Running with %d %dx%d regex engine(s), revision: %d", num_engines, num_pkt_pipes, num_patt_pipes, revision);
 
     // TODO: workaround for old hardware which don't have configuration information in version register
     if (0 == num_engines) {
-        elog (INFO, "Warning! Number of engines == 0, old hardware? Workaround number of engines to 1");
+        elog (DEBUG1, "Warning! Number of engines == 0, old hardware? Workaround number of engines to 1");
         m_num_engines = 1;
     } else {
         m_num_engines = num_engines;
@@ -101,7 +101,7 @@ void HardwareManager::cleanup()
         pfree (m_context);
     }
 
-    elog (INFO, "Deattach the card.");
+    elog (DEBUG1, "Deattach the card.");
 }
 
 int HardwareManager::wait_interrupt()

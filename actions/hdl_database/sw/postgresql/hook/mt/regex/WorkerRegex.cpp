@@ -186,7 +186,7 @@ void WorkerRegex::cleanup()
 
     high_resolution_clock::time_point t_end = high_resolution_clock::now();
     auto duration = duration_cast<microseconds> (t_end - t_start).count();
-    elog (INFO, "Free all threads after %lu microseconds (us)", (uint64_t) duration);
+    elog (DEBUG1, "Free all threads after %lu microseconds (us)", (uint64_t) duration);
 
     m_threads.clear();
 }
@@ -234,8 +234,8 @@ void WorkerRegex::read_buffers()
         }
     }
 
-    elog (INFO, "Read %d buffers from relation", m_num_blks);
-    elog (INFO, "Read %zu tuples from relation", m_num_tuples);
+    elog (DEBUG1, "Read %d buffers from relation", m_num_blks);
+    elog (DEBUG1, "Read %zu tuples from relation", m_num_tuples);
 }
 
 void WorkerRegex::release_buffers()
