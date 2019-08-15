@@ -59,19 +59,17 @@ int JobRegex::run()
     }
 
     do {
-	    //elog (DEBUG3, "Thread %d Job %d: Before init()..", m_thread_id, m_id);
         if (init()) {
             elog (ERROR, "Failed to perform regex job initializing");
             fail();
             return -1;
         }
-	    //elog (DEBUG3, "Thread %d Job %d: Finish init()..", m_thread_id, m_id);
+
         if (packet()) {
             elog (ERROR, "Failed to perform regex packet preparing");
             fail();
             return -1;
         }
-	    //elog (DEBUG3, "Thread %d Job %d: Finish packet()..", m_thread_id, m_id);
     } while (0);
 
     do {
@@ -83,7 +81,6 @@ int JobRegex::run()
             fail();
             return -1;
         }
-	    //elog (DEBUG3, "Thread %d Job %d: Finish scan()..", m_thread_id, m_id);
     } while (0);
 
     if (result()) {
@@ -91,7 +88,6 @@ int JobRegex::run()
         fail();
         return -1;
     }
-    //elog (DEBUG3, "Thread %d Job %d: Finish result()..", m_thread_id, m_id);
 
     done();
 
@@ -130,7 +126,7 @@ int JobRegex::init()
     m_job_desc->patt_size = m_worker->get_pattern_buffer_size();
     int start_blk_id = 0;
     int num_blks = m_thread->get_num_blks_per_job (m_id, &start_blk_id);
-    
+
     // Get the blocks for this job
     m_job_desc->num_blks = num_blks;
     m_job_desc->start_blk_id = start_blk_id;
@@ -146,7 +142,7 @@ int JobRegex::init()
 
     // Reset the engine
     m_hw_mgr->reset_engine (m_thread_id);
-    
+
     return 0;
 }
 

@@ -347,12 +347,13 @@ BeginPGCAPIScan (CustomScanState* node, EState* estate, int eflags)
         if (nodeTag (arg2) == T_Const) {
             Const* t_const = (Const*) arg2;
             //bytea* t_ptr = DatumGetByteaP (t_const->constvalue);
-            char* t_ptr = DatumGetCString(DirectFunctionCall1(textout, t_const->constvalue));
-	    //elog (DEBUG1, "Arg2 Size: %lu", VARSIZE_ANY_EXHDR (t_ptr));
+            char* t_ptr = DatumGetCString (DirectFunctionCall1 (textout, t_const->constvalue));
+            //elog (DEBUG1, "Arg2 Size: %lu", VARSIZE_ANY_EXHDR (t_ptr));
             //elog (DEBUG1, "Arg2: %s", VARDATA (t_ptr));
-            //capiss->capi_regex_pattern = VARDATA (t_ptr);
+            //capiss->capi_regex_pattern = VARDATA (t_ptr); //no null termination, may have issue
             capiss->capi_regex_pattern = t_ptr;
-	}
+        }
+
         elog (DEBUG1, "Begin scan: pattern is: %s", capiss->capi_regex_pattern);
     }
 
@@ -404,16 +405,15 @@ PGCAPIAccessCustomScan (CustomScanState* node)
 new_job:
 
     if (capiss->capi_regex_curr_job >= capiss->capi_regex_num_jobs) {
-        elog (INFO, "Before returning NULL..");
-	return NULL;
+        return NULL;
     }
 
     int curr_job_id = capiss->capi_regex_curr_job;
     CAPIRegexJobDescriptor* job_desc = capiss->capi_regex_job_descs[curr_job_id];
 
-    elog (INFO, "Harvesting on job %d (total jobs %d) result %d (total results %d)",
-            capiss->capi_regex_curr_job, capiss->capi_regex_num_jobs,
-            job_desc->curr_result_id, (int)job_desc->num_matched_pkt);
+    //elog (INFO, "Harvesting on job %d (total jobs %d) result %d (total results %d)",
+    //        capiss->capi_regex_curr_job, capiss->capi_regex_num_jobs,
+    //        job_desc->curr_result_id, (int)job_desc->num_matched_pkt);
 
     if (job_desc->curr_result_id >= ((int)job_desc->num_matched_pkt - 1)) {
         (capiss->capi_regex_curr_job)++;
@@ -430,18 +430,17 @@ new_job:
 
     // TODO: need a real column data to be returned
     sprintf (values[0], "Column data");
-    if (job_desc->results == NULL) {
-        elog (ERROR, "job_desc doesn't have result!");
-    }
     sprintf (values[1], "%d", ((uint32_t*)job_desc->results)[job_desc->curr_result_id]);
     (job_desc->curr_result_id)++;
 
     HeapTuple tuple = BuildTupleFromCStrings (capiss->attinmeta, values);
     elog (DEBUG1, "Finish building the tuple.");
 
-    pfree(values[0]);
-    pfree(values[1]);
-    pfree(values);
+    // to avoid memory consumption
+    pfree (values[0]);
+    pfree (values[1]);
+    pfree (values);
+
     if (!capiss->css.ss.ss_currentScanDesc) {
         ReScanPGCAPIScan (node);
     }
@@ -490,6 +489,8 @@ EndPGCAPIScan (CustomScanState* node)
     clock_gettime (CLOCK_REALTIME, &t_beg);
 
     // Clean up the jobs
+    // Since pg will do pfree automatically when finish a node,
+    // manually pfree may cause problem (free an already freed area)
     /*
     for (int i = 0; i < capiss->capi_regex_num_jobs; i++) {
         capi_regex_job_cleanup (capiss->capi_regex_job_descs[i]);
