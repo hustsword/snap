@@ -19,6 +19,8 @@
 #include "ThreadRegex.h"
 #include "constants.h"
 
+using namespace boost::chrono;
+
 WorkerRegex::WorkerRegex (HardwareManagerPtr in_hw_mgr, Relation in_relation, int in_attr_id, bool in_debug)
     : WorkerBase (in_hw_mgr),
       m_buffers (NULL),
@@ -139,7 +141,6 @@ int WorkerRegex::get_attr_id()
 int WorkerRegex::get_num_blks_per_thread (int in_thread_id, int* out_start_blk_id)
 {
     int num_threads = m_threads.size();
-    int num_blks_per_thread = 0;
 
     if (m_num_blks <= 0) {
         return -1;
@@ -160,7 +161,7 @@ int WorkerRegex::get_num_blks_per_thread (int in_thread_id, int* out_start_blk_i
 
     *out_start_blk_id = in_thread_id * blks_per_thread;
 
-    num_blks_per_thread = blks_per_thread;
+    int num_blks_per_thread = blks_per_thread;
 
     if (in_thread_id == (num_threads - 1)) {
         num_blks_per_thread += blks_last_thread;
@@ -172,7 +173,6 @@ int WorkerRegex::get_num_blks_per_thread (int in_thread_id, int* out_start_blk_i
 size_t WorkerRegex::get_num_tuples_per_thread (int in_thread_id)
 {
     int num_threads = m_threads.size();
-    int num_tuples_per_thread = 0;
 
     if (m_num_tuples <= 0) {
         return -1;
@@ -191,7 +191,7 @@ size_t WorkerRegex::get_num_tuples_per_thread (int in_thread_id)
         return -1;
     }
 
-    num_tuples_per_thread = tuples_per_thread;
+    int num_tuples_per_thread = tuples_per_thread;
 
     if (in_thread_id == (num_threads - 1)) {
         num_tuples_per_thread += tuples_last_thread;
@@ -204,10 +204,17 @@ void WorkerRegex::cleanup()
 {
     free_mem (m_patt_src_base);
     release_buffers();
+    m_hw_mgr = NULL;
+
+    high_resolution_clock::time_point t_start = high_resolution_clock::now();
 
     for (size_t i = 0; i < m_threads.size(); i++) {
         m_threads[i]->cleanup();
     }
+
+    high_resolution_clock::time_point t_end = high_resolution_clock::now();
+    auto duration = duration_cast<microseconds> (t_end - t_start).count();
+    elog (INFO, "Free all threads after %lu microseconds (us)", (uint64_t) duration);
 
     m_threads.clear();
 }

@@ -28,6 +28,7 @@ PG_MODULE_MAGIC;
  */
 static bool enable_PGCAPIscan;
 static int pgcapi_num_jobs;
+static int pgcapi_num_threads;
 static set_rel_pathlist_hook_type set_rel_pathlist_next = NULL;
 
 /* function declarations */
@@ -302,9 +303,10 @@ CreatePGCAPIScanState (CustomScan* custom_plan)
     // Initialize CAPI job descriptor and related variables
     capiss->capi_regex_pattern = NULL;
     capiss->capi_regex_attr_id = -1;
-    capiss->capi_regex_job_descs = (CAPIRegexJobDescriptor**) palloc0 (sizeof (CAPIRegexJobDescriptor*) * 16);
+    capiss->capi_regex_job_descs = (CAPIRegexJobDescriptor**) palloc0 (sizeof (CAPIRegexJobDescriptor*) * pgcapi_num_jobs);
 
     capiss->capi_regex_num_jobs = pgcapi_num_jobs;
+    capiss->capi_regex_num_threads = pgcapi_num_threads;
 
     for (int i = 0; i < capiss->capi_regex_num_jobs; i++) {
         capiss->capi_regex_job_descs[i] = (CAPIRegexJobDescriptor*) palloc0 (sizeof (CAPIRegexJobDescriptor));
@@ -344,11 +346,15 @@ BeginPGCAPIScan (CustomScanState* node, EState* estate, int eflags)
 
         if (nodeTag (arg2) == T_Const) {
             Const* t_const = (Const*) arg2;
-            bytea* t_ptr = DatumGetByteaP (t_const->constvalue);
-            elog (DEBUG1, "Arg2 Size: %lu", VARSIZE_ANY_EXHDR (t_ptr));
-            elog (DEBUG1, "Arg2: %s", VARDATA (t_ptr));
-            capiss->capi_regex_pattern = VARDATA (t_ptr);
+            //bytea* t_ptr = DatumGetByteaP (t_const->constvalue);
+            char* t_ptr = DatumGetCString (DirectFunctionCall1 (textout, t_const->constvalue));
+            //elog (DEBUG1, "Arg2 Size: %lu", VARSIZE_ANY_EXHDR (t_ptr));
+            //elog (DEBUG1, "Arg2: %s", VARDATA (t_ptr));
+            //capiss->capi_regex_pattern = VARDATA (t_ptr); //no null termination, may have issue
+            capiss->capi_regex_pattern = t_ptr;
         }
+
+        elog (DEBUG1, "Begin scan: pattern is: %s", capiss->capi_regex_pattern);
     }
 
     // Start multiple threads to perform regex scan in parallel
@@ -421,12 +427,19 @@ new_job:
     values[0] = (char*) palloc (16 * sizeof (char));
     values[1] = (char*) palloc (16 * sizeof (char));
 
+
     // TODO: need a real column data to be returned
     sprintf (values[0], "Column data");
     sprintf (values[1], "%d", ((uint32_t*)job_desc->results)[job_desc->curr_result_id]);
     (job_desc->curr_result_id)++;
 
     HeapTuple tuple = BuildTupleFromCStrings (capiss->attinmeta, values);
+    elog (DEBUG1, "Finish building the tuple.");
+
+    // to avoid memory consumption
+    pfree (values[0]);
+    pfree (values[1]);
+    pfree (values);
 
     if (!capiss->css.ss.ss_currentScanDesc) {
         ReScanPGCAPIScan (node);
@@ -476,12 +489,16 @@ EndPGCAPIScan (CustomScanState* node)
     clock_gettime (CLOCK_REALTIME, &t_beg);
 
     // Clean up the jobs
+    // Since pg will do pfree automatically when finish a node,
+    // manually pfree may cause problem (free an already freed area)
+    /*
     for (int i = 0; i < capiss->capi_regex_num_jobs; i++) {
         capi_regex_job_cleanup (capiss->capi_regex_job_descs[i]);
         pfree (capiss->capi_regex_job_descs[i]);
     }
 
     pfree (capiss->capi_regex_job_descs);
+    */
 
     clock_gettime (CLOCK_REALTIME, &t_end_0);
     uint64_t diff_0 = diff_time (&t_beg, &t_end_0);
@@ -547,6 +564,18 @@ _PG_init (void)
                              "Number of jobs to perform CAPI scan",
                              NULL,
                              &pgcapi_num_jobs,
+                             1,
+                             1, 128,
+                             PGC_SUSET,
+                             GUC_UNIT,
+                             NULL,
+                             NULL,
+                             NULL);
+
+    DefineCustomIntVariable ("PGCAPIscan.num_threads",
+                             "Number of threads to perform CAPI scan",
+                             NULL,
+                             &pgcapi_num_threads,
                              1,
                              1, 128,
                              PGC_SUSET,

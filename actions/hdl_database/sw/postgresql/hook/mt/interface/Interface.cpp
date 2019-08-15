@@ -34,7 +34,7 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
         return -1;
     }
 
-    HardwareManagerPtr hw_mgr =  boost::make_shared<HardwareManager> (0, 0, 1000);
+    HardwareManagerPtr hw_mgr = boost::make_shared<HardwareManager> (0, 0, 1000);
 
     WorkerRegexPtr worker = boost::make_shared<WorkerRegex> (hw_mgr,
                             in_capiss->css.ss.ss_currentRelation,
@@ -47,23 +47,36 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
     elog (DEBUG1, "Compile pattern");
     ERROR_CHECK (worker->regex_compile (in_capiss->capi_regex_pattern));
 
-    elog (INFO, "Create %d job(s) for this worker", in_capiss->capi_regex_num_jobs);
+    elog (INFO, "Total %d job(s) for this worker", in_capiss->capi_regex_num_jobs);
+    elog (INFO, "Create %d thread(s) for this worker", in_capiss->capi_regex_num_threads);
 
-    if (in_capiss->capi_regex_num_jobs > hw_mgr->get_num_engines()) {
+    if (in_capiss->capi_regex_num_threads > hw_mgr->get_num_engines()) {
         elog (ERROR, "Number of threads %d is greater than number of engines %d",
-              in_capiss->capi_regex_num_jobs, hw_mgr->get_num_engines());
+              in_capiss->capi_regex_num_threads, hw_mgr->get_num_engines());
     }
 
     // Create threads
-    for (int i = 0; i < in_capiss->capi_regex_num_jobs; i++) {
+    for (int i = 0; i < in_capiss->capi_regex_num_threads; i++) {
         ThreadRegexPtr thd = boost::make_shared<ThreadRegex> (i, 1000);
+        thd->set_worker (worker);
 
-        // Create 1 job for each thread
-        JobRegexPtr job = boost::make_shared<JobRegex> (0, i, hw_mgr, false);
-        job->set_job_desc (in_capiss->capi_regex_job_descs[i]);
-        job->set_worker (worker);
+        // Assign jobs to each thread
+        int job_start_id = (in_capiss->capi_regex_num_jobs / in_capiss->capi_regex_num_threads) * i;
+        int num_jobs_in_thd = in_capiss->capi_regex_num_jobs / in_capiss->capi_regex_num_threads;
 
-        thd->add_job (job);
+        if (i != 0 && i == in_capiss->capi_regex_num_threads - 1) {
+            num_jobs_in_thd += in_capiss->capi_regex_num_jobs % num_jobs_in_thd;
+        }
+
+        for (int j = 0; j < num_jobs_in_thd; j++) {
+            // Create 1 job
+            JobRegexPtr job = boost::make_shared<JobRegex> (j, i, hw_mgr, false);
+            job->set_job_desc (in_capiss->capi_regex_job_descs[job_start_id + j]);
+            capi_regex_job_init (in_capiss->capi_regex_job_descs[job_start_id + j], hw_mgr->get_context());
+            job->set_worker (worker);
+            job->set_thread (thd);
+            thd->add_job (job);
+        }
 
         // Add thread to worker
         worker->add_thread (thd);
@@ -75,25 +88,35 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
         // Read relation buffers
         high_resolution_clock::time_point t_start = high_resolution_clock::now();
         worker->read_buffers();
-        //if (worker->init()) {
-        //    elog (ERROR, "Failed to initialize worker");
-        //    return -1;
-        //}
+
+        if (worker->init()) {
+            elog (ERROR, "Failed to initialize worker");
+            return -1;
+        }
+
         high_resolution_clock::time_point t_end0 = high_resolution_clock::now();
         auto duration0 = duration_cast<microseconds> (t_end0 - t_start).count();
+
         // Start work, multithreading starts from here
         worker->start();
         // Multithreading ends at here
+
         high_resolution_clock::time_point t_end1 = high_resolution_clock::now();
         auto duration1 = duration_cast<microseconds> (t_end1 - t_end0).count();
+
         // Cleanup objects created for this procedure
         hw_mgr->cleanup();
+
+        high_resolution_clock::time_point t_end1_5 = high_resolution_clock::now();
         worker->cleanup();
+
         high_resolution_clock::time_point t_end2 = high_resolution_clock::now();
+        auto duration1_5 = duration_cast<microseconds> (t_end2 - t_end1_5).count();
         auto duration2 = duration_cast<microseconds> (t_end2 - t_end1).count();
 
         elog (INFO, "Read buffers finished after %lu microseconds (us)", (uint64_t) duration0);
         elog (INFO, "Work finished after %lu microseconds (us)", (uint64_t) duration1);
+        elog (INFO, "Worker Cleanup finished after %lu microseconds (us)", (uint64_t) duration1_5);
         elog (INFO, "Cleanup finished after %lu microseconds (us)", (uint64_t) duration2);
 
         elog (DEBUG1, "Worker done!");

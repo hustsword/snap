@@ -320,7 +320,7 @@ void soft_reset (struct snap_card* h, int id)
     // Status[4] to reset
     action_write (h, ACTION_CONTROL_L, 0x00000010, id);
     action_write (h, ACTION_CONTROL_H, 0x00000000, id);
-    elog (DEBUG1, " Write ACTION_CONTROL for soft reset!");
+    //elog (DEBUG1, " Write ACTION_CONTROL for soft reset!");
     action_write (h, ACTION_CONTROL_L, 0x00000000, id);
     action_write (h, ACTION_CONTROL_H, 0x00000000, id);
 }
@@ -340,12 +340,14 @@ int action_regex (struct snap_card* h,
 
     print_control_status (h, id);
 
+    /*
     elog (DEBUG1, "PKT  source: %p", pkt_src_base);
     elog (DEBUG1, "PATT source: %p", patt_src_base);
     elog (DEBUG1, "Stat source: %p", stat_dest_base);
     elog (DEBUG1, "PKT  size: %zu", pkt_size);
     elog (DEBUG1, "PATT size: %zu", patt_size);
     elog (DEBUG1, "Stat size: %zu", stat_size);
+    */
 
     action_write (h, ACTION_PATT_INIT_ADDR_L,
                   (uint32_t) (((uint64_t) patt_src_base) & 0xffffffff), id);
@@ -387,6 +389,7 @@ int action_regex (struct snap_card* h,
     print_control_status (h, id);
 
     count = 0;
+
     do {
         reg_data = action_read (h, ACTION_STATUS_L, id);
 
@@ -398,14 +401,15 @@ int action_regex (struct snap_card* h,
 
         // Status[0]
         if ((reg_data & 0x00000001) == 1) {
-            elog (DEBUG1, "Pattern copy done!\n");
+            //elog (DEBUG1, "Pattern copy done!\n");
             break;
         }
 
         usleep (1000);
 
         count ++;
-        if ((count % 1000) == 0) {
+
+        if ((count % 5000) == 0) {
             elog (INFO, "Heart beat on hardware pattern polling");
         }
     } while (1);
@@ -415,6 +419,7 @@ int action_regex (struct snap_card* h,
     action_write (h, ACTION_CONTROL_H, 0x00000000, id);
 
     count = 0;
+
     do {
         reg_data = action_read (h, ACTION_STATUS_L, id);
 
@@ -437,10 +442,13 @@ int action_regex (struct snap_card* h,
         usleep (1000);
 
         count ++;
-        if ((count % 1000) == 0) {
+
+        if ((count % 5000) == 0) {
             elog (INFO, "Heart beat on hardware status polling");
         }
     } while (1);
+
+    //elog (DEBUG1, "work done!\n");
 
     // Stop working
     action_write (h, ACTION_CONTROL_L, 0x00000000, id);
@@ -451,6 +459,7 @@ int action_regex (struct snap_card* h,
     action_write (h, ACTION_CONTROL_H, 0x00000000, id);
 
     count = 0;
+
     do {
         reg_data = action_read (h, ACTION_STATUS_L, id);
 
@@ -468,10 +477,13 @@ int action_regex (struct snap_card* h,
         }
 
         count ++;
-        if ((count % 1000) == 0) {
+
+        if ((count % 5000) == 0) {
             elog (INFO, "Heart beat on hardware draining polling");
         }
     } while (1);
+
+    //elog (DEBUG1, "flushing done!\n");
 
     // Stop flushing
     action_write (h, ACTION_CONTROL_L, 0x00000000, id);
@@ -830,7 +842,7 @@ int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc)
     job_desc->num_matched_pkt = reg_data;
     job_desc->results = (uint32_t*) palloc (reg_data * sizeof (uint32_t));
 
-    elog (INFO, "Thread %d finished with %d matched packets", job_desc->thread_id, reg_data);
+    //elog (INFO, "Thread %d finished with %d matched packets", job_desc->thread_id, reg_data);
 
     if (get_results (job_desc->results, reg_data, job_desc->stat_dest_base)) {
         errno = ENODEV;
@@ -915,4 +927,3 @@ void print_result (CAPIRegexJobDescriptor* job_desc, char* header_str, char* out
              job_desc->num_matched_pkt);
     print_time_text ("|Regex hardware scan|", job_desc->t_regex_scan / 1000, job_desc->pkt_size_wo_hw_hdr);
 }
-
