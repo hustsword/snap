@@ -78,13 +78,13 @@ int HardwareManager::init()
 
 void HardwareManager::reg_write (uint32_t in_addr, uint32_t in_data, int in_eng_id)
 {
-    action_write (m_capi_card, REG(in_addr, in_eng_id), in_data);
+    action_write (m_capi_card, in_addr, in_data, in_eng_id);
     return;
 }
 
 uint32_t HardwareManager::reg_read (uint32_t in_addr, int in_eng_id)
 {
-    return action_read (m_capi_card, REG(in_addr, in_eng_id));
+    return action_read (m_capi_card, in_addr, in_eng_id);
 }
 
 void HardwareManager::cleanup()

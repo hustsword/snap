@@ -90,18 +90,18 @@ int64_t diff_time (struct timespec* t_beg, struct timespec* t_end);
 uint64_t get_usec (void);
 int get_file_line_count (FILE* fp);
 void remove_newline (char* str);
-float print_time (uint64_t elapsed, uint64_t size);
-void* alloc_mem (int align, size_t size);
-void free_mem (void* a);
+float print_time (uint64_t elapsed, uint64_t size); /* replace with perf_calc */
+void* alloc_mem (int align, size_t size); /* replace */
+void free_mem (void* a); /* replace */
 
 void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_pkt_id);
 void* fill_one_pattern (const char* in_patt, void* in_patt_addr);
 
-void action_write (struct snap_card* h, uint32_t addr, uint32_t data);
-uint32_t action_read (struct snap_card* h, uint32_t addr);
-int action_wait_idle (struct snap_card* h, int timeout, uint64_t* elapsed);
-void print_control_status (struct snap_card* h, int eng_id);
-void soft_reset (struct snap_card* h, int eng_id);
+void action_write (struct snap_card* h, uint32_t addr, uint32_t data); /* replace */
+uint32_t action_read (struct snap_card* h, uint32_t addr); /* replace */
+int action_wait_idle (struct snap_card* h, int timeout, uint64_t* elapsed); /* replace */
+void print_control_status (struct snap_card* h, int eng_id); /* replace */
+void soft_reset (struct snap_card* h, int eng_id); /* replace */
 void action_regex (struct snap_card* h,
                        void* patt_src_base,
                        void* pkt_src_base,
@@ -110,7 +110,7 @@ void action_regex (struct snap_card* h,
                        size_t patt_size,
                        size_t pkt_size,
                        size_t stat_size,
-                       int eng_id);
+                       int eng_id); /* replace */
 int regex_scan (struct snap_card* dnc,
                     int timeout,
                     void* patt_src_base,
@@ -120,13 +120,13 @@ int regex_scan (struct snap_card* dnc,
                     size_t patt_size,
                     size_t pkt_size,
                     size_t stat_size,
-                    int eng_id);
+                    int eng_id); /* replace with regex_scan_internal */
 struct snap_action* get_action (struct snap_card* handle,
-                                snap_action_flag_t flags, int timeout);
+                                snap_action_flag_t flags, int timeout); /* replace */
 
 void* sm_compile_file (const char* file_path, size_t* size);
 void* regex_scan_file (const char* file_path, size_t* size, size_t* size_for_sw, int num_jobs, void** job_pkt_src_bases, size_t* job_sizes, int* pkt_count);
-int print_results (size_t num_results, void* stat_dest_base);
+int print_results (size_t num_results, void* stat_dest_base); /* replace */
 int compare_num_matched_pkt (size_t num_matched_pkt);
 int compare_result_id (uint32_t result_id);
 

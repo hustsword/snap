@@ -95,10 +95,10 @@ int start_regex_workers (int num_engines,
 	
         elapsed_time = get_usec() - start_time;
 	uint64_t worker_runtime = elapsed_time;
-	*wkr_bw = print_time (worker_runtime, (uint64_t)pkt_size);
+	*wkr_bw = perf_calc (worker_runtime, (uint64_t)pkt_size);
 
 	worker->get_thread_perf_data (max_buff, max_scan, sd_buff, sd_scan);
-	*thd_scan_bw = print_time (*max_scan, (uint64_t)pkt_size);
+	*thd_scan_bw = perf_calc (*max_scan, (uint64_t)pkt_size);
 
 	ERROR_CHECK (worker->check_results());
 
@@ -108,7 +108,7 @@ int start_regex_workers (int num_engines,
         worker->cleanup();
         elapsed_time = get_usec() - start_time;
         *cleanup_time = elapsed_time;
-	*total_bw = print_time (worker_runtime + *cleanup_time, (uint64_t)pkt_size);
+	*total_bw = perf_calc (worker_runtime + *cleanup_time, (uint64_t)pkt_size);
 
         printf ("Work finished after %lu usec (%0.3f MB/sec). ", worker_runtime, *wkr_bw);
 

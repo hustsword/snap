@@ -196,16 +196,16 @@ int JobDirtest::packet()
 int JobDirtest::scan()
 {
     //printf("Eng %d Job %d: scanning...\n", m_thread_id, m_id);
-    if (regex_scan (m_hw_mgr->get_capi_card(),
-                    ACTION_WAIT_TIME,
-                    m_patt_src_base,
-                    m_pkt_src_base,
-                    m_stat_dest_base,
-                    &m_num_matched_pkt,
-                    m_patt_size,
-                    m_pkt_size,
-                    m_stat_size,
-                    m_thread_id)) {
+    if (regex_scan_internal (m_hw_mgr->get_capi_card(),
+                             ACTION_WAIT_TIME,
+                             m_patt_src_base,
+                             m_pkt_src_base,
+                             m_stat_dest_base,
+                             &m_num_matched_pkt,
+                             m_patt_size,
+                             m_pkt_size,
+                             m_stat_size,
+                             m_thread_id)) {
         printf ("ERROR: Failed to scan the table\n");
         return -1;
     }

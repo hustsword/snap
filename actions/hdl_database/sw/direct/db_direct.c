@@ -100,6 +100,7 @@ void remove_newline (char* str)
     }
 }
 
+// to be replaced by perf_calc in pg_capi_internal.c
 float print_time (uint64_t elapsed, uint64_t size)
 {
     int t;
@@ -120,6 +121,7 @@ float print_time (uint64_t elapsed, uint64_t size)
     return ft;
 }
 
+// to be replaced in pg_capi_internal.c
 void* alloc_mem (int align, size_t size)
 {
     void* a;
@@ -136,6 +138,7 @@ void* alloc_mem (int align, size_t size)
     return a;
 }
 
+// to be replaced in pg_capi_internal.c
 void free_mem (void* a)
 {
     VERBOSE2 ("Free Mem %p\n", a);
@@ -298,7 +301,7 @@ void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
 
 }
 
-
+// to be replaced by action_write in pg_capi_internal.c
 /* Action or Kernel Write and Read are 32 bit MMIO */
 void action_write (struct snap_card* h, uint32_t addr, uint32_t data)
 {
@@ -313,6 +316,7 @@ void action_write (struct snap_card* h, uint32_t addr, uint32_t data)
     return;
 }
 
+// to be replaced by aciton_write in pg_capi_internal.c
 uint32_t action_read (struct snap_card* h, uint32_t addr)
 {
     int rc;
@@ -342,6 +346,8 @@ uint32_t action_read (struct snap_card* h, uint32_t addr)
 //    return fpga_ticks;
 //}
 
+
+// to be replaced in pg_capi_internal.c
 /*
  *  Start Action and wait for Idle.
  */
@@ -369,6 +375,7 @@ int action_wait_idle (struct snap_card* h, int timeout, uint64_t* elapsed)
     return rc;
 }
 
+// to be replaced in pg_capi_internal.c
 void print_control_status (struct snap_card* h, int eng_id)
 {
     if (verbose_level > 2) {
@@ -385,6 +392,7 @@ void print_control_status (struct snap_card* h, int eng_id)
     }
 }
 
+// to be replaced in pg_capi_internal.c
 void soft_reset (struct snap_card* h, int eng_id)
 {
     // Status[4] to reset
@@ -395,6 +403,7 @@ void soft_reset (struct snap_card* h, int eng_id)
     action_write (h, REG(ACTION_CONTROL_H, eng_id), 0x00000000);
 }
 
+// to be replaced in pg_capi_internal.c
 void action_regex (struct snap_card* h,
                        void* patt_src_base,
                        void* pkt_src_base,
@@ -575,6 +584,7 @@ void action_regex (struct snap_card* h,
     return;
 }
 
+// to be replaced by regex_scan_internal in pg_capi_internal.c
 int regex_scan (struct snap_card* dnc,
                     int timeout,
                     void* patt_src_base,
@@ -604,6 +614,7 @@ int regex_scan (struct snap_card* dnc,
     return rc;
 }
 
+// to be replaced in pg_capi_internal.c
 struct snap_action* get_action (struct snap_card* handle,
                                        snap_action_flag_t flags, int timeout)
 {
@@ -775,6 +786,7 @@ void* regex_scan_file (const char* file_path, size_t* size, size_t* size_for_sw,
     return pkt_src_base;
 }
 
+// to be replaced in pg_capi_internal.c
 int print_results (size_t num_results, void* stat_dest_base)
 {
     int i = 0, j = 0;
