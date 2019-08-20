@@ -79,6 +79,7 @@ void ThreadBase::delete_job (int job_id)
 
 int ThreadBase::start()
 {
+    //printf("Eng %d: thread start!", m_id);
     if (NULL != m_thread) {
         std::cerr << "m_thread is not NULL on start" << std::endl;
     } else {
@@ -158,3 +159,4 @@ int ThreadBase::get_num_remaining_jobs()
 {
     return (int) ((int)m_jobs.size() - m_current_job_idx);
 }
+

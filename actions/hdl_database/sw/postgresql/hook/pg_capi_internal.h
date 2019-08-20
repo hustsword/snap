@@ -17,10 +17,8 @@
 #ifndef __PG_CAPI_INTERNAL__
 #define __PG_CAPI_INTERNAL__
 
-#include "unistd.h"
-#include "libsnap.h"
-#include <snap_hls_if.h>
-
+#include "card_io.h"
+#include "misc_utils.h"
 #include "constants.h"
 
 // Postgresql specific headers
@@ -137,76 +135,11 @@ typedef struct CAPIRegexJobDescriptor_s {
     void* next_desc;
 } CAPIRegexJobDescriptor;
 
-#define PERF_MEASURE(_func, out) \
-    do { \
-        struct timespec t_beg, t_end; \
-        clock_gettime(CLOCK_REALTIME, &t_beg); \
-        ERROR_CHECK((_func)); \
-        clock_gettime(CLOCK_REALTIME, &t_end); \
-        (out) = diff_time (&t_beg, &t_end); \
-    } \
-    while (0)
-
-#define ERROR_LOG(_file, _func, _line, _rc) \
-    do { \
-        print_error((_file), (_func), (const char*) (_line), (_rc)); \
-    } \
-    while (0)
-
-#define ERROR_CHECK(_err) \
-    do { \
-        int rc = (_err); \
-        if (rc != 0) \
-        { \
-            ERROR_LOG (__FILE__, __FUNCTION__, __LINE__, rc); \
-            goto fail; \
-        } \
-    } while (0)
-
-// Misc utilities
-void print_error (const char* file, const char* func, const char* line, int rc);
-int64_t diff_time (struct timespec* t_beg, struct timespec* t_end);
-uint64_t get_usec (void);
-void print_time (uint64_t elapsed, uint64_t size);
-void print_time_text (const char* text, uint64_t elapsed, uint64_t size);
-void* alloc_mem (int align, size_t size);
-void free_mem (void* a);
-float perf_calc (uint64_t elapsed, uint64_t size);
-
 // Regex memory layout related functions
 void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_pkt_id);
 void* fill_one_pattern (const char* in_patt, void* in_patt_addr, int in_patt_id);
 
-// CAPI basic operations
-void action_write (struct snap_card* h, uint32_t addr, uint32_t data, int id);
-uint32_t action_read (struct snap_card* h, uint32_t addr, int id);
-int action_wait_idle (struct snap_card* h, int timeout);
-void soft_reset (struct snap_card* h, int id);
-void print_control_status (struct snap_card* h, int id);
-struct snap_action* get_action (struct snap_card* handle,
-                                snap_action_flag_t flags, int timeout);
-void print_result (CAPIRegexJobDescriptor* job_desc, char* header_str, char* out_str);
-
 // CAPI regex operations for PostgreSQL
-int action_regex (struct snap_card* h,
-                  void* patt_src_base,
-                  void* pkt_src_base,
-                  void* stat_dest_base,
-                  size_t* num_matched_pkt,
-                  size_t patt_size,
-                  size_t pkt_size,
-                  size_t stat_size,
-                  int id);
-int capi_regex_scan_internal (struct snap_card* dnc,
-                              int timeout,
-                              void* patt_src_base,
-                              void* pkt_src_base,
-                              void* stat_dest_base,
-                              size_t* num_matched_pkt,
-                              size_t patt_size,
-                              size_t pkt_size,
-                              size_t stat_size,
-                              int id);
 void* capi_regex_compile_internal (const char* patt, size_t* size);
 int capi_regex_context_init (CAPIContext* context);
 int capi_regex_job_init (CAPIRegexJobDescriptor* job_desc,
@@ -223,11 +156,10 @@ int capi_regex_compile (CAPIRegexJobDescriptor* job_desc, const char* pattern);
 //int capi_regex_pkt_psql (CAPIRegexJobDescriptor* job_desc,
 //                         Relation rel, int attr_id);
 int capi_regex_scan (CAPIRegexJobDescriptor* job_desc);
-int print_results (size_t num_results, void* stat_dest_base);
-int get_results (void* result, size_t num_matched_pkt, void* stat_dest_base);
 int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc);
 int capi_regex_job_cleanup (CAPIRegexJobDescriptor* job_desc);
 bool capi_regex_check_relation (Relation rel);
+void print_result (CAPIRegexJobDescriptor* job_desc, char* header_str, char* out_str);
 
 // Postgresql storage backend functions
 char* get_attr (HeapTupleHeader tuphdr,

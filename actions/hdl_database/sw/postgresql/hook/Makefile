@@ -37,7 +37,7 @@ POSTGRESQL_SHARELIB       = $(shell pg_config --sharedir)
 UTILS                     = ../../../string-match-fpga/utils
 
 INCLUDES                  = -I. -I./ -I../
-INCLUDES                 += -I../common/
+INCLUDES                 += -I../../common/
 INCLUDES                 += -I$(UTILS) 
 INCLUDES                 += -I$(SNAP_ROOT)/software/include
 INCLUDES                 += -I$(POSTGRESQL_INCLUDE_SERVER) -I$(POSTGRESQL_INCLUDE)/internal
@@ -57,9 +57,9 @@ MKDIR = if [ ! -d $(dir $@) ]; then mkdir -p $(dir $@); fi
 MT_CPPSRCS := $(shell find ./mt -name "*.cpp")
 MT_CPPOBJS := $(call TOBUILDDIR,$(patsubst %.cpp,%.o,$(MT_CPPSRCS)))
 MT_CPPFLAGS := --std=c++11
-MT_INCLUDES := -I. -I../ -I./mt -I./mt/base -I./mt/utils -I$(SNAP_ROOT)/software/include
+MT_INCLUDES := -I. -I../ -I./mt -I../../common/base -I./mt/utils -I$(SNAP_ROOT)/software/include
 MT_INCLUDES += -I./mt/regex -I./mt/interface
-MT_INCLUDES += -I../common/
+MT_INCLUDES += -I../../common/
 MT_INCLUDES += -I$(POSTGRESQL_INCLUDE_SERVER) -I$(POSTGRESQL_INCLUDE)/internal
 MT_COMPILEFLAGS := -W -Wall -Wno-multichar -Wno-unused-parameter -Wno-unused-function -Werror-implicit-function-declaration
 MT_OPTFLAGS := -O3

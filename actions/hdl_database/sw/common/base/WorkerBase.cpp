@@ -48,20 +48,19 @@ void WorkerBase::delete_thread (int in_thread_id)
 
 void WorkerBase::start()
 {
+    //printf("worker start!\n");
     if (check_start()) {
-        elog (ERROR, "Unable to start worker because check_start failed.");
+        printf ("Unable to start worker because check_start failed.");
         return;
     }
 
     for (int i = 0; i < (int)m_threads.size(); i++) {
-        elog (INFO, "start Thread %d", i);
         m_threads[i]->start();
     }
 
     //m_check_thread = boost::make_shared<boost::thread> (&WorkerBase::check_thread_done, this);
 
     for (int i = 0; i < (int)m_threads.size(); i++) {
-        elog (INFO, "join Thread %d", i);
         m_threads[i]->join();
     }
 
