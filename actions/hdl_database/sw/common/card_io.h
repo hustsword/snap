@@ -22,6 +22,9 @@
 #include "misc_utils.h"
 #include "constants.h"
 
+#include <snap_tools.h>
+#include <snap_s_regs.h>
+
 
 // CAPI basic operations
 void action_write (struct snap_card* h, uint32_t addr, uint32_t data, int id);

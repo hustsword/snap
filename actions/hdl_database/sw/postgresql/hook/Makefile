@@ -36,7 +36,7 @@ POSTGRESQL_SHARELIB       = $(shell pg_config --sharedir)
 
 UTILS                     = ../../../string-match-fpga/utils
 
-INCLUDES                  = -I. -I./ -I../
+INCLUDES                  = -I. -I./ -I../ -I../../
 INCLUDES                 += -I../../common/
 INCLUDES                 += -I$(UTILS) 
 INCLUDES                 += -I$(SNAP_ROOT)/software/include
@@ -54,10 +54,15 @@ BUILDDIR = ./obj
 TOBUILDDIR = $(addprefix $(BUILDDIR)/,$(1))
 MKDIR = if [ ! -d $(dir $@) ]; then mkdir -p $(dir $@); fi
 
+BASE_BUILDDIR = ./obj/mt/base
+BASE_TOBUILDDIR = $(addprefix $(BASE_BUILDDIR)/,$(1))
+
 MT_CPPSRCS := $(shell find ./mt -name "*.cpp")
+MT_CPPBASE := $(shell find ../../common/base -name "*.cpp" -printf "%f\n")
 MT_CPPOBJS := $(call TOBUILDDIR,$(patsubst %.cpp,%.o,$(MT_CPPSRCS)))
+MT_CPPBASEOBJS := $(call BASE_TOBUILDDIR,$(patsubst %.cpp,%.o,$(MT_CPPBASE)))
 MT_CPPFLAGS := --std=c++11
-MT_INCLUDES := -I. -I../ -I./mt -I../../common/base -I./mt/utils -I$(SNAP_ROOT)/software/include
+MT_INCLUDES := -I. -I../ -I./mt -I../../common/base -I./mt/utils -I$(SNAP_ROOT)/software/include -I$(UTILS) 
 MT_INCLUDES += -I./mt/regex -I./mt/interface
 MT_INCLUDES += -I../../common/
 MT_INCLUDES += -I$(POSTGRESQL_INCLUDE_SERVER) -I$(POSTGRESQL_INCLUDE)/internal
@@ -65,17 +70,28 @@ MT_COMPILEFLAGS := -W -Wall -Wno-multichar -Wno-unused-parameter -Wno-unused-fun
 MT_OPTFLAGS := -O3
 CPPFLAGS += $(MT_INCLUDES)
 
+COMMON_CSRCS := $(shell find ../../common/ -name "*.c" -printf "%f\n")
+COMMON_COBJS := $(call TOBUILDDIR,$(patsubst %.c,%.o,$(COMMON_CSRCS)))
+
 PGCAPI_CSRCS := $(shell find . -name "*.c")
 PGCAPI_COBJS := $(call TOBUILDDIR,$(patsubst %.c,%.o,$(PGCAPI_CSRCS)))
 
 UTILS_CPPLINKS := ./fregex.cpp ./regex_config.cpp
 UTILS_CPPOBJS := $(call TOBUILDDIR,$(patsubst %.cpp,%.o,$(UTILS_CPPLINKS)))
 
+OBJS += $(MT_CPPBASEOBJS)
 OBJS += $(MT_CPPOBJS)
+OBJS += $(COMMON_COBJS)
 OBJS += $(PGCAPI_COBJS) 
 OBJS += $(UTILS_CPPOBJS) 
 
 all: $(UTILS_CPPLINKS) all_build
+
+# Build multithreading base CPP objs
+$(MT_CPPBASEOBJS): $(BUILDDIR)/mt/%.o: ../../common/%.cpp
+	@$(MKDIR)
+	$(CXX) $(MT_OPTFLAGS) $(MT_COMPILEFLAGS) $(MT_CPPFLAGS) $(MT_INCLUDES) -c $< -MD -MT $@ -MF $(@:%o=%d) -o $@
+
 
 # Build multithreading related CPP objs
 $(MT_CPPOBJS): $(BUILDDIR)/%.o: %.cpp
@@ -91,6 +107,11 @@ $(UTILS_CPPLINKS): $(UTILS)/fregex.cpp $(UTILS)/regex_config.cpp
 $(UTILS_CPPOBJS): $(BUILDDIR)/%.o: %.cpp
 	@$(MKDIR)
 	$(CXX) -c $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) -DNODEBUG $< -MD -MT $@ -MF $(@:%o=%d) -o $@
+
+# Build common utils
+$(COMMON_COBJS): $(BUILDDIR)/%.o: ../../common/%.c
+	@$(MKDIR)
+	$(CC) -c $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) $< -MD -MT $@ -MF $(@:%o=%d) -o $@ 
 
 # Build PostgreSQL internals and CAPI related C objs
 $(PGCAPI_COBJS): $(BUILDDIR)/%.o: %.c

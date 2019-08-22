@@ -15,9 +15,6 @@
  */
 
 
-#include <snap_tools.h>
-#include <snap_s_regs.h>
-
 #include "card_io.h"
 
 static int verbose_level = 0;
@@ -135,7 +132,7 @@ int action_regex (struct snap_card* h,
     VERBOSE2 (" STAT    DEST   ADDR: %p -- SIZE(max): %d\n", stat_dest_base, (int)stat_size);
 
     VERBOSE2 (" Start register config! \n");
-    print_control_status (h, eng_id);
+    print_control_status (h, id);
 
     action_write (h, ACTION_PATT_INIT_ADDR_L,
                   (uint32_t) (((uint64_t) patt_src_base) & 0xffffffff), id);

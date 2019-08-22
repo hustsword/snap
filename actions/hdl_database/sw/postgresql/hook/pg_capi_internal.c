@@ -16,8 +16,10 @@
 
 
 #include "pg_capi_internal.h"
+#include "fregex.h"
 #include "mt/interface/Interface.h"
 
+int verbose_level = 0;
 
 void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_pkt_id)
 {
