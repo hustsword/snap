@@ -80,6 +80,18 @@
         } \
     } while (0)
 
+/*  defaults */
+#define STEP_DELAY      200
+#define DEFAULT_MEMCPY_BLOCK    4096
+#define DEFAULT_MEMCPY_ITER 1
+#define ACTION_WAIT_TIME    10   /* Default in sec */
+//#define MAX_NUM_PKT 502400
+//#define MAX_NUM_PKT 4096
+#define MIN_NUM_PKT 4096
+#define MAX_NUM_PATT 1024
+
+#define MEGAB       (1024*1024ull)
+#define GIGAB       (1024 * MEGAB)
 
 void* alloc_mem (int align, size_t size);
 void free_mem (void* a);

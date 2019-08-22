@@ -92,7 +92,6 @@ $(MT_CPPBASEOBJS): $(BUILDDIR)/mt/%.o: ../../common/%.cpp
 	@$(MKDIR)
 	$(CXX) $(MT_OPTFLAGS) $(MT_COMPILEFLAGS) $(MT_CPPFLAGS) $(MT_INCLUDES) -c $< -MD -MT $@ -MF $(@:%o=%d) -o $@
 
-
 # Build multithreading related CPP objs
 $(MT_CPPOBJS): $(BUILDDIR)/%.o: %.cpp
 	@$(MKDIR)

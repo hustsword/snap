@@ -45,18 +45,6 @@
 #include "utils/snapmgr.h"
 #include "utils/lsyscache.h"
 
-/*  defaults */
-#define STEP_DELAY      200
-#define DEFAULT_MEMCPY_BLOCK    4096
-#define DEFAULT_MEMCPY_ITER 1
-#define ACTION_WAIT_TIME    10   /* Default in sec */
-//#define MAX_NUM_PKT 502400
-//#define MAX_NUM_PKT 4096
-#define MIN_NUM_PKT 4096
-#define MAX_NUM_PATT 1024
-
-#define MEGAB       (1024*1024ull)
-#define GIGAB       (1024 * MEGAB)
 
 typedef struct CAPIContext_s {
     // CAPI device name
