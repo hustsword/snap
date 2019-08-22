@@ -50,8 +50,8 @@ include $(SNAP_ROOT)/snap_env.sh
 
 UTILS                     = ../../string-match-fpga/utils
 
-INCLUDES                  = -I. -I./ -I../ -I../../
-INCLUDES                 += -I../../common/
+INCLUDES                  = -I. -I./ -I../
+INCLUDES                 += -I../common/ -I../common/base/
 INCLUDES                 += -I$(UTILS) 
 INCLUDES                 += -I$(SNAP_ROOT)/software/include
 #INCLUDES                 += -I$(POSTGRESQL_INCLUDE_SERVER) -I$(POSTGRESQL_INCLUDE)/internal
@@ -72,19 +72,19 @@ BASE_BUILDDIR = ./obj/mt/base
 BASE_TOBUILDDIR = $(addprefix $(BASE_BUILDDIR)/,$(1))
 
 MT_CPPSRCS := $(shell find ./mt -name "*.cpp")
-MT_CPPBASE := $(shell find ../../common/base -name "*.cpp" -printf "%f\n")
+MT_CPPBASE := $(shell find ../common/base -name "*.cpp" -printf "%f\n")
 MT_CPPOBJS := $(call TOBUILDDIR,$(patsubst %.cpp,%.o,$(MT_CPPSRCS)))
 MT_CPPBASEOBJS := $(call BASE_TOBUILDDIR,$(patsubst %.cpp,%.o,$(MT_CPPBASE)))
 MT_CPPFLAGS := --std=c++11
-MT_INCLUDES := -I. -I../ -I./mt -I../../common/base -I./mt/utils -I$(SNAP_ROOT)/software/include -I$(UTILS) 
+MT_INCLUDES := -I. -I../ -I./mt -I../common/base -I./mt/utils -I$(SNAP_ROOT)/software/include -I$(UTILS) 
 MT_INCLUDES += -I./mt/dirtest -I./mt/interface
-MT_INCLUDES += -I../../common/
+MT_INCLUDES += -I../common/
 #MT_INCLUDES += -I$(POSTGRESQL_INCLUDE_SERVER) -I$(POSTGRESQL_INCLUDE)/internal
 MT_COMPILEFLAGS := -W -Wall -Wno-multichar -Wno-unused-parameter -Wno-unused-function -Werror-implicit-function-declaration
 MT_OPTFLAGS := -O3
 CPPFLAGS += $(MT_INCLUDES)
 
-COMMON_CSRCS := $(shell find ../../common/ -name "*.c" -printf "%f\n")
+COMMON_CSRCS := $(shell find ../common/ -name "*.c" -printf "%f\n")
 COMMON_COBJS := $(call TOBUILDDIR,$(patsubst %.c,%.o,$(COMMON_CSRCS)))
 
 DBDIRECT_CSRCS := ./db_direct.c
@@ -113,7 +113,7 @@ config:
 	./action_config.sh
 
 # Build multithreading base CPP objs
-$(MT_CPPBASEOBJS): $(BUILDDIR)/mt/%.o: ../../common/%.cpp
+$(MT_CPPBASEOBJS): $(BUILDDIR)/mt/%.o: ../common/%.cpp
 	@$(MKDIR)
 	$(CXX) $(MT_OPTFLAGS) $(MT_COMPILEFLAGS) $(MT_CPPFLAGS) $(MT_INCLUDES) -c $< -MD -MT $@ -MF $(@:%o=%d) -o $@ $(LDLIBS)
 
@@ -141,7 +141,7 @@ $(UTILS_COBJS): $(BUILDDIR)/%.o: %.c
 	$(CXX) -c $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) $< -MD -MT $@ -MF $(@:%o=%d) -o $@
 
 # Build common utils
-$(COMMON_COBJS): $(BUILDDIR)/%.o: ../../common/%.c
+$(COMMON_COBJS): $(BUILDDIR)/%.o: ../common/%.c
 	@$(MKDIR)
 	$(CC) -c $(CPPFLAGS) $($(@:.o=)_CPPFLAGS) $< -MD -MT $@ -MF $(@:%o=%d) -o $@ 
 

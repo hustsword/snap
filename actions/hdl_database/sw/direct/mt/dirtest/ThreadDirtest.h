@@ -52,7 +52,7 @@ public:
 
     // Get total buffer preparation time of all jobs
     uint64_t get_thread_buff_prep_time();
-    
+
     // Get total regex scan time of all jobs
     uint64_t get_thread_scan_time();
 
@@ -65,7 +65,7 @@ public:
 private:
     // Packet buffer base address for this thread
     void* m_pkt_src_base;
-    
+
     // Maximum allocated size of the packet buffer
     size_t m_max_alloc_pkt_size;
 

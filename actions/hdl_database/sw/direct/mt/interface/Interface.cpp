@@ -25,24 +25,24 @@
 
 using namespace boost::chrono;
 
-int start_regex_workers (int num_engines, 
+int start_regex_workers (int num_engines,
                          int num_job_per_thd,
                          void* patt_src_base,
                          size_t patt_size,
-			 size_t pkt_size,
-			 void** job_pkt_src_bases,
-			 size_t* job_pkt_sizes,
-			 int file_line_count,
+                         size_t pkt_size,
+                         void** job_pkt_src_bases,
+                         size_t* job_pkt_sizes,
+                         int file_line_count,
                          struct snap_card* dn,
                          struct snap_action* act,
                          snap_action_flag_t attach_flags,
                          float* thd_scan_bw,
                          float* wkr_bw,
-			 float* total_bw,
+                         float* total_bw,
                          uint64_t* max_buff,
-			 float* sd_buff,
-			 uint64_t* max_scan,
-			 float* sd_scan,
+                         float* sd_buff,
+                         uint64_t* max_scan,
+                         float* sd_scan,
                          uint64_t* cleanup_time)
 {
     //printf ("Running on regex worker\n");
@@ -82,7 +82,7 @@ int start_regex_workers (int num_engines,
     do {
         uint64_t start_time, elapsed_time;
 
-	if (worker->init()) {
+        if (worker->init()) {
             printf ("ERROR: Failed to initialize worker\n");
             return -1;
         }
@@ -92,15 +92,15 @@ int start_regex_workers (int num_engines,
         // Start work, multithreading starts from here
         worker->start();
         // Multithreading ends at here
-	
+
         elapsed_time = get_usec() - start_time;
-	uint64_t worker_runtime = elapsed_time;
-	*wkr_bw = perf_calc (worker_runtime, (uint64_t)pkt_size);
+        uint64_t worker_runtime = elapsed_time;
+        *wkr_bw = perf_calc (worker_runtime, (uint64_t)pkt_size);
 
-	worker->get_thread_perf_data (max_buff, max_scan, sd_buff, sd_scan);
-	*thd_scan_bw = perf_calc (*max_scan, (uint64_t)pkt_size);
+        worker->get_thread_perf_data (max_buff, max_scan, sd_buff, sd_scan);
+        *thd_scan_bw = perf_calc (*max_scan, (uint64_t)pkt_size);
 
-	ERROR_CHECK (worker->check_results());
+        ERROR_CHECK (worker->check_results());
 
         start_time = get_usec();
         // Cleanup objects created for this procedure
@@ -108,7 +108,7 @@ int start_regex_workers (int num_engines,
         worker->cleanup();
         elapsed_time = get_usec() - start_time;
         *cleanup_time = elapsed_time;
-	*total_bw = perf_calc (worker_runtime + *cleanup_time, (uint64_t)pkt_size);
+        *total_bw = perf_calc (worker_runtime + *cleanup_time, (uint64_t)pkt_size);
 
         printf ("Work finished after %lu usec (%0.3f MB/sec). ", worker_runtime, *wkr_bw);
 

@@ -54,9 +54,9 @@ public:
 
     // Allocate packet buffers
     void set_pkt_src_base (void** in_job_pkt_src_bases,
-		           size_t* in_job_pkt_sizes,
-			   int in_num_job_per_thd, 
-			   int in_pkt_file_line_count);
+                           size_t* in_job_pkt_sizes,
+                           int in_num_job_per_thd,
+                           int in_pkt_file_line_count);
 
     // Get the pattern buffer pointer
     void* get_pattern_buffer();
@@ -77,10 +77,10 @@ public:
     int check_results();
 
     // Get performance data from threads
-    void get_thread_perf_data (uint64_t* max_buff_prep_time, 
-			       uint64_t* max_scan_time,
-		               float* sd_buff_prep_time, 
-			       float* sd_scan_time);
+    void get_thread_perf_data (uint64_t* max_buff_prep_time,
+                               uint64_t* max_scan_time,
+                               float* sd_buff_prep_time,
+                               float* sd_scan_time);
 
     // Clean up any threads created for this worker
     virtual void cleanup();

@@ -75,7 +75,7 @@ void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_p
     uint32_t bytes_used = 0;
     uint16_t pkt_len = size;
 
-     // The TAG ID
+    // The TAG ID
     pkt_id = in_pkt_id;
 
     VERBOSE2 ("PKT[%d] %s len %d\n", pkt_id, in_pkt, pkt_len);
@@ -227,25 +227,25 @@ void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
 
 
 int regex_scan (struct snap_card* dnc,
-                    int timeout,
-                    void* patt_src_base,
-                    void* pkt_src_base,
-                    void* stat_dest_base,
-                    size_t* num_matched_pkt,
-                    size_t patt_size,
-                    size_t pkt_size,
-                    size_t stat_size,
-                    int eng_id)
+                int timeout,
+                void* patt_src_base,
+                void* pkt_src_base,
+                void* stat_dest_base,
+                size_t* num_matched_pkt,
+                size_t patt_size,
+                size_t pkt_size,
+                size_t stat_size,
+                int eng_id)
 {
     int rc;
-    uint64_t td;
+    //uint64_t td;
 
     rc = 0;
 
     action_regex (dnc, patt_src_base, pkt_src_base, stat_dest_base, num_matched_pkt,
-               patt_size, pkt_size, stat_size, eng_id);
+                  patt_size, pkt_size, stat_size, eng_id);
     VERBOSE3 ("Wait for idle\n");
-    rc = action_wait_idle (dnc, timeout, &td);
+    rc = action_wait_idle (dnc, timeout);
     VERBOSE3 ("Card in idle\n");
 
     if (0 != rc) {
@@ -266,15 +266,15 @@ void usage (const char* prog)
               "    -h, --help           print usage information\n"
               "    -v, --verbose        verbose mode\n"
               "    -C, --card <cardno>  use this card for operation\n"
-             // "    -V, --version\n"
+              // "    -V, --version\n"
               "    -q, --quiet          quiece output\n"
               "    -t, --timeout        Timeout after N sec (default 1 sec)\n"
               "    -I, --irq            Enable Action Done Interrupt (default No Interrupts)\n"
               "    -p, --packet         Packet file for matching\n"
               "    -q, --pattern        Pattern file for matching\n"
-	      "    -e, --num_eng        set number of engines to use\n"
-	      "    -j, --num_job        set number of jobs per thread\n"
-	      "    -r, --repeat         set number of repeat tests\n"
+              "    -e, --num_eng        set number of engines to use\n"
+              "    -j, --num_job        set number of jobs per thread\n"
+              "    -r, --repeat         set number of repeat tests\n"
               , prog);
 }
 
@@ -335,7 +335,7 @@ void* sm_compile_file (const char* file_path, size_t* size)
 }
 
 void* regex_scan_file (const char* file_path, size_t* size, size_t* size_for_sw,
-	               int num_jobs, void** job_pkt_src_bases, size_t* job_sizes, int* pkt_count)
+                       int num_jobs, void** job_pkt_src_bases, size_t* job_sizes, int* pkt_count)
 {
     FILE* fp = fopen (file_path, "r");
     char* line = NULL;
@@ -363,19 +363,19 @@ void* regex_scan_file (const char* file_path, size_t* size, size_t* size_for_sw,
     }
 
     for (int i = 0; i < num_jobs; i++) {
-	job_pkt_src_bases[i] = NULL;
-	job_sizes[i] = 0;
+        job_pkt_src_bases[i] = NULL;
+        job_sizes[i] = 0;
     }
 
     job_pkt_src_bases[0] = pkt_src_base;
 
     while ((read = getline (&line, &len, fp)) != -1) {
-	if (curr_job_id != num_jobs - 1 &&
-	    lines_read == (curr_job_id + 1) * (pkt_num / num_jobs)) {
-	    job_sizes[curr_job_id] = (unsigned char*) pkt_src - (unsigned char*) job_pkt_src_bases[curr_job_id];
-	    curr_job_id++;
-	    job_pkt_src_bases[curr_job_id] = pkt_src;
-	}
+        if (curr_job_id != num_jobs - 1 &&
+            lines_read == (curr_job_id + 1) * (pkt_num / num_jobs)) {
+            job_sizes[curr_job_id] = (unsigned char*) pkt_src - (unsigned char*) job_pkt_src_bases[curr_job_id];
+            curr_job_id++;
+            job_pkt_src_bases[curr_job_id] = pkt_src;
+        }
 
         remove_newline (line);
         read--;
@@ -387,7 +387,7 @@ void* regex_scan_file (const char* file_path, size_t* size, size_t* size_for_sw,
         regex_ref_push_packet (line);
         VERBOSE3 ("PACKET Source Address 0X%016lX\n", (uint64_t)pkt_src);
 
-	lines_read++;
+        lines_read++;
     }
 
     job_sizes[curr_job_id] = (unsigned char*)pkt_src - (unsigned char*) job_pkt_src_bases[curr_job_id];
@@ -485,16 +485,16 @@ int main (int argc, char* argv[])
             { "card",         required_argument, NULL, 'C' },
             { "verbose",      no_argument,       NULL, 'v' },
             { "help",         no_argument,       NULL, 'h' },
-           // { "version",      no_argument,       NULL, 'V' },
+            // { "version",      no_argument,       NULL, 'V' },
             { "quiet",        no_argument,       NULL, 'q' },
             { "timeout",      required_argument, NULL, 't' },
             { "irq",          no_argument,       NULL, 'I' },
-           // { "no_chk_offset", no_argument,       NULL, 'f' },
+            // { "no_chk_offset", no_argument,       NULL, 'f' },
             { "packet",       required_argument, NULL, 'p' },
             { "pattern",      required_argument, NULL, 'q' },
-	    { "num_eng",      required_argument, NULL, 'e' },
-	    { "num_job",      required_argument, NULL, 'j' },
-	    { "repeat",       required_argument, NULL, 'r' },
+            { "num_eng",      required_argument, NULL, 'e' },
+            { "num_job",      required_argument, NULL, 'j' },
+            { "repeat",       required_argument, NULL, 'r' },
             { 0,              no_argument,       NULL, 0   },
         };
         cmd = getopt_long (argc, argv, "C:t:p:q:e:j:r:Iqvh",
@@ -510,8 +510,8 @@ int main (int argc, char* argv[])
             break;
 
         //case 'V':    version
-           // VERBOSE0 ("%s\n", version);
-           // exit (EXIT_SUCCESS);;
+        // VERBOSE0 ("%s\n", version);
+        // exit (EXIT_SUCCESS);;
 
         case 'h':   /* help */
             usage (argv[0]);
@@ -525,32 +525,32 @@ int main (int argc, char* argv[])
             timeout = strtol (optarg, (char**)NULL, 0);  /* in sec */
             break;
 
-        case 'I':      /* irq */ 
+        case 'I':      /* irq */
             attach_flags = SNAP_ACTION_DONE_IRQ | SNAP_ATTACH_IRQ;
             break;
 
-	case 'e':
-	    num_eng_using = strtol (optarg, (char**)NULL, 0);
-	    break;
-	
-	case 'j':
-	    num_job_per_thd = strtol (optarg, (char**)NULL, 0);
-	    break;
+        case 'e':
+            num_eng_using = strtol (optarg, (char**)NULL, 0);
+            break;
 
-	case 'r':
-	    num_repeat = strtol (optarg, (char**)NULL, 0);
-	    break;
+        case 'j':
+            num_job_per_thd = strtol (optarg, (char**)NULL, 0);
+            break;
 
-        //case 'f':       don't check offset 
-          //  no_chk_offset = 1;
-          //  break;
+        case 'r':
+            num_repeat = strtol (optarg, (char**)NULL, 0);
+            break;
+
+        //case 'f':       don't check offset
+        //  no_chk_offset = 1;
+        //  break;
 
         default:
             usage (argv[0]);
             exit (EXIT_FAILURE);
         }
     }
-    
+
     printf ("Open Card: %d\n", card_no);
     VERBOSE2 ("Open Card: %d\n", card_no);
     sprintf (device, "/dev/cxl/afu%d.0s", card_no);
@@ -561,9 +561,9 @@ int main (int argc, char* argv[])
         VERBOSE0 ("ERROR: snap_card_alloc_dev(%s)\n", device);
         return -1;
     }
-    
 
-    /* Read Card Capabilities */ 
+
+    /* Read Card Capabilities */
     snap_card_ioctl (dn, GET_CARD_TYPE, (unsigned long)&ioctl_data);
     VERBOSE1 ("SNAP on ");
 
@@ -616,7 +616,7 @@ int main (int argc, char* argv[])
     float sw_bw = print_time (elapsed_time, pkt_size_for_sw);
     printf (" end after %lu usec (%0.3f MB/sec)\n", elapsed_time, sw_bw);
     VERBOSE0 ("======== SOFTWARE DONE========\n");
-    
+
     VERBOSE0 ("Start to get action.\n");
     act = get_action (dn, attach_flags, 5 * timeout);
 
@@ -625,22 +625,22 @@ int main (int argc, char* argv[])
     }
 
     VERBOSE0 ("Finish get action.\n");
-    
-    hw_version = action_read (dn, SNAP_ACTION_VERS_REG);
+
+    hw_version = action_read (dn, SNAP_ACTION_VERS_REG, -1);
     VERBOSE0 ("hw_version: %#x\n", hw_version);
 
-    num_patt_pipes = ( int) ( ( hw_version & 0xFF000000) >> 24);
-    num_pkt_pipes =  ( int) ( ( hw_version & 0x00FF0000) >> 16);
-    num_engines =    ( int) ( ( hw_version & 0x0000FF00) >> 8);
-    revision =       ( int) ( hw_version & 0x000000FF);
+    num_patt_pipes = (int) ((hw_version & 0xFF000000) >> 24);
+    num_pkt_pipes = (int) ((hw_version & 0x00FF0000) >> 16);
+    num_engines = (int) ((hw_version & 0x0000FF00) >> 8);
+    revision = (int) (hw_version & 0x000000FF);
 
     VERBOSE0 ("Running with %d %dx%d regex engine(s), revision: %d\n", num_engines, num_pkt_pipes, num_patt_pipes, revision);
 
     VERBOSE1 ("======== HARDWARE RUN ========\n");
-    
+
     if (num_eng_using > num_engines) {
-	printf ("ERROR: number of engines in command is larger than number of engines. At most %d engines available.\n", num_engines);
-	goto fail;
+        printf ("ERROR: number of engines in command is larger than number of engines. At most %d engines available.\n", num_engines);
+        goto fail;
     }
 
     printf ("Working with %d engines, %d jobs per thread, %d repeating tests.\n", num_eng_using, num_job_per_thd, num_repeat);
@@ -648,26 +648,26 @@ int main (int argc, char* argv[])
     float sum_thd_scan_bw = 0, sum_wkr_bw = 0, sum_total_bw = 0;
     uint64_t sum_buff = 0, sum_scan = 0, sum_cleanup = 0;
     float sum_sd_buff = 0, sum_sd_scan = 0;
-    
+
     for (int i = 0; i < num_repeat; ++i) {
-	printf ("------- Iteration %d -------\n", i + 1);
-	float thd_scan_bw, wkr_bw, total_bw;
-	uint64_t max_buff, max_scan, cleanup_time;
-	float sd_buff, sd_scan;
+        printf ("------- Iteration %d -------\n", i + 1);
+        float thd_scan_bw, wkr_bw, total_bw;
+        uint64_t max_buff, max_scan, cleanup_time;
+        float sd_buff, sd_scan;
 
         ERROR_CHECK (start_regex_workers (num_eng_using, num_job_per_thd, patt_src_base, patt_size, pkt_size, job_pkt_src_bases, job_pkt_sizes, pkt_count,
-				          dn, act, attach_flags, &thd_scan_bw, &wkr_bw, &total_bw, &max_buff, &sd_buff, &max_scan, &sd_scan, &cleanup_time));
+                                          dn, act, attach_flags, &thd_scan_bw, &wkr_bw, &total_bw, &max_buff, &sd_buff, &max_scan, &sd_scan, &cleanup_time));
 
-	sum_thd_scan_bw += thd_scan_bw;
-	sum_wkr_bw      += wkr_bw;
-	sum_total_bw    += total_bw;
-	sum_buff        += max_buff;
-	sum_sd_buff     += sd_buff;
-	sum_scan        += max_scan;
-	sum_sd_scan     += sd_scan;
-	sum_cleanup     += cleanup_time;
+        sum_thd_scan_bw += thd_scan_bw;
+        sum_wkr_bw      += wkr_bw;
+        sum_total_bw    += total_bw;
+        sum_buff        += max_buff;
+        sum_sd_buff     += sd_buff;
+        sum_scan        += max_scan;
+        sum_sd_scan     += sd_scan;
+        sum_cleanup     += cleanup_time;
 
-	sleep (1);
+        sleep (1);
     }
 
     printf ("NUM_ENG: %d\tNUM_JOB: %d\n", num_eng_using, num_job_per_thd);
@@ -680,13 +680,15 @@ int main (int argc, char* argv[])
 
 fail:
     return -1;
-    
+
     if (job_pkt_src_bases) {
-	free (job_pkt_src_bases);
+        free (job_pkt_src_bases);
     }
+
     if (job_pkt_sizes) {
-	free (job_pkt_sizes);
+        free (job_pkt_sizes);
     }
+
     free_mem (patt_src_base);
     free_mem (pkt_src_base);
     snap_detach_action (act);
@@ -694,7 +696,7 @@ fail:
     VERBOSE2 ("Free Card Handle: %p\n", dn);
     snap_card_free (dn);
 __exit1:
-    VERBOSE1 ("End of Test\n"); 
+    VERBOSE1 ("End of Test\n");
     return 0;
 }
 

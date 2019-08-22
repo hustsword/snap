@@ -41,10 +41,10 @@ public:
     HardwareManager (int in_card_num);
     HardwareManager (int in_card_num, int in_timeout_sec, int in_timeout_usec);
     HardwareManager (int in_card_num,
-                    CAPICard* in_capi_card,
-                    CAPIAction* in_capi_action,
-                    snap_action_flag_t in_attach_flags,
-                    int in_timeout_sec, int in_timeout_usec);
+                     CAPICard* in_capi_card,
+                     CAPIAction* in_capi_action,
+                     snap_action_flag_t in_attach_flags,
+                     int in_timeout_sec, int in_timeout_usec);
 
     // The Destructor of hardware manager
     ~HardwareManager();
@@ -70,7 +70,7 @@ public:
     CAPICard* get_capi_card();
 
 private:
-    
+
     // The card number
     int m_card_num;
 

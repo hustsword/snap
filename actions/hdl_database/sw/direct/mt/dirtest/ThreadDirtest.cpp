@@ -148,8 +148,9 @@ void ThreadDirtest::work_with_job (JobPtr in_job)
             return;
         }
     } while (0);
+
     //printf ("Eng %d finished harvesting results from Job %d\n", m_id, job->get_id());
-    
+
     job->release_buffer();
 
     return;
@@ -163,18 +164,22 @@ size_t ThreadDirtest::get_thread_num_matched_pkt()
 uint64_t ThreadDirtest::get_thread_buff_prep_time()
 {
     uint64_t total_buff_prep_time = 0;
+
     for (size_t i = 0; i < m_jobs.size(); i++) {
-	total_buff_prep_time += boost::dynamic_pointer_cast<JobDirtest> (m_jobs[i]) -> get_buff_prep_time();
+        total_buff_prep_time += boost::dynamic_pointer_cast<JobDirtest> (m_jobs[i]) -> get_buff_prep_time();
     }
+
     return total_buff_prep_time;
 }
 
 uint64_t ThreadDirtest::get_thread_scan_time()
 {
     uint64_t total_scan_time = 0;
+
     for (size_t i = 0; i < m_jobs.size(); i++) {
-	total_scan_time += boost::dynamic_pointer_cast<JobDirtest> (m_jobs[i]) -> get_scan_time();
+        total_scan_time += boost::dynamic_pointer_cast<JobDirtest> (m_jobs[i]) -> get_scan_time();
     }
+
     return total_scan_time;
 }
 
@@ -205,13 +210,14 @@ int ThreadDirtest::harvest_result_from_job (JobPtr in_job)
             pkt_id |= (((uint8_t*)m_stat_dest_base)[i * 10 + j] << (j % 4) * 8);
         }
 
-	if (compare_result_id (pkt_id)) {
+        if (compare_result_id (pkt_id)) {
             printf ("ERROR: MISMATCH detected on Eng %d!\n", m_id);
-	    rc = 1;
-	}
+            rc = 1;
+        }
 
         pkt_id = 0;
     }
+
     //printf ("Eng %d: finished reading from m_stat_dest_base with %zu matched packets\n", m_id, job_num_matched_pkt);
 
     m_num_matched_pkt += job_num_matched_pkt;

@@ -29,15 +29,15 @@ void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_p
 void* fill_one_pattern (const char* in_patt, void* in_patt_addr);
 
 int regex_scan (struct snap_card* dnc,
-                    int timeout,
-                    void* patt_src_base,
-                    void* pkt_src_base,
-                    void* stat_dest_base,
-                    size_t* num_matched_pkt,
-                    size_t patt_size,
-                    size_t pkt_size,
-                    size_t stat_size,
-                    int eng_id);
+                int timeout,
+                void* patt_src_base,
+                void* pkt_src_base,
+                void* stat_dest_base,
+                size_t* num_matched_pkt,
+                size_t patt_size,
+                size_t pkt_size,
+                size_t stat_size,
+                int eng_id);
 
 
 void* sm_compile_file (const char* file_path, size_t* size);
@@ -45,4 +45,4 @@ void* regex_scan_file (const char* file_path, size_t* size, size_t* size_for_sw,
 int compare_num_matched_pkt (size_t num_matched_pkt);
 int compare_result_id (uint32_t result_id);
 
-#endif	/* __SNAP_FW_EXA__ */
+#endif  /* __SNAP_FW_EXA__ */

@@ -41,10 +41,10 @@ HardwareManager::HardwareManager (int in_card_num, int in_timeout_sec, int in_ti
 
 
 HardwareManager::HardwareManager (int in_card_num,
-                                 CAPICard* in_capi_card,
-                                 CAPIAction* in_capi_action,
-                                 snap_action_flag_t in_attach_flags,
-                                 int in_timeout_sec, int in_timeout_usec)
+                                  CAPICard* in_capi_card,
+                                  CAPIAction* in_capi_action,
+                                  snap_action_flag_t in_attach_flags,
+                                  int in_timeout_sec, int in_timeout_usec)
     : m_card_num (in_card_num),
       m_capi_card (in_capi_card),
       m_capi_action (in_capi_action),

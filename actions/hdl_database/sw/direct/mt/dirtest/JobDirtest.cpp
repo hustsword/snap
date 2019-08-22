@@ -162,7 +162,7 @@ int JobDirtest::init()
     // Copy the pattern from worker to job
     m_patt_src_base = m_worker->get_pattern_buffer();
     m_patt_size = m_worker->get_pattern_buffer_size();
-   
+
     // Reset the engine
     m_hw_mgr->reset_engine (m_thread_id);
 
@@ -181,6 +181,7 @@ int JobDirtest::packet()
         printf ("ERROR: pkt_src_base is NULL\n");
         return -1;
     }
+
     if (NULL == m_stat_dest_base) {
         printf ("ERROR: stat_dest_base is NULL\n");
         return -1;
@@ -196,16 +197,16 @@ int JobDirtest::packet()
 int JobDirtest::scan()
 {
     //printf("Eng %d Job %d: scanning...\n", m_thread_id, m_id);
-    if (regex_scan_internal (m_hw_mgr->get_capi_card(),
-                             ACTION_WAIT_TIME,
-                             m_patt_src_base,
-                             m_pkt_src_base,
-                             m_stat_dest_base,
-                             &m_num_matched_pkt,
-                             m_patt_size,
-                             m_pkt_size,
-                             m_stat_size,
-                             m_thread_id)) {
+    if (capi_regex_scan_internal (m_hw_mgr->get_capi_card(),
+                                  ACTION_WAIT_TIME,
+                                  m_patt_src_base,
+                                  m_pkt_src_base,
+                                  m_stat_dest_base,
+                                  &m_num_matched_pkt,
+                                  m_patt_size,
+                                  m_pkt_size,
+                                  m_stat_size,
+                                  m_thread_id)) {
         printf ("ERROR: Failed to scan the table\n");
         return -1;
     }
@@ -213,13 +214,14 @@ int JobDirtest::scan()
     //printf ("Eng %d Job %d: finish regex_scan with %d matched packets.\n", m_thread_id, m_id, (int)m_num_matched_pkt);
 
     int count = 0;
+
     do {
         //printf ("Eng %d: draining %i! \n", m_thread_id, count);
-        m_hw_mgr->reg_read(ACTION_STATUS_L, m_thread_id);
+        m_hw_mgr->reg_read (ACTION_STATUS_L, m_thread_id);
         count++;
     } while (count < 10);
 
-    uint32_t reg_data = m_hw_mgr->reg_read(ACTION_STATUS_H, m_thread_id);
+    uint32_t reg_data = m_hw_mgr->reg_read (ACTION_STATUS_H, m_thread_id);
     //printf ("Eng %d Job %d: After draining, number of matched packets: %d\n", m_thread_id, m_id, reg_data);
     m_num_matched_pkt = reg_data;
 

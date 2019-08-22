@@ -99,10 +99,10 @@ void WorkerDirtest::set_patt_src_base (void* in_patt_src_base, size_t in_patt_si
     memcpy (m_patt_src_base, in_patt_src_base, m_patt_size);
 }
 
-void WorkerDirtest::set_pkt_src_base (void** in_job_pkt_src_bases, 
-		                      size_t* in_job_pkt_sizes, 
-				      int in_num_job_per_thd,
-				      int in_pkt_file_line_count)
+void WorkerDirtest::set_pkt_src_base (void** in_job_pkt_src_bases,
+                                      size_t* in_job_pkt_sizes,
+                                      int in_num_job_per_thd,
+                                      int in_pkt_file_line_count)
 {
     m_job_pkt_src_bases = in_job_pkt_src_bases;
     m_job_pkt_sizes = in_job_pkt_sizes;
@@ -144,20 +144,20 @@ int WorkerDirtest::check_results()
     int total_num_matched_pkt = 0;
 
     for (size_t i = 0; i < m_threads.size(); i++) {
-	total_num_matched_pkt += boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_num_matched_pkt();
+        total_num_matched_pkt += boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_num_matched_pkt();
     }
 
     if (compare_num_matched_pkt (total_num_matched_pkt)) {
-	rc = 1;
+        rc = 1;
     }
 
     return rc;
 }
 
-void WorkerDirtest::get_thread_perf_data (uint64_t* max_buff_prep_time, 
-					  uint64_t* max_scan_time,
-		                          float* sd_buff_prep_time, 
-					  float* sd_scan_time)
+void WorkerDirtest::get_thread_perf_data (uint64_t* max_buff_prep_time,
+        uint64_t* max_scan_time,
+        float* sd_buff_prep_time,
+        float* sd_scan_time)
 {
     uint64_t buff_prep_time, scan_time;
     uint64_t sum_buff_prep_time = 0, sum_scan_time = 0;
@@ -169,17 +169,18 @@ void WorkerDirtest::get_thread_perf_data (uint64_t* max_buff_prep_time,
 
     for (size_t i = 0; i < m_threads.size(); i++) {
         buff_prep_time = boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_buff_prep_time();
-	scan_time = boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_scan_time();
+        scan_time = boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_scan_time();
 
-	if (buff_prep_time > *max_buff_prep_time) {
-	    *max_buff_prep_time = buff_prep_time;
-	}
-	if (scan_time > *max_scan_time) {
-	    *max_scan_time = scan_time;
-	}
+        if (buff_prep_time > *max_buff_prep_time) {
+            *max_buff_prep_time = buff_prep_time;
+        }
 
-	sum_buff_prep_time += buff_prep_time;
-	sum_scan_time += scan_time;
+        if (scan_time > *max_scan_time) {
+            *max_scan_time = scan_time;
+        }
+
+        sum_buff_prep_time += buff_prep_time;
+        sum_scan_time += scan_time;
     }
 
     // Caculate E[X]
@@ -188,13 +189,13 @@ void WorkerDirtest::get_thread_perf_data (uint64_t* max_buff_prep_time,
 
     // Add (X-E[X])^2 for each X
     for (size_t i = 0; i < m_threads.size(); i++) {
-	buff_prep_time = boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_buff_prep_time();
-	scan_time = boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_scan_time();
+        buff_prep_time = boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_buff_prep_time();
+        scan_time = boost::dynamic_pointer_cast<ThreadDirtest> (m_threads[i]) -> get_thread_scan_time();
 
-	sum_bp_dev += ((float)buff_prep_time - avg_buff_prep_time) * ((float)buff_prep_time - avg_buff_prep_time);
-	sum_sc_dev += ((float)scan_time - avg_scan_time) * ((float)scan_time - avg_scan_time);
+        sum_bp_dev += ((float)buff_prep_time - avg_buff_prep_time) * ((float)buff_prep_time - avg_buff_prep_time);
+        sum_sc_dev += ((float)scan_time - avg_scan_time) * ((float)scan_time - avg_scan_time);
     }
-    
+
     // SD(X) = sqrt(Var(X)) = sqrt(E[(X-E[X])^2])
     *sd_buff_prep_time = sqrtf (sum_bp_dev / m_threads.size());
     *sd_scan_time = sqrtf (sum_sc_dev / m_threads.size());
