@@ -311,7 +311,7 @@ int JobRegex::capi_regex_pkt_psql (CAPIRegexJobDescriptor* job_desc, Relation re
     return 0;
 }
 
-int JobRegex::get_results (void* result, size_t num_matched_pkt, void* stat_dest_base)
+int JobRegex::get_results (void* result, size_t num_matched_pkt, void* stat_dest_base, void* result_len)
 {
     int i = 0, j = 0;
     uint32_t pkt_id = 0;
@@ -326,6 +326,7 @@ int JobRegex::get_results (void* result, size_t num_matched_pkt, void* stat_dest
         }
 
         ((HeapTupleHeader*)result)[i] = m_worker->m_tuples[(int)pkt_id];
+        ((uint32*)result_len)[i] = m_worker->m_tuples_len[(int)pkt_id];
         pkt_id = 0;
     }
 
@@ -349,10 +350,11 @@ int JobRegex::capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc)
     uint32_t reg_data = action_read (job_desc->context->dn, ACTION_STATUS_H, job_desc->thread_id);
     job_desc->num_matched_pkt = reg_data;
     job_desc->results = (HeapTupleHeader*) palloc (reg_data * sizeof (HeapTupleHeader));
+    job_desc->results_len = (uint32*) palloc (reg_data * sizeof (uint32));
 
     //elog (DEBUG1, "Thread %d finished with %d matched packets", job_desc->thread_id, reg_data);
 
-    if (get_results (job_desc->results, reg_data, job_desc->stat_dest_base)) {
+    if (get_results (job_desc->results, reg_data, job_desc->stat_dest_base, job_desc->results_len)) {
         errno = ENODEV;
         return -1;
     }

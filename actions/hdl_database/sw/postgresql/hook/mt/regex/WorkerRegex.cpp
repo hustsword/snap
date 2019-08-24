@@ -197,7 +197,7 @@ void WorkerRegex::read_buffers()
 
     m_num_blks = RelationGetNumberOfBlocksInFork (m_relation, MAIN_FORKNUM);
     int m_est_num_blks = m_relation->rd_rel->relpages;
-    int m_est_num_tups;
+    int m_est_num_tups; //just estimation collected by pg vacuum, not accurate
     if (m_est_num_blks == m_num_blks) {
         m_est_num_tups = (int)m_relation->rd_rel->reltuples + 1;
     } else {
@@ -206,6 +206,7 @@ void WorkerRegex::read_buffers()
 
     m_buffers = (Buffer*) palloc0 (sizeof (Buffer) * m_num_blks);
     m_tuples = (HeapTupleHeader*) palloc0 (sizeof (HeapTupleHeader) * m_est_num_tups);
+    m_tuples_len = (uint32*) palloc0 (sizeof (uint32) * m_est_num_tups);
 
     int count = 0;
 
@@ -222,13 +223,12 @@ void WorkerRegex::read_buffers()
             ItemId id = PageGetItemId (page, line_num);
             uint16 lp_offset = ItemIdGetOffset (id);
             uint16 lp_len = ItemIdGetLength (id);
-            if (m_tup_len == 0) {
-                m_tup_len = lp_len;
-            }
+
             if (lp_len >= MinHeapTupleSize &&
                 lp_offset == MAXALIGN (lp_offset)) {
                 HeapTupleHeader tuphdr = (HeapTupleHeader) PageGetItem (page, id); // also check ItemIdHasStorage (id)
                 m_tuples[count] = tuphdr;
+                m_tuples_len[count] = lp_len;
                 count++;
             }
         }
@@ -248,6 +248,7 @@ void WorkerRegex::release_buffers()
 
         pfree (m_buffers);
         pfree (m_tuples);
+        pfree (m_tuples_len);
     }
 }
 

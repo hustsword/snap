@@ -421,11 +421,11 @@ new_job:
         goto new_job;
     }
 
-    HeapTupleHeader tupleH = ((HeapTupleHeader*)job_desc->results)[job_desc->curr_result_id];
+    HeapTupleHeader tupleH = job_desc->results[job_desc->curr_result_id];
     (job_desc->curr_result_id)++;
     
     HeapTuple tuple = (HeapTuple) palloc(HEAPTUPLESIZE);
-    tuple->t_len = sizeof (tupleH);
+    tuple->t_len = job_desc->results_len[job_desc->curr_result_id];
     tuple->t_self = tupleH->t_ctid;
     tuple->t_tableOid = relation->rd_id;
     tuple->t_data = tupleH;

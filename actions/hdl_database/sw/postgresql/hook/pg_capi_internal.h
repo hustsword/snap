@@ -105,6 +105,9 @@ typedef struct CAPIRegexJobDescriptor_s {
     // The pointer to the results
     HeapTupleHeader* results;
 
+    // len of the results
+    uint32* results_len;
+
     // An index to record the result processing.
     // Each id corresponds one entry in the results buffer.
     int curr_result_id;

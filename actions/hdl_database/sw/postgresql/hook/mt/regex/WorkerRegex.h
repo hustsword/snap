@@ -87,8 +87,8 @@ public:
     // A container to hold all tupler header pointers
     HeapTupleHeader* m_tuples;
 
-    // Length of a tuple
-    uint16 m_tup_len;
+    // Length of tuples
+    uint32* m_tuples_len;
 
 private:
     // Use interrupt or poll to check thread done?
