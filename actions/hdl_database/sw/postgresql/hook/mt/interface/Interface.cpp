@@ -60,6 +60,7 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
         elog (ERROR, "Number of threads %d is greater than number of engines %d",
               in_capiss->capi_regex_num_threads, hw_mgr->get_num_engines());
     }
+
     // Create threads
     for (int i = 0; i < in_capiss->capi_regex_num_threads; i++) {
         ThreadRegexPtr thd = boost::make_shared<ThreadRegex> (i, 1000);
@@ -126,7 +127,7 @@ int start_regex_workers (PGCAPIScanState* in_capiss)
 
         high_resolution_clock::time_point t_before_write = high_resolution_clock::now();
         std::ofstream out_file;
-        out_file.open("part_perf_tup_rec.csv", std::ios::app);
+        out_file.open ("part_perf_tup_rec.csv", std::ios::app);
         out_file << in_capiss->capi_regex_num_threads << " threads ";
         out_file << in_capiss->capi_regex_num_jobs << " jobs,";
         out_file << (float) duration1 / 1000 << ",";

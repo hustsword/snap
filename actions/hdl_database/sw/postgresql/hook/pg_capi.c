@@ -349,8 +349,8 @@ BeginPGCAPIScan (CustomScanState* node, EState* estate, int eflags)
             //bytea* t_ptr = DatumGetByteaP (t_const->constvalue);
             //elog (DEBUG1, "Arg2 Size: %lu", VARSIZE_ANY_EXHDR (t_ptr));
             //elog (DEBUG1, "Arg2: %s", VARDATA (t_ptr));
-            char* t_ptr = DatumGetCString(DirectFunctionCall1(textout, t_const->constvalue));
-	    capiss->capi_regex_pattern = t_ptr;
+            char* t_ptr = DatumGetCString (DirectFunctionCall1 (textout, t_const->constvalue));
+            capiss->capi_regex_pattern = t_ptr;
         }
     }
 
@@ -409,9 +409,9 @@ new_job:
     int curr_job_id = capiss->capi_regex_curr_job;
     CAPIRegexJobDescriptor* job_desc = capiss->capi_regex_job_descs[curr_job_id];
 
-    elog (DEBUG1, "Harvesting on job %d (total jobs %d) result %d (total results %d)",
-            capiss->capi_regex_curr_job, capiss->capi_regex_num_jobs,
-            job_desc->curr_result_id, (int)job_desc->num_matched_pkt);
+    //elog (INFO, "Harvesting on job %d (total jobs %d) result %d (total results %d)",
+    //        capiss->capi_regex_curr_job, capiss->capi_regex_num_jobs,
+    //        job_desc->curr_result_id, (int)job_desc->num_matched_pkt);
 
     if (job_desc->curr_result_id >= ((int)job_desc->num_matched_pkt - 1)) {
         (capiss->capi_regex_curr_job)++;
@@ -423,8 +423,8 @@ new_job:
 
     HeapTupleHeader tupleH = job_desc->results[job_desc->curr_result_id];
     (job_desc->curr_result_id)++;
-    
-    HeapTuple tuple = (HeapTuple) palloc(HEAPTUPLESIZE);
+
+    HeapTuple tuple = (HeapTuple) palloc (HEAPTUPLESIZE);
     tuple->t_len = job_desc->results_len[job_desc->curr_result_id];
     tuple->t_self = tupleH->t_ctid;
     tuple->t_tableOid = relation->rd_id;

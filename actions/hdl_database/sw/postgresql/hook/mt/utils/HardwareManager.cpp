@@ -125,7 +125,7 @@ void HardwareManager::reset_engine (int in_eng_id)
     soft_reset (m_capi_card, in_eng_id);
 }
 
-int HardwareManager::get_num_engines ()
+int HardwareManager::get_num_engines()
 {
     return m_num_engines;
 }

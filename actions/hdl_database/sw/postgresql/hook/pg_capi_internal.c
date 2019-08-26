@@ -58,11 +58,11 @@ void print_time (uint64_t elapsed, uint64_t size)
     if (elapsed > 10000) {
         t = (int)elapsed / 1000;
         ft = (1000 / (float)t) * fsize;
-        elog (DEBUG1, " end after %d msec (%0.3f MB/sec)\n", t, ft);
+        elog (INFO, " end after %d msec (%0.3f MB/sec)\n", t, ft);
     } else {
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
-        elog (DEBUG1, " end after %d usec (%0.3f MB/sec)\n", t, ft);
+        elog (INFO, " end after %d usec (%0.3f MB/sec)\n", t, ft);
     }
 }
 
@@ -77,18 +77,18 @@ void print_time_text (const char* text, uint64_t elapsed, uint64_t size)
         ft = (1000 / (float)t) * fsize;
 
         if (0 == size) {
-            elog (DEBUG1, "%s run time: %d msec", text, t);
+            elog (INFO, "%s run time: %d msec", text, t);
         } else {
-            elog (DEBUG1, "%s run time: %d msec (%0.3f MB/sec)", text, t, ft);
+            elog (INFO, "%s run time: %d msec (%0.3f MB/sec)", text, t, ft);
         }
     } else {
         t = (int)elapsed;
         ft = (1000000 / (float)t) * fsize;
 
         if (0 == size) {
-            elog (DEBUG1, "%s run time:  %d usec", text, t);
+            elog (INFO, "%s run time:  %d usec", text, t);
         } else {
-            elog (DEBUG1, "%s run time:  %d usec (%0.3f MB/sec)", text, t, ft);
+            elog (INFO, "%s run time:  %d usec (%0.3f MB/sec)", text, t, ft);
         }
     }
 }
@@ -138,7 +138,7 @@ void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr, int in_p
     uint16_t pkt_len = size;
 
     if (((uint64_t)pkt_base_addr & 0x3FULL) != 0) {
-        elog (DEBUG1, "WARNING: Address %p is not 64B aligned", pkt_base_addr);
+        elog (INFO, "WARNING: Address %p is not 64B aligned", pkt_base_addr);
     }
 
     // The frame header
@@ -197,7 +197,7 @@ void* fill_one_pattern (const char* in_patt, void* in_patt_addr, int in_patt_id)
         config_bytes[x] = 0;
     }
 
-    elog (DEBUG1, "PATT[%d] %s\n", pattern_id, in_patt);
+    elog (INFO, "PATT[%d] %s\n", pattern_id, in_patt);
 
     fregex_get_config (in_patt,
                        MAX_TOKEN_NUM,
@@ -257,7 +257,7 @@ void action_write (struct snap_card* h, uint32_t addr, uint32_t data, int id)
     rc = snap_mmio_write32 (h, (uint64_t)REG (addr, id), data);
 
     if (0 != rc) {
-        elog (DEBUG1, "Write MMIO 32 Err\n");
+        elog (INFO, "Write MMIO 32 Err\n");
     }
 
     return;
@@ -271,7 +271,7 @@ uint32_t action_read (struct snap_card* h, uint32_t addr, int id)
     rc = snap_mmio_read32 (h, (uint64_t)REG (addr, id), &data);
 
     if (0 != rc) {
-        elog (DEBUG1, "Read MMIO 32 Err\n");
+        elog (INFO, "Read MMIO 32 Err\n");
     }
 
     return data;
@@ -293,7 +293,7 @@ int action_wait_idle (struct snap_card* h, int timeout)
     if (rc) {
         rc = 0;    /* Good */
     } else {
-        elog (DEBUG1, "Error. Timeout while Waiting for Idle\n");
+        elog (INFO, "Error. Timeout while Waiting for Idle\n");
     }
 
     return rc;
@@ -320,7 +320,7 @@ void soft_reset (struct snap_card* h, int id)
     // Status[4] to reset
     action_write (h, ACTION_CONTROL_L, 0x00000010, id);
     action_write (h, ACTION_CONTROL_H, 0x00000000, id);
-    //elog (DEBUG1, " Write ACTION_CONTROL for soft reset!");
+    //elog (INFO, " Write ACTION_CONTROL for soft reset!");
     action_write (h, ACTION_CONTROL_L, 0x00000000, id);
     action_write (h, ACTION_CONTROL_H, 0x00000000, id);
 }
@@ -341,12 +341,12 @@ int action_regex (struct snap_card* h,
     print_control_status (h, id);
 
     /*
-    elog (DEBUG1, "PKT  source: %p", pkt_src_base);
-    elog (DEBUG1, "PATT source: %p", patt_src_base);
-    elog (DEBUG1, "Stat source: %p", stat_dest_base);
-    elog (DEBUG1, "PKT  size: %zu", pkt_size);
-    elog (DEBUG1, "PATT size: %zu", patt_size);
-    elog (DEBUG1, "Stat size: %zu", stat_size);
+    elog (INFO, "PKT  source: %p", pkt_src_base);
+    elog (INFO, "PATT source: %p", patt_src_base);
+    elog (INFO, "Stat source: %p", stat_dest_base);
+    elog (INFO, "PKT  size: %zu", pkt_size);
+    elog (INFO, "PATT size: %zu", patt_size);
+    elog (INFO, "Stat size: %zu", stat_size);
     */
 
     action_write (h, ACTION_PATT_INIT_ADDR_L,
@@ -389,6 +389,7 @@ int action_regex (struct snap_card* h,
     print_control_status (h, id);
 
     count = 0;
+
     do {
         reg_data = action_read (h, ACTION_STATUS_L, id);
 
@@ -400,15 +401,16 @@ int action_regex (struct snap_card* h,
 
         // Status[0]
         if ((reg_data & 0x00000001) == 1) {
-            //elog (DEBUG1, "Pattern copy done!\n");
+            //elog (INFO, "Pattern copy done!\n");
             break;
         }
 
         usleep (1000);
 
         count ++;
-        if ((count % 5000) == 0) {
-            elog (DEBUG1, "Heart beat on hardware pattern polling");
+
+        if ((count % 1000) == 0) {
+            elog (INFO, "Heart beat on hardware pattern polling");
         }
     } while (1);
 
@@ -417,6 +419,7 @@ int action_regex (struct snap_card* h,
     action_write (h, ACTION_CONTROL_H, 0x00000000, id);
 
     count = 0;
+
     do {
         reg_data = action_read (h, ACTION_STATUS_L, id);
 
@@ -439,12 +442,13 @@ int action_regex (struct snap_card* h,
         usleep (1000);
 
         count ++;
-        if ((count % 5000) == 0) {
-            elog (DEBUG1, "Heart beat on hardware status polling");
+
+        if ((count % 1000) == 0) {
+            elog (INFO, "Heart beat on hardware status polling");
         }
     } while (1);
-    
-    //elog (DEBUG1, "work done!\n");
+
+    //elog (INFO, "work done!\n");
 
     // Stop working
     action_write (h, ACTION_CONTROL_L, 0x00000000, id);
@@ -455,6 +459,7 @@ int action_regex (struct snap_card* h,
     action_write (h, ACTION_CONTROL_H, 0x00000000, id);
 
     count = 0;
+
     do {
         reg_data = action_read (h, ACTION_STATUS_L, id);
 
@@ -472,12 +477,13 @@ int action_regex (struct snap_card* h,
         }
 
         count ++;
-        if ((count % 5000) == 0) {
-            elog (DEBUG1, "Heart beat on hardware draining polling");
+
+        if ((count % 1000) == 0) {
+            elog (INFO, "Heart beat on hardware draining polling");
         }
     } while (1);
 
-    //elog (DEBUG1, "flushing done!\n");
+    //elog (INFO, "flushing done!\n");
 
     // Stop flushing
     action_write (h, ACTION_CONTROL_L, 0x00000000, id);
@@ -518,8 +524,8 @@ struct snap_action* get_action (struct snap_card* handle,
                               flags, timeout);
 
     if (NULL == act) {
-        elog (DEBUG1, "Error: Can not attach Action: %x\n", ACTION_TYPE_DATABASE);
-        elog (DEBUG1, "       Try to run snap_main tool\n");
+        elog (INFO, "Error: Can not attach Action: %x\n", ACTION_TYPE_DATABASE);
+        elog (INFO, "       Try to run snap_main tool\n");
     }
 
     return act;
@@ -538,7 +544,7 @@ void* capi_regex_compile_internal (const char* patt, size_t* size)
     //void* patt_src_base = palloc0 (max_alloc_size);
     void* patt_src = patt_src_base;
 
-    elog (DEBUG1, "PATTERN Source Address Start at 0X%016lX\n", (uint64_t) patt_src);
+    elog (INFO, "PATTERN Source Address Start at 0X%016lX\n", (uint64_t) patt_src);
 
     if (patt == NULL) {
         elog (ERROR, "PATTERN pointer is NULL!\n");
@@ -554,9 +560,9 @@ void* capi_regex_compile_internal (const char* patt, size_t* size)
         elog (DEBUG3, "Pattern Source Address 0X%016lX\n", (uint64_t) patt_src);
     }
 
-    elog (DEBUG1, "Total size of pattern buffer used: %ld\n", (uint64_t) ((uint64_t) patt_src - (uint64_t) patt_src_base));
+    elog (INFO, "Total size of pattern buffer used: %ld\n", (uint64_t) ((uint64_t) patt_src - (uint64_t) patt_src_base));
 
-    elog (DEBUG1, "---------- Pattern Buffer: %p\n", patt_src_base);
+    elog (INFO, "---------- Pattern Buffer: %p\n", patt_src_base);
 
     if (verbose_level > 2) {
         __hexdump (stdout, patt_src_base, ((uint64_t) patt_src - (uint64_t) patt_src_base));
@@ -659,7 +665,7 @@ int capi_regex_context_init (CAPIContext* context)
     context->act          = NULL;
 
     // Prepare the card and action
-    elog (DEBUG1, "Open Card: %d", context->card_no);
+    elog (INFO, "Open Card: %d", context->card_no);
     sprintf (context->device, "/dev/cxl/afu%d.0s", context->card_no);
     context->dn = snap_card_alloc_dev (context->device, SNAP_VENDOR_ID_IBM, SNAP_DEVICE_ID_SNAP);
 
@@ -670,9 +676,9 @@ int capi_regex_context_init (CAPIContext* context)
         return -1;
     }
 
-    elog (DEBUG1, "Start to get action.");
+    elog (INFO, "Start to get action.");
     context->act = get_action (context->dn, context->attach_flags, 5 * context->timeout);
-    elog (DEBUG1, "Finish get action.");
+    elog (INFO, "Finish get action.");
 
     return 0;
 }
@@ -768,10 +774,10 @@ int print_results (size_t num_results, void* stat_dest_base)
     uint32_t patt_id = 0;
     int rc = 0;
 
-    elog (DEBUG1, "---- Result buffer address: %p ----\n", stat_dest_base);
-    elog (DEBUG1, "---- Number of result items: %zu ----\n", num_results);
-    elog (DEBUG1, "---- Results (HW: hardware) ----\n");
-    elog (DEBUG1, "PKT(HW) PATT(HW) OFFSET(HW)\n");
+    elog (INFO, "---- Result buffer address: %p ----\n", stat_dest_base);
+    elog (INFO, "---- Number of result items: %zu ----\n", num_results);
+    elog (INFO, "---- Results (HW: hardware) ----\n");
+    elog (INFO, "PKT(HW) PATT(HW) OFFSET(HW)\n");
 
     for (i = 0; i < (int)num_results; i++) {
         for (j = 0; j < 4; j++) {
@@ -786,7 +792,7 @@ int print_results (size_t num_results, void* stat_dest_base)
             offset |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 2) * 8);
         }
 
-        elog (DEBUG1, "%7d\t%6d\t%7d\n", pkt_id, patt_id, offset);
+        elog (INFO, "%7d\t%6d\t%7d\n", pkt_id, patt_id, offset);
 
         patt_id = 0;
         pkt_id = 0;

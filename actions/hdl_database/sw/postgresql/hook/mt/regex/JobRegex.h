@@ -102,7 +102,7 @@ private:
     int capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc);
 
     // Helper function to write results
-    int get_results (void* result, size_t num_matched_pkt, void* stat_dest_base, void* result_len));
+    int get_results (void* result, size_t num_matched_pkt, void* stat_dest_base, void* result_len);
 
     // Handle the packet preparation
     int capi_regex_pkt_psql (CAPIRegexJobDescriptor* job_desc,

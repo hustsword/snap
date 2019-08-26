@@ -59,19 +59,21 @@ int JobRegex::run()
     }
 
     do {
-	    //elog (DEBUG3, "Thread %d Job %d: Before init()..", m_thread_id, m_id);
+        //elog (DEBUG3, "Thread %d Job %d: Before init()..", m_thread_id, m_id);
         if (init()) {
             elog (ERROR, "Failed to perform regex job initializing");
             fail();
             return -1;
         }
-	    //elog (DEBUG3, "Thread %d Job %d: Finish init()..", m_thread_id, m_id);
+
+        //elog (DEBUG3, "Thread %d Job %d: Finish init()..", m_thread_id, m_id);
         if (packet()) {
             elog (ERROR, "Failed to perform regex packet preparing");
             fail();
             return -1;
         }
-	    //elog (DEBUG3, "Thread %d Job %d: Finish packet()..", m_thread_id, m_id);
+
+        //elog (INFO, "Thread %d Job %d: Finish packet()..", m_thread_id, m_id);
     } while (0);
 
     do {
@@ -83,7 +85,8 @@ int JobRegex::run()
             fail();
             return -1;
         }
-	    //elog (DEBUG3, "Thread %d Job %d: Finish scan()..", m_thread_id, m_id);
+
+        //elog (INFO, "Thread %d Job %d: Finish scan()..", m_thread_id, m_id);
     } while (0);
 
     if (result()) {
@@ -91,7 +94,8 @@ int JobRegex::run()
         fail();
         return -1;
     }
-    //elog (DEBUG3, "Thread %d Job %d: Finish result()..", m_thread_id, m_id);
+
+    //elog (INFO, "Thread %d Job %d: Finish result()..", m_thread_id, m_id);
 
     done();
 
@@ -128,10 +132,10 @@ int JobRegex::init()
     // Copy the pattern from worker to job
     m_job_desc->patt_src_base = m_worker->get_pattern_buffer();
     m_job_desc->patt_size = m_worker->get_pattern_buffer_size();
-    
+
     int start_tup_id = 0;
     int num_tups = m_thread->get_num_tups_per_job (m_id, &start_tup_id);
-    
+
     // Get the tuples for this job
     m_job_desc->num_tups = num_tups;
     m_job_desc->start_tup_id = start_tup_id;
@@ -146,7 +150,7 @@ int JobRegex::init()
 
     // Reset the engine
     m_hw_mgr->reset_engine (m_thread_id);
-    
+
     return 0;
 }
 
@@ -248,25 +252,25 @@ int JobRegex::capi_regex_pkt_psql_internal (Relation rel, int attr_id,
 
     void* pkt_src      = pkt_src_base;
     TupleDesc tupdesc  = RelationGetDescr (rel);
-    uint16 lp_len = m_worker->m_tup_len;
 
     for (int tup_num = 0; tup_num < num_tups; ++tup_num) {
-	//elog (DEBUG1, "before get tuphdr");
+        //elog (DEBUG1, "before get tuphdr");
         HeapTupleHeader tuphdr = m_worker->m_tuples[start_tup_id + tup_num];
-	//elog (DEBUG1, "tuphdr is at %p", (void*)tuphdr);
-	//elog (DEBUG1, "after get tuphdr");
+        //elog (DEBUG1, "tuphdr is at %p", (void*)tuphdr);
+        //elog (DEBUG1, "after get tuphdr");
         // TODO: be careful about the packet id.
         // The packet id is supposed to be the row ID in the relation,
         // is this really the correct way to do this?
         int pkt_id = start_tup_id + tup_num;
 
+        uint16 lp_len = m_worker->m_tuples_len[start_tup_id + tup_num];
         int attr_len = 0;
-	//elog (DEBUG1, "before datumgetbyteap");
-	char* attrChar = get_attr (tuphdr, tupdesc, lp_len, attr_id, &attr_len);
+        //elog (DEBUG1, "before datumgetbyteap");
+        char* attrChar = get_attr (tuphdr, tupdesc, lp_len, attr_id, &attr_len);
         //elog (DEBUG1, "after get_attr");
-	bytea* attr_ptr = DatumGetByteaP (attrChar);
+        bytea* attr_ptr = DatumGetByteaP (attrChar);
         //elog (DEBUG1, "after datumgetbyteap");
-	attr_len = VARSIZE (attr_ptr) - VARHDRSZ;
+        attr_len = VARSIZE (attr_ptr) - VARHDRSZ;
         (*size_wo_hw_hdr) += attr_len;
         pkt_src = fill_one_packet (VARDATA (attr_ptr), attr_len, pkt_src, pkt_id);
         (*num_pkt)++;
@@ -325,8 +329,8 @@ int JobRegex::get_results (void* result, size_t num_matched_pkt, void* stat_dest
             pkt_id |= (((uint8_t*)stat_dest_base)[i * 10 + j] << (j % 4) * 8);
         }
 
-        ((HeapTupleHeader*)result)[i] = m_worker->m_tuples[(int)pkt_id];
-        ((uint32*)result_len)[i] = m_worker->m_tuples_len[(int)pkt_id];
+        ((HeapTupleHeader*)result)[i] = m_worker->m_tuples[ (int)pkt_id];
+        ((uint32*)result_len)[i] = m_worker->m_tuples_len[ (int)pkt_id];
         pkt_id = 0;
     }
 

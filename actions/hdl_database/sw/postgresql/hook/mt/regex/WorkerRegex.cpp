@@ -25,14 +25,14 @@ WorkerRegex::WorkerRegex (HardwareManagerPtr in_hw_mgr, Relation in_relation, in
     : WorkerBase (in_hw_mgr),
       m_buffers (NULL),
       m_tuples (NULL),
+      m_tuples_len (NULL),
       m_interrupt (true),
       m_patt_src_base (NULL),
       m_patt_size (0),
       m_relation (in_relation),
       m_attr_id (in_attr_id),
       m_num_blks (0),
-      m_num_tuples (0),
-      m_tup_len (0)
+      m_num_tuples (0)
 {
     m_job_manager_en = false;
 
@@ -198,10 +198,11 @@ void WorkerRegex::read_buffers()
     m_num_blks = RelationGetNumberOfBlocksInFork (m_relation, MAIN_FORKNUM);
     int m_est_num_blks = m_relation->rd_rel->relpages;
     int m_est_num_tups; //just estimation collected by pg vacuum, not accurate
+
     if (m_est_num_blks == m_num_blks) {
         m_est_num_tups = (int)m_relation->rd_rel->reltuples + 1;
     } else {
-        m_est_num_tups = (int)(m_relation->rd_rel->reltuples * 1.1);
+        m_est_num_tups = (int) (m_relation->rd_rel->reltuples * 1.1);
     }
 
     m_buffers = (Buffer*) palloc0 (sizeof (Buffer) * m_num_blks);
