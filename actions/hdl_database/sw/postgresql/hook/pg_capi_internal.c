@@ -197,7 +197,7 @@ void* fill_one_pattern (const char* in_patt, void* in_patt_addr, int in_patt_id)
         config_bytes[x] = 0;
     }
 
-    elog (INFO, "PATT[%d] %s\n", pattern_id, in_patt);
+    elog (DEBUG1, "PATT[%d] %s\n", pattern_id, in_patt);
 
     fregex_get_config (in_patt,
                        MAX_TOKEN_NUM,
@@ -544,7 +544,7 @@ void* capi_regex_compile_internal (const char* patt, size_t* size)
     //void* patt_src_base = palloc0 (max_alloc_size);
     void* patt_src = patt_src_base;
 
-    elog (INFO, "PATTERN Source Address Start at 0X%016lX\n", (uint64_t) patt_src);
+    elog (DEBUG1, "PATTERN Source Address Start at 0X%016lX\n", (uint64_t) patt_src);
 
     if (patt == NULL) {
         elog (ERROR, "PATTERN pointer is NULL!\n");
@@ -560,9 +560,9 @@ void* capi_regex_compile_internal (const char* patt, size_t* size)
         elog (DEBUG3, "Pattern Source Address 0X%016lX\n", (uint64_t) patt_src);
     }
 
-    elog (INFO, "Total size of pattern buffer used: %ld\n", (uint64_t) ((uint64_t) patt_src - (uint64_t) patt_src_base));
+    elog (DEBUG1, "Total size of pattern buffer used: %ld\n", (uint64_t) ((uint64_t) patt_src - (uint64_t) patt_src_base));
 
-    elog (INFO, "---------- Pattern Buffer: %p\n", patt_src_base);
+    elog (DEBUG1, "---------- Pattern Buffer: %p\n", patt_src_base);
 
     if (verbose_level > 2) {
         __hexdump (stdout, patt_src_base, ((uint64_t) patt_src - (uint64_t) patt_src_base));
@@ -823,7 +823,7 @@ int capi_regex_job_cleanup (CAPIRegexJobDescriptor* job_desc)
     //free_mem (job_desc->stat_dest_base);
 
     if (job_desc->results) {
-        pfree (job_desc->results);
+        free (job_desc->results);
     }
 
     return 0;

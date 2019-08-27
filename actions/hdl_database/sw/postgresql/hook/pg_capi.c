@@ -303,13 +303,13 @@ CreatePGCAPIScanState (CustomScan* custom_plan)
     // Initialize CAPI job descriptor and related variables
     capiss->capi_regex_pattern = NULL;
     capiss->capi_regex_attr_id = -1;
-    capiss->capi_regex_job_descs = (CAPIRegexJobDescriptor**) palloc0 (sizeof (CAPIRegexJobDescriptor*) * pgcapi_num_jobs);
+    capiss->capi_regex_job_descs = (CAPIRegexJobDescriptor**) malloc (sizeof (CAPIRegexJobDescriptor*) * pgcapi_num_jobs);
 
     capiss->capi_regex_num_jobs = pgcapi_num_jobs;
     capiss->capi_regex_num_threads = pgcapi_num_threads;
 
     for (int i = 0; i < capiss->capi_regex_num_jobs; i++) {
-        capiss->capi_regex_job_descs[i] = (CAPIRegexJobDescriptor*) palloc0 (sizeof (CAPIRegexJobDescriptor));
+        capiss->capi_regex_job_descs[i] = (CAPIRegexJobDescriptor*) malloc (sizeof (CAPIRegexJobDescriptor));
     }
 
     capiss->capi_regex_curr_job = 0;
@@ -430,7 +430,6 @@ new_job:
     tuple->t_tableOid = relation->rd_id;
     tuple->t_data = tupleH;
 
-
     if (!capiss->css.ss.ss_currentScanDesc) {
         ReScanPGCAPIScan (node);
     }
@@ -479,14 +478,12 @@ EndPGCAPIScan (CustomScanState* node)
     clock_gettime (CLOCK_REALTIME, &t_beg);
 
     // Clean up the jobs
-    /*
     for (int i = 0; i < capiss->capi_regex_num_jobs; i++) {
         capi_regex_job_cleanup (capiss->capi_regex_job_descs[i]);
-        pfree (capiss->capi_regex_job_descs[i]);
+        free (capiss->capi_regex_job_descs[i]);
     }
 
-    pfree (capiss->capi_regex_job_descs);
-    */
+    free (capiss->capi_regex_job_descs);
 
     clock_gettime (CLOCK_REALTIME, &t_end_0);
     uint64_t diff_0 = diff_time (&t_beg, &t_end_0);

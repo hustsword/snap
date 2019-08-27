@@ -205,9 +205,9 @@ void WorkerRegex::read_buffers()
         m_est_num_tups = (int) (m_relation->rd_rel->reltuples * 1.1);
     }
 
-    m_buffers = (Buffer*) palloc0 (sizeof (Buffer) * m_num_blks);
-    m_tuples = (HeapTupleHeader*) palloc0 (sizeof (HeapTupleHeader) * m_est_num_tups);
-    m_tuples_len = (uint32*) palloc0 (sizeof (uint32) * m_est_num_tups);
+    m_buffers = (Buffer*) malloc (sizeof (Buffer) * m_num_blks);
+    m_tuples = (HeapTupleHeader*) malloc (sizeof (HeapTupleHeader) * m_est_num_tups);
+    m_tuples_len = (uint32*) malloc (sizeof (uint32) * m_est_num_tups);
 
     int count = 0;
 
@@ -247,9 +247,9 @@ void WorkerRegex::release_buffers()
             ReleaseBuffer (buf);
         }
 
-        pfree (m_buffers);
-        pfree (m_tuples);
-        pfree (m_tuples_len);
+        free (m_buffers);
+        free (m_tuples);
+        free (m_tuples_len);
     }
 }
 

@@ -353,8 +353,8 @@ int JobRegex::capi_regex_result_harvest (CAPIRegexJobDescriptor* job_desc)
 
     uint32_t reg_data = action_read (job_desc->context->dn, ACTION_STATUS_H, job_desc->thread_id);
     job_desc->num_matched_pkt = reg_data;
-    job_desc->results = (HeapTupleHeader*) palloc (reg_data * sizeof (HeapTupleHeader));
-    job_desc->results_len = (uint32*) palloc (reg_data * sizeof (uint32));
+    job_desc->results = (HeapTupleHeader*) malloc (reg_data * sizeof (HeapTupleHeader));
+    job_desc->results_len = (uint32*) malloc (reg_data * sizeof (uint32));
 
     //elog (DEBUG1, "Thread %d finished with %d matched packets", job_desc->thread_id, reg_data);
 
