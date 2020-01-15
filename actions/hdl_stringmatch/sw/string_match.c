@@ -31,8 +31,8 @@
 #include <snap_s_regs.h>
 
 #include "string_match.h"
-#include "utils/fregex.h"
-#include "regex_ref.h"
+//#include "utils/fregex.h"
+//#include "regex_ref.h"
 
 /*  defaults */
 #define STEP_DELAY      200
@@ -245,7 +245,7 @@ static void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
     pattern_id = PATTERN_ID;
 
     VERBOSE1 ("PATT[%d] %s\n", pattern_id, in_patt);
-
+#if 0
     fregex_get_config (in_patt,
                        MAX_TOKEN_NUM,
                        MAX_STATE_NUM,
@@ -254,6 +254,7 @@ static void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
                        config_bytes,
                        &config_len,
                        0);
+#endif
 
     VERBOSE2 ("Config length (bits)  %d\n", config_len * 8);
     VERBOSE2 ("Config length (bytes) %d\n", config_len);
@@ -678,7 +679,7 @@ static void* sm_compile_file (const char* file_path, size_t* size)
         VERBOSE3 ("%s\n", line);
         patt_src = fill_one_pattern (line, patt_src);
         // regex ref model
-        regex_ref_push_pattern (line);
+        //regex_ref_push_pattern (line);
         VERBOSE3 ("Pattern Source Address 0X%016lX\n", (uint64_t)patt_src);
     }
 
@@ -734,7 +735,7 @@ static void* sm_scan_file (const char* file_path, size_t* size, size_t* size_for
         (*size_for_sw) += read;
         pkt_src = fill_one_packet (line, read, pkt_src);
         // regex ref model
-        regex_ref_push_packet (line);
+        //regex_ref_push_packet (line);
         VERBOSE3 ("PACKET Source Address 0X%016lX\n", (uint64_t)pkt_src);
     }
 
@@ -1083,11 +1084,11 @@ int main (int argc, char* argv[])
         //reg_data = action_read (dn, ACTION_STATUS_H);
         //VERBOSE0 ("After draining, number of matched packets: %d\n", reg_data);
         //num_matched_pkt = reg_data;
-
+#if 0
         if (verbose_level > 2) {
             __hexdump (stdout, stat_dest_base_0, (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt());
         }
-
+#endif
         //rc = compare_results (num_matched_pkt, stat_dest_base, no_chk_offset);
 
         //if (rc) {
