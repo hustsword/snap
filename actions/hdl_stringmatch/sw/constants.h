@@ -7,7 +7,7 @@
 #define F_CONSTANTS
 
 /* Header file for SNAP Framework STRING_MATCH code */
-#define ACTION_TYPE_STRING_MATCH     0x00000001	/* Action Type */
+#define ACTION_TYPE_STRING_MATCH     0xffff0001	/* Action Type */
 
 #define ACTION_STATUS_L                0x30
 #define ACTION_STATUS_H                0x34
