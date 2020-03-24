@@ -306,7 +306,9 @@ CreatePGCAPIScanState (CustomScan* custom_plan)
 
     capiss->capi_regex_num_jobs = pgcapi_num_jobs;
 
-    for (int i = 0; i < capiss->capi_regex_num_jobs; i++) {
+	int i = 0;
+    //for (int i = 0; i < capiss->capi_regex_num_jobs; i++) {
+    for ( i = 0; i < capiss->capi_regex_num_jobs; i++) {
         capiss->capi_regex_job_descs[i] = (CAPIRegexJobDescriptor*) palloc0 (sizeof (CAPIRegexJobDescriptor));
     }
 
@@ -476,7 +478,8 @@ EndPGCAPIScan (CustomScanState* node)
     clock_gettime (CLOCK_REALTIME, &t_beg);
 
     // Clean up the jobs
-    for (int i = 0; i < capiss->capi_regex_num_jobs; i++) {
+    int i = 0;
+    for ( i = 0; i < capiss->capi_regex_num_jobs; i++) {
         capi_regex_job_cleanup (capiss->capi_regex_job_descs[i]);
         pfree (capiss->capi_regex_job_descs[i]);
     }

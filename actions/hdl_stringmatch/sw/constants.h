@@ -42,8 +42,12 @@
 #define ACTION_PATT_TOTAL_NUM_H        0x6C
 #define ACTION_STAT_TOTAL_SIZE_L       0x70
 #define ACTION_STAT_TOTAL_SIZE_H       0x74
-#define ACTION_DEBUG0_L                0x80
-#define ACTION_DEBUG0_H                0x84
+#define ACTION_CAL_RESULT_L			   0x78
+#define ACTION_CAL_RESULT_H		       0x7C
+#define ACTION_CNF_L                   0x80
+#define ACTION_CNF_H                   0x84
+#define ACTION_TIMER_L                 0x88
+#define ACTION_TIMER_H                 0x8c
 
 #define INPUT_PACKET_STAT_WIDTH         48
 #define INPUT_BATCH_WIDTH               1024
@@ -61,6 +65,9 @@
 #define MAX_CHAR_PER_TOKEN              8//16
 #define PATTERN_ID_WIDTH                32
 #define NUM_OF_PU                       8
+
+#define	DATE_TYPE_INT		0x03
+#define	DATE_TYPE_DOUBLE	0x07
 
 // The width of pattern is calculated per the following equation
 #define PATTERN_WIDTH_BITS (PATTERN_ID_WIDTH+MAX_CHAR_NUM*16+MAX_STATE_NUM*8+8+8+MAX_STATE_NUM+MAX_STATE_NUM*MAX_CHAR_NUM+MAX_STATE_NUM*MAX_STATE_NUM+MAX_STATE_NUM*MAX_STATE_NUM+MAX_STATE_NUM)

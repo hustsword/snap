@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <malloc.h>
 #include <unistd.h>
+#include <time.h>
 #include <sys/time.h>
 #include <getopt.h>
 #include <ctype.h>
@@ -69,6 +70,12 @@
             printf(fmt, ## __VA_ARGS__);    \
     } while (0)
 
+#define PATTERN_BODY_LEN	192
+
+#define PACKET_BODY_MAX_LEN (2048 - 64)
+#define PACKET_MAX_LEN		2048
+#define PACKET_HEAD_LEN		64
+
 static uint32_t PATTERN_ID = 0;
 static uint32_t PACKET_ID = 0;
 static const char* version = GIT_VERSION;
@@ -80,6 +87,14 @@ static uint64_t get_usec (void)
 
     gettimeofday (&t, NULL);
     return t.tv_sec * 1000000 + t.tv_usec;
+}
+
+static uint64_t get_nsec (void)
+{
+	struct timespec time;
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time);
+
+    return time.tv_sec * 1000000000 + time.tv_nsec;
 }
 
 static int get_file_line_count (FILE* fp)
@@ -98,6 +113,7 @@ static int get_file_line_count (FILE* fp)
     return lines;
 }
 
+#if 0
 static void remove_newline (char* str)
 {
     char* pos;
@@ -109,6 +125,7 @@ static void remove_newline (char* str)
         exit (EXIT_FAILURE);
     }
 }
+#endif
 
 static void print_time (uint64_t elapsed, uint64_t size)
 {
@@ -125,6 +142,11 @@ static void print_time (uint64_t elapsed, uint64_t size)
         ft = (1000000 / (float)t) * fsize;
         VERBOSE0 (" end after %d usec (%0.3f MB/sec)\n", t, ft);
     }
+}
+
+static void print_ntime (uint64_t elapsed)
+{
+    VERBOSE0 ("&&&&&&&&&&&  end after %lu nsec \r\n", elapsed);
 }
 
 static void* alloc_mem (int align, size_t size)
@@ -169,142 +191,164 @@ static void* fill_one_packet (const char* in_pkt, int size, void* in_pkt_addr)
     unsigned char* pkt_base_addr = in_pkt_addr;
     int pkt_id;
     uint32_t bytes_used = 0;
-    uint16_t pkt_len = size;
-
+    //uint16_t pkt_len = size - 1;
+	//for test
+	uint16_t pkt_len = size - 1 - 64;
+	//for test
+	//
+	uint8_t row_count;
+	uint8_t module_marks;
+	uint8_t field_type;
+	uint8_t field_size;
+	
+	
+	//5A5A5A5A
+	for (int i = 0; i < 4; i++) {
+		pkt_base_addr[bytes_used] = 0x5A;
+		bytes_used++;
+	}
+	//packet length
+	pkt_base_addr[bytes_used] = (pkt_len & 0xFF);
+	bytes_used++;
+	pkt_base_addr[bytes_used] = ((pkt_len >> 8) & 0xFF);
+	bytes_used++;
+	//row_count
+	row_count = (size - 64) / 32;
+	pkt_base_addr[bytes_used] = (row_count & 0xFF);
+	bytes_used++;
+	//field 1
+	module_marks = 15;
+	pkt_base_addr[bytes_used] = (module_marks & 0xFF);
+	bytes_used++;
+	field_type = DATE_TYPE_DOUBLE;
+	pkt_base_addr[bytes_used] = (field_type & 0xFF);
+	bytes_used++;
+	field_size = 8;
+	pkt_base_addr[bytes_used] = (field_size & 0xFF);
+	bytes_used++;
+	//field 2
+	module_marks = 15;
+	pkt_base_addr[bytes_used] = (module_marks & 0xFF);
+	bytes_used++;
+	field_type = DATE_TYPE_DOUBLE;
+	pkt_base_addr[bytes_used] = (field_type & 0xFF);
+	bytes_used++;
+	field_size = 8;
+	pkt_base_addr[bytes_used] = (field_size & 0xFF);
+	bytes_used++;
+	//field 3
+	module_marks = 15;
+	pkt_base_addr[bytes_used] = (module_marks & 0xFF);
+	bytes_used++;
+	field_type = DATE_TYPE_DOUBLE;
+	pkt_base_addr[bytes_used] = (field_type & 0xFF);
+	bytes_used++;
+	field_size = 8;
+	pkt_base_addr[bytes_used] = (field_size & 0xFF);
+	bytes_used++;
+	//field 4 
+	module_marks = 15;
+	pkt_base_addr[bytes_used] = (module_marks & 0xFF);
+	bytes_used++;
+	field_type = DATE_TYPE_DOUBLE;
+	pkt_base_addr[bytes_used] = (field_type & 0xFF);
+	bytes_used++;
+	field_size = 8;
+	pkt_base_addr[bytes_used] = (field_size & 0xFF);
+	bytes_used++;
+	//pad to 60 byte
+    memset (pkt_base_addr + bytes_used, 0, (60 - bytes_used));
+    bytes_used = 60;
+    //The TAG ID
     PACKET_ID++;
-    // The TAG ID
     pkt_id = PACKET_ID;
-
-    VERBOSE2 ("PKT[%d] %s len %d\n", pkt_id, in_pkt, pkt_len);
-
-    // The frame header
-    for (int i = 0; i < 4; i++) {
-        pkt_base_addr[bytes_used] = 0x5A;
-        bytes_used ++;
-    }
-
-    // The frame size
-    pkt_base_addr[bytes_used] = (pkt_len & 0xFF);
-    bytes_used ++;
-    pkt_base_addr[bytes_used] = 0;
-    pkt_base_addr[bytes_used] |= ((pkt_len >> 8) & 0xF);
-    bytes_used ++;
-
-    // Skip the reserved bytes
-    for (int i = 0; i < 54; i++) {
-        pkt_base_addr[bytes_used] = 0;
-        bytes_used++;
-    }
-
     for (int i = 0; i < 4 ; i++) {
         pkt_base_addr[bytes_used] = ((pkt_id >> (8 * i)) & 0xFF);
         bytes_used++;
     }
 
-    // The payload
-    for (int i = 0; i < pkt_len; i++) {
-        pkt_base_addr[bytes_used] = in_pkt[i];
-        bytes_used++;
+	//copy body
+    memcpy (pkt_base_addr + bytes_used, in_pkt, PACKET_BODY_MAX_LEN);
+    bytes_used += PACKET_BODY_MAX_LEN;
+
+    VERBOSE1("inside bytes_used = %u\r\n", bytes_used);
+	
+	VERBOSE1("\r\n============================================packet============================================\r\n");
+
+#if 0
+    for (int i = 0; i < (int)bytes_used ; i++) {
+		VERBOSE1("%02x ", pkt_base_addr[i]);
+		if ((i + 1) % 32 == 0){
+			VERBOSE1("\r\n");
+		}
+    }
+#else
+
+    for (int i = 0; i < (int)bytes_used ; i++) {
+		VERBOSE1("%02x ", pkt_base_addr[bytes_used - i -1]);
+		if ((i + 1) % 32 == 0){
+			VERBOSE1("\r\n");
+		}
     }
 
-    // Padding to 64 bytes alignment
-    bytes_used--;
-
-    do {
-        if ((((uint64_t) (pkt_base_addr + bytes_used)) & 0x3F) == 0x3F) { //the last address of the packet stream is 512bit/64byte aligned
-            break;
-        } else {
-            bytes_used ++;
-            pkt_base_addr[bytes_used] = 0x00; //padding 8'h00 until the 512bit/64byte alignment
-        }
-
-    }   while (1);
-
-    bytes_used++;
-
+#endif
+	
     return pkt_base_addr + bytes_used;
-
 }
 
-static void* fill_one_pattern (const char* in_patt, void* in_patt_addr)
+static void* fill_one_pattern (const unsigned char* in_patt, void* in_patt_addr)
 {
-    unsigned char* patt_base_addr = in_patt_addr;
-    int config_len = 0;
-    unsigned char config_bytes[PATTERN_WIDTH_BYTES];
-    int x;
-    uint32_t pattern_id;
-    uint16_t patt_byte_cnt;
+	unsigned char* patt_base_addr = in_patt_addr;
     uint32_t bytes_used = 0;
+    uint16_t pkt_len = 64*5 - 1;
+    int pattern_id;
 
-    for (x = 0; x < PATTERN_WIDTH_BYTES; x++) {
-        config_bytes[x] = 0;
-    }
+	uint8_t total_col_num;
+	uint8_t result_modle;
 
-    // Generate pattern ID
-    PATTERN_ID ++;
-    pattern_id = PATTERN_ID;
-
-    VERBOSE1 ("PATT[%d] %s\n", pattern_id, in_patt);
-#if 0
-    fregex_get_config (in_patt,
-                       MAX_TOKEN_NUM,
-                       MAX_STATE_NUM,
-                       MAX_CHAR_NUM,
-                       MAX_CHAR_PER_TOKEN,
-                       config_bytes,
-                       &config_len,
-                       0);
-#endif
-
-    VERBOSE2 ("Config length (bits)  %d\n", config_len * 8);
-    VERBOSE2 ("Config length (bytes) %d\n", config_len);
-
+	//5A5A5A5A
     for (int i = 0; i < 4; i++) {
         patt_base_addr[bytes_used] = 0x5A;
         bytes_used++;
     }
-
-    patt_byte_cnt = (PATTERN_WIDTH_BYTES - 4);
-    patt_base_addr[bytes_used] = patt_byte_cnt & 0xFF;
-    bytes_used ++;
-    patt_base_addr[bytes_used] = (patt_byte_cnt >> 8) & 0x7;
-    bytes_used ++;
-
-    for (int i = 0; i < 54; i++) {
-        patt_base_addr[bytes_used] = 0x00;
-        bytes_used ++;
+	//pattern length
+	patt_base_addr[bytes_used] = (pkt_len & 0xFF);
+	bytes_used++;
+	patt_base_addr[bytes_used] = ((pkt_len >> 8) & 0xFF);
+	bytes_used++;
+	//total_col_num
+	total_col_num = 3;
+	patt_base_addr[bytes_used] = (total_col_num & 0xFF);
+	bytes_used++;
+	//result_modle
+	result_modle = 1;
+	patt_base_addr[bytes_used] = (result_modle & 0xFF);
+	bytes_used++;
+	//pad to 60 byte
+    memset (patt_base_addr + bytes_used, 0, (60 - bytes_used));
+    bytes_used = 60;
+    //The TAG ID
+    PATTERN_ID++;
+    pattern_id = PATTERN_ID;
+    for (int i = 0; i < 4 ; i++) {
+        patt_base_addr[bytes_used] = ((pattern_id >> (8 * i)) & 0xFF);
+        bytes_used++;
     }
 
-    // Pattern ID;
-    for (int i = 0; i < 4; i++) {
-        patt_base_addr[bytes_used] = (pattern_id >> (i * 8)) & 0xFF;
-        bytes_used ++;
+	//copy body
+    memcpy (patt_base_addr + bytes_used, in_patt, PACKET_BODY_MAX_LEN);
+    bytes_used += PACKET_BODY_MAX_LEN;
+
+	VERBOSE1("\r\n============================================pattern============================================\r\n");
+
+    for (int i = 0; i < (int)bytes_used ; i++) {
+		VERBOSE1("%02x ", patt_base_addr[i]);
+		if ((i + 1) % 32 == 0){
+			VERBOSE1("\r\n");
+		}
     }
-
-    memcpy (patt_base_addr + bytes_used, config_bytes, config_len);
-    bytes_used += config_len;
-    //for (int i = 0; i < config_len; i++) {
-    //    patt_base_addr[bytes_used] = config_bytes[i];
-    //    bytes_used ++;
-    //}
-
-    // Padding to 64 bytes alignment
-    bytes_used --;
-
-    do {
-        if ((((uint64_t) (patt_base_addr + bytes_used)) & 0x3F) == 0x3F) { //the last address of the packet stream is 512bit/64byte aligned
-            break;
-        } else {
-            bytes_used ++;
-            patt_base_addr[bytes_used] = 0x00; //padding 8'h00 until the 512bit/64byte alignment
-        }
-
-    } while (1);
-
-    bytes_used ++;
 
     return patt_base_addr + bytes_used;
-
 }
 
 
@@ -336,6 +380,7 @@ static uint32_t action_read (struct snap_card* h, uint32_t addr)
     return data;
 }
 
+
 /*  Calculate msec to FPGA ticks.
  *  we run at 250 Mhz on FPGA so 4 ns per tick
  */
@@ -360,6 +405,7 @@ static int action_wait_idle (struct snap_card* h, int timeout, uint64_t* elapsed
     uint64_t t_start;   /* time in usec */
     uint64_t td = 0;    /* Diff time in usec */
 
+    return rc;
     /* FIXME Use struct snap_action and not struct snap_card */
     snap_action_start ((void*)h);
 
@@ -414,10 +460,17 @@ static void action_sm (struct snap_card* h,
                        size_t stat_size)
 {
     uint32_t reg_data;
-    //uint64_t start_time;
-    //uint64_t elapsed_time;
+    uint32_t reg_data1;
+	double   result = 0;
+	unsigned char *tmp = NULL;
 
-    VERBOSE2 (" ------ String Match Start -------- \n");
+    uint64_t timer = 0;
+    uint64_t start_time;
+    uint64_t elapsed_time;
+
+    start_time = get_usec();
+    
+	VERBOSE2 (" ------ String Match Start -------- \n");
     VERBOSE2 (" PATTERN SOURCE ADDR: %p -- SIZE: %d\n", patt_src_base, (int)patt_size);
     VERBOSE2 (" PACKET  SOURCE ADDR: %p -- SIZE: %d\n", pkt_src_base, (int)pkt_size);
     VERBOSE2 (" STAT    DEST   ADDR: %p -- SIZE(max): %d\n", stat_dest_base, (int)stat_size);
@@ -463,7 +516,16 @@ static void action_sm (struct snap_card* h,
                   (uint32_t) (((uint64_t) stat_size) & 0xffffffff));
     action_write (h, ACTION_STAT_TOTAL_SIZE_H,
                   (uint32_t) ((((uint64_t) stat_size) >> 32) & 0xffffffff));
-    VERBOSE2 (" Write ACTION_STAT_TOTAL_SIZE done! \n");
+    
+	
+    action_write (h, ACTION_CNF_L,
+                  (uint32_t) (((uint64_t) 0xC000) & 0xffffffff));
+    action_write (h, ACTION_CNF_H,
+                  (uint32_t) ((((uint64_t) 0xC000) >> 32) & 0xffffffff));
+	
+	
+	
+	VERBOSE2 (" Write ACTION_STAT_TOTAL_SIZE done! \n");
 
     // Start copying the pattern from host memory to card
     action_write (h, ACTION_CONTROL_L, 0x00000001);
@@ -474,7 +536,7 @@ static void action_sm (struct snap_card* h,
 
     do {
         reg_data = action_read (h, ACTION_STATUS_L);
-        VERBOSE3 ("Pattern Phase: polling Status reg with 0X%X\n", reg_data);
+        //VERBOSE3 ("Pattern Phase: polling Status reg with 0X%X\n", reg_data);
 
         // Status[23:8]
         if ((reg_data & 0x00FFFF00) != 0) {
@@ -483,11 +545,74 @@ static void action_sm (struct snap_card* h,
         }
 
         // Status[0]
-        if ((reg_data & 0x00000001) == 1) {
+        if ((reg_data & 0x00000002) == 0x00000002) {
             VERBOSE1 ("Pattern copy done!\n");
             break;
         }
     } while (1);
+
+
+    // Start copying the packet from host memory to card
+    action_write (h, ACTION_CONTROL_L, 0x00000002);
+    action_write (h, ACTION_CONTROL_H, 0x00000000);
+    VERBOSE2 (" Write ACTION_CONTROL for packet copying! \n");
+
+    print_control_status (h);
+
+    do {
+        reg_data = action_read (h, ACTION_STATUS_L);
+        //VERBOSE3 ("Pattern Phase: polling Status reg with 0X%X\n", reg_data);
+
+        // Status[23:8]
+        if ((reg_data & 0x00FFFF00) != 0) {
+            VERBOSE0 ("Error code got 0X%X\n", ((reg_data & 0x00FFFF00) >> 8));
+            exit (EXIT_FAILURE);
+        }
+
+        // Status[0]
+        if ((reg_data & 0x00000001) == 0x00000001) {
+            VERBOSE1 ("cal  done!\n");
+            break;
+        }
+    } while (1);
+	printf("==============================packet data used up  \r\n");
+
+	reg_data = action_read (h, ACTION_CAL_RESULT_L);
+	reg_data1 = action_read (h, ACTION_CAL_RESULT_H);
+
+	//tmp = (unsigned char *)&result + sizeof(double) - 1;
+	tmp = (unsigned char *)&result;
+	memcpy( (void *)tmp, (void *)&reg_data, sizeof(reg_data) );
+	//tmp -= 4;
+	tmp += 4;
+	memcpy( (void *)tmp, (void *)&reg_data1, sizeof(reg_data1) );
+
+
+	reg_data = action_read (h, ACTION_TIMER_L);
+	reg_data1 = action_read (h, ACTION_TIMER_H);
+
+	//tmp = (unsigned char *)&timer + sizeof(double) - 1;
+	tmp = (unsigned char *)&timer;
+	memcpy( (void *)tmp, (void *)&reg_data, sizeof(reg_data) );
+	//tmp -= 4;
+	tmp += 4;
+	memcpy( (void *)tmp, (void *)&reg_data1, sizeof(reg_data1) );
+	
+	//printf("**********cal timer = %lu  \r\n", timer);
+	
+	timer = timer*5;
+
+	printf("**********cal timer = %lu  \r\n", timer);
+
+	printf("**********cal result = %lf  \r\n", result);
+
+
+	elapsed_time = get_usec() - start_time;
+	print_time (elapsed_time, 100);
+
+
+	printf("**********cal   finished\r\n");
+	return;
 
     //start_time = get_usec();
     // Start working control[2:1] = 11
@@ -600,10 +725,11 @@ static int sm_scan (struct snap_card* dnc,
 
     action_sm (dnc, patt_src_base, pkt_src_base, stat_dest_base, num_matched_pkt,
                patt_size, pkt_size, stat_size);
+	#if 1
     VERBOSE3 ("Wait for idle\n");
     rc = action_wait_idle (dnc, timeout, &td);
     VERBOSE3 ("Card in idle\n");
-
+	#endif
     if (0 != rc) {
         return rc;
     }
@@ -648,115 +774,538 @@ static void usage (const char* prog)
 
 static void* sm_compile_file (const char* file_path, size_t* size)
 {
-    FILE* fp;
-    char* line = NULL;
-    size_t len = 0;
-    ssize_t read;
+	char* line = NULL;
+	size_t len = 0;
+	ssize_t read;
+	unsigned char* query6 = NULL;
+	char tmp[16] = { 0 };
+	int i = 0;
+	int j = 0;
+	int mark = 0;
+	struct tm tmp_time;
+    double l_shipdate;
+    double l_discount;
+    double l_discount_tmp;
+    double l_discount_offset = 0.01;
+    double l_quantity;
 
-    // The max size that should be alloc
-    // Assume we have at most 1024 lines in a pattern file
-    size_t max_alloc_size = 1024 * (64 +
-                                    (PATTERN_WIDTH_BYTES - 4) +
-                                    ((PATTERN_WIDTH_BYTES - 4) % 64) == 0 ? 0 :
-                                    (64 - ((PATTERN_WIDTH_BYTES - 4) % 64)));
+	uint8_t calculate_type = 1;
+	uint8_t calculate_date_type = DATE_TYPE_DOUBLE;
+	uint8_t calculate_date1 = 1;
+	uint8_t calculate_date2 = 3;
 
-    void* patt_src_base = alloc_mem (64, max_alloc_size);
+	uint8_t op1_type = 0x0F;
+	uint8_t op1_datetype = DATE_TYPE_DOUBLE<<4;
+	uint8_t op1_datesize = 8;
+	uint8_t op2_type = 0x0F;
+	uint8_t op2_datetype = DATE_TYPE_DOUBLE<<4;
+	uint8_t op2_datesize = 8;
+	unsigned char column[64] = { 0 };
+    
+	uint64_t start_time = 0;
+    uint64_t elapsed_time = 0;
+    uint64_t sum_time = 0;
+
+	size_t max_alloc_size = PACKET_MAX_LEN;
+	//void* patt_src_base = malloc(max_alloc_size);
+    void* patt_src_base = alloc_mem (0, max_alloc_size);
+    if (patt_src_base == NULL) {
+		VERBOSE0("failed to alloc_mem patt_src_base\r\n");
+    	return patt_src_base;
+    }
+
     void* patt_src = patt_src_base;
 
     VERBOSE1 ("PATTERN Source Address Start at 0X%016lX\n", (uint64_t)patt_src);
 
-    fp = fopen (file_path, "r");
+    FILE* fp = fopen (file_path, "r");
 
     if (fp == NULL) {
         VERBOSE0 ("PATTERN fle not existed %s\n", file_path);
-        exit (EXIT_FAILURE);
+    	return patt_src_base;
     }
+
+	query6 = malloc(PACKET_BODY_MAX_LEN);
+	//query6 = alloc_mem(0, PACKET_BODY_MAX_LEN);
+    if (query6 == NULL) {
+		VERBOSE0("failed to alloc_mem pPacket_body\r\n");
+    	return patt_src_base;
+    }
+	memset (query6, 0 ,PACKET_BODY_MAX_LEN);
+
+    start_time = get_nsec();
 
     while ((read = getline (&line, &len, fp)) != -1) {
-        remove_newline (line);
-        read--;
-        VERBOSE3 ("Pattern line read with length %zu :\n", read);
-        VERBOSE3 ("%s\n", line);
-        patt_src = fill_one_pattern (line, patt_src);
-        // regex ref model
-        //regex_ref_push_pattern (line);
-        VERBOSE3 ("Pattern Source Address 0X%016lX\n", (uint64_t)patt_src);
+
+		elapsed_time = get_nsec() - start_time;
+		sum_time += elapsed_time;
+		
+		//reset para
+		op1_type = 0x0F;
+		op2_type = 0x0F;
+		memset (column, 0, 64);
+
+		//get l_shipdate
+		if ( strstr( line, "l_shipdate") != 0 ) {
+			for ( i = 0; i < read; i++ ) {
+				if (*(line+i) == '>') {
+					mark = 1;
+					memset( tmp, 0, sizeof(tmp));
+					continue;
+				} 
+
+				if (*(line+i) == '<') {
+					mark = 2;
+					memset( tmp, 0, sizeof(tmp));
+					continue;
+				} 
+				
+				if (mark == 1 && *(line+i) == '\'') {
+					for ( j = 0; j < (read-i); j++ ) {
+						if (*(line+i+j+1) != '\'') {
+							tmp[j] = *(line+i+j+1);
+						} else {
+							mark = 0;
+							break;
+						}
+					}
+
+					memset( &tmp_time, 0, sizeof(tmp_time));
+					printf("l_shipdate = %s  \r\n", tmp);
+					strptime((const char *)&tmp, "%Y-%m-%d", &tmp_time);
+					l_shipdate = mktime(&tmp_time) + 3600*8;
+					VERBOSE2("l_shipdate min === %.2f \r\n", l_shipdate);
+					memcpy (&column[2], &l_shipdate, sizeof(l_shipdate));
+				}
+				
+				if (mark == 2 && *(line+i) == '\'') {
+					for ( j = 0; j < (read-i); j++ ) {
+						if (*(line+i+j+1) != '\'') {
+							tmp[j] = *(line+i+j+1);
+						} else {
+							mark = 0;
+							break;
+						}
+					}
+
+					memset( &tmp_time, 0, sizeof(tmp_time));
+					printf("l_shipdate = %s  \r\n", tmp);
+					strptime((const char *)&tmp, "%Y-%m-%d", &tmp_time);
+					l_shipdate = mktime(&tmp_time) + 3600*8;
+					VERBOSE2("l_shipdate max === %.2f \r\n", l_shipdate);
+					memcpy (&column[2+32], &l_shipdate, sizeof(l_shipdate));
+					break;
+				}
+			}
+
+			op1_type = 0x02;		// >=
+			op1_datetype = DATE_TYPE_DOUBLE<<4;
+			column[0] = (op1_type & 0x0F) | (op1_datetype & 0xF0);
+			column[1] = op1_datesize & 0xFF;
+			
+			op2_type = 0x03;		// <
+			op2_datetype = DATE_TYPE_DOUBLE<<4;
+			column[0+32] = (op2_type & 0x0F) | (op2_datetype & 0xF0);
+			column[1+32] = op2_datesize & 0xFF;
+	
+			memcpy (query6, &column, sizeof(column));
+		
+			start_time = get_nsec();
+			continue;
+		}
+
+		//get l_discount
+		if ( strstr( line, "l_discount") != 0 ) {
+			for ( i = 0; i < read; i++ ) {
+				if (*(line+i) == '.') {
+					mark = 1;
+					memset( tmp, 0, sizeof(tmp));
+					tmp[0] = '0';
+					tmp[1] = '.';
+					
+					continue;
+				} 
+				
+				if (mark == 1 && *(line+i) != '-') {
+					for ( j = 0; j < (read-i); j++ ) {
+						if (*(line+i+j) != '-') {
+					
+							tmp[2+j] = *(line+i+j);
+							//printf("tmp[%d] = %c	\r\n", j, tmp[j]);
+						} else {
+							mark = 0;
+							break;
+						}
+
+					}
+
+					//printf("l_discount = %s  \r\n", tmp);
+					l_discount_tmp = atof(tmp);
+					//printf("l_discount_tmp === %.2f \r\n", l_discount_tmp);
+					l_discount = l_discount_tmp - l_discount_offset;
+					VERBOSE2("l_discount  low === %.2f \r\n", l_discount);
+					memcpy (&column[2], &l_discount, sizeof(l_discount));
+					l_discount = l_discount_tmp + l_discount_offset;
+					VERBOSE2("l_discount  high === %.2f \r\n", l_discount);
+					memcpy (&column[2+32], &l_discount, sizeof(l_discount));
+					break;
+
+				}
+
+			}
+
+			op1_type = 0x02;		// >=
+			op1_datetype = DATE_TYPE_DOUBLE<<4;
+			column[0] = (op1_type & 0x0F) | (op1_datetype & 0xF0);
+			column[1] = op1_datesize & 0xFF;
+			
+			op2_type = 0x04;		// <=
+			op2_datetype = DATE_TYPE_DOUBLE<<4;
+			column[0+32] = (op2_type & 0x0F) | (op2_datetype & 0xF0);
+			column[1+32] = op2_datesize & 0xFF;
+	
+			memcpy (query6+64, &column, sizeof(column));
+		
+			start_time = get_nsec();
+			continue;
+		}
+		
+		//get l_quantity
+		if ( strstr( line, "l_quantity") != 0 ) {
+			for ( i = 0; i < read; i++ ) {
+				if (*(line+i) == '<') {
+					mark = 1;
+					memset( tmp, 0, sizeof(tmp));
+					continue;
+				} 
+
+				if (mark == 1 && *(line+i) != ' ') {
+					for ( j = 0; j < (read-i); j++ ) {
+						if (*(line+i+j+1) != ' ') {
+					
+							tmp[j] = *(line+i+j);
+							//printf("tmp[%d] = %c	\r\n", j, tmp[j]);
+						} else {
+							mark = 0;
+							break;
+						}
+					}
+
+					//printf("l_quantity = %s  \r\n", tmp);
+					l_quantity = atof(tmp);
+					VERBOSE2("l_quantity === %.2f \r\n", l_quantity);
+					memcpy (&column[2], &l_quantity, sizeof(l_quantity));
+					break;
+				}
+
+			}
+
+
+			op1_type = 0x03;		// <
+			op1_datetype = DATE_TYPE_DOUBLE<<4;
+			column[0] = (op1_type & 0x0F) | (op1_datetype & 0xF0);
+			column[1] = op1_datesize & 0xFF;
+
+			op2_type = 0x0F;		// <
+			op2_datetype = 0;
+			column[0+32] = (op2_type & 0x0F) | (op2_datetype & 0xF0);
+		
+			memcpy (query6+64*2, &column, sizeof(column));
+
+			start_time = get_nsec();
+			continue;
+		}
+
+		
     }
 
-    VERBOSE1 ("Total size of pattern buffer used: %ld\n", (uint64_t) (patt_src - patt_src_base));
+	printf("**********sum pattern timer = %lu  \r\n", sum_time);
 
-    VERBOSE1 ("---------- Pattern Buffer: %p\n", patt_src_base);
+	memset (column, 0, 64);
+	column[0] = calculate_type & 0xFF;
+	column[1] = calculate_date_type & 0xFF;
+	column[2] = calculate_date1 & 0xFF;
+	column[33] = calculate_date2 & 0xFF;
+	//for test
+	column[63] = 0xFF;
+	column[62] = 0xFE;
+	column[61] = 0xFD;
+	column[60] = 0xFC;
+	//for test
+	
+	
+	memcpy (query6+64*3, &column, sizeof(column));
+	
+	patt_src = fill_one_pattern (query6, patt_src);
 
-    if (verbose_level > 2) {
-        __hexdump (stdout, patt_src_base, (patt_src - patt_src_base));
-    }
+	free_mem(query6);
+	free_mem(line);
+	fclose (fp);
 
-    fclose (fp);
-
-    if (line) {
-        free (line);
-    }
-
-    (*size) = patt_src - patt_src_base;
-
+	//only one pattern now
+	(*size) = 1;
+	
     return patt_src_base;
 }
 
-static void* sm_scan_file (const char* file_path, size_t* size, size_t* size_for_sw)
+
+static void* sm_scan_file(const char* file_path, size_t* num_pkt)
 {
-    FILE* fp = fopen (file_path, "r");
     char* line = NULL;
     size_t len = 0;
     ssize_t read;
+    double l_shipdate;
+    double l_discount;
+    double l_extendedprice;
+    double l_quantity;
+    char tmp[16] = {0};
+    int icount = 0;
+	int i = 0;
+	int j = 0;
+	struct tm tmp_time;
+	
+	uint64_t start_time = 0;
+    uint64_t elapsed_time = 0;
+    uint64_t sum_time_io = 0;
+    uint64_t sum_time_parse = 0;
+    uint64_t sum_time_fill_packet = 0;
+	
+    uint32_t bytes_used = 0;
+	size_t pkt_count = 0;
+	char* pPacket_body = NULL;
+ 
+	start_time = get_nsec();
 
-    // The max size that should be alloc
-    //size_t max_alloc_size = MAX_NUM_PKT * (64 + 2048);
-    size_t pkt_num = get_file_line_count (fp);
-    pkt_num = pkt_num < 4096 ? 4096 : pkt_num;
-    size_t max_alloc_size = pkt_num * (64 + 2048);
-
-    void* pkt_src_base = alloc_mem (64, max_alloc_size);
-    void* pkt_src = pkt_src_base;
-
-    VERBOSE1 ("PACKET Source Address Start at 0X%016lX\n", (uint64_t)pkt_src);
-
-    fp = fopen (file_path, "r");
-
+    //printf("Start to count file  number...\r\n");
+    FILE* fp = fopen (file_path, "r");
     if (fp == NULL) {
         VERBOSE0 ("PACKET fle not existed %s\n", file_path);
-        exit (EXIT_FAILURE);
+    	return NULL;
     }
+
+    size_t pkt_num = get_file_line_count(fp);
+
+    VERBOSE1("PTK number = %lu\r\n", pkt_num);
+
+    pkt_num = (pkt_num % 62) == 0
+			? (pkt_num / 62) 
+			: (pkt_num / 62) + 1;
+
+    VERBOSE1("PTK number = %lu\r\n", pkt_num);
+
+    size_t max_alloc_size = pkt_num * 2048;
+
+    //void* pkt_src_base = malloc(max_alloc_size);
+    void* pkt_src_base = alloc_mem(0, max_alloc_size);
+    if (pkt_src_base == NULL) {
+		VERBOSE0("failed to alloc_mem pkt_src_base\r\n");
+    	return pkt_src_base;
+    }
+    unsigned char* pkt_src = pkt_src_base;
+    VERBOSE1 ("PACKET Source Address Start at 0X%016lX\n", (uint64_t)pkt_src);
+	
+	pPacket_body = malloc(PACKET_BODY_MAX_LEN);
+	//pPacket_body = alloc_mem(0, PACKET_BODY_MAX_LEN);
+    if (pPacket_body == NULL) {
+		VERBOSE0("failed to alloc_mem pPacket_body\r\n");
+    	return pkt_src_base;
+    }
+	memset (pPacket_body, 0 ,PACKET_BODY_MAX_LEN);
+
+    fp = fopen (file_path, "r");
+    if (fp == NULL) {
+		VERBOSE0("failed to open file\r\n");
+    	return pkt_src_base;
+    }
+
+	//printf("float size === %lu  double size  = %lu\r\n", sizeof(float), sizeof(double));
+    
 
     while ((read = getline (&line, &len, fp)) != -1) {
-        remove_newline (line);
-        read--;
-        VERBOSE3 ("PACKET line read with length %zu :\n", read);
-        VERBOSE3 ("%s\n", line);
-        (*size_for_sw) += read;
-        pkt_src = fill_one_packet (line, read, pkt_src);
-        // regex ref model
-        //regex_ref_push_packet (line);
-        VERBOSE3 ("PACKET Source Address 0X%016lX\n", (uint64_t)pkt_src);
-    }
+    	//printf("line === %s  read = %lu\r\n", line, read);
+		
+		//reset para
+		memset( tmp, 0, sizeof(tmp));
+		memset( &tmp_time, 0, sizeof(tmp_time));
+		icount = 0;
+		l_shipdate = 0;
+		l_discount = 0;
+		l_extendedprice = 0;
+		l_quantity = 0;
 
-    VERBOSE1 ("Total size of packet buffer used: %ld\n", (uint64_t) (pkt_src - pkt_src_base));
+		elapsed_time = get_nsec() - start_time;
+		sum_time_io += elapsed_time;
+		
+		start_time = get_nsec();
+		
+		for ( i = 0; i < read; i++ ) {
+			//printf("line = %c \r\n", *(line+i));
+			if ( *(line+i) == '|' ) {
+				icount++;	
+				memset( tmp, 0, sizeof(tmp));
+				j = 0;
+				//printf("icount === %d \r\n", icount);
+			}
 
-    VERBOSE1 ("---------- Packet Buffer: %p\n", pkt_src_base);
+			//get l_quantity
+			if (icount == 4 && j == 0) {
+				for ( j = 0; j < (read-i); j++ ) {
+					if (*(line+i+j+1) != '|') {
 
-    if (verbose_level > 2) {
-        __hexdump (stdout, pkt_src_base, (pkt_src - pkt_src_base));
-    }
+						tmp[j] = *(line+i+j+1);
+						//printf("tmp[%d] = %c  \r\n", j, tmp[j]);
+					} else {
+						break;
+					}
+				}
 
-    fclose (fp);
+				l_quantity = atof(tmp);
+			} 
 
-    if (line) {
-        free (line);
-    }
+			//get l_extendedprice
+			if (icount == 5 && j == 0) {
+				for ( j = 0; j < (read-i); j++ ) {
+					if (*(line+i+j+1) != '|') {
 
-    (*size) = pkt_src - pkt_src_base;
+						tmp[j] = *(line+i+j+1);
+						//printf("tmp[%d] = %c  \r\n", j, tmp[j]);
+					} else {
+						break;
+					}
+				}
 
-    return pkt_src_base;
+				l_extendedprice = atof(tmp);
+			} 
+
+			//get l_discount
+			if (icount == 6 && j == 0) {
+				for ( j = 0; j < (read-i); j++ ) {
+					if (*(line+i+j+1) != '|') {
+
+						tmp[j] = *(line+i+j+1);
+						//printf("tmp[%d] = %c  \r\n", j, tmp[j]);
+					} else {
+						break;
+					}
+				}
+
+				l_discount = atof(tmp);
+			} 
+
+			//get l_shipdate
+			if (icount == 10 && j == 0) {
+				for ( j = 0; j < (read-i); j++ ) {
+					if (*(line+i+j+1) != '|') {
+
+						tmp[j] = *(line+i+j+1);
+						//printf("tmp[%d] = %c  \r\n", j, tmp[j]);
+					} else {
+						break;
+					}
+				}
+
+				//printf("l_shipdate = %s  \r\n", tmp);
+				strptime((const char *)&tmp, "%Y-%m-%d", &tmp_time);
+				l_shipdate = mktime(&tmp_time) + 3600*8;
+			} 
+			
+		}	
+
+		//l_shipdate l_discount l_quantity l_extendedprice
+		memcpy (pPacket_body + bytes_used, &l_shipdate, sizeof(l_shipdate));
+		bytes_used += sizeof(l_shipdate);
+		memcpy (pPacket_body + bytes_used, &l_discount, sizeof(l_discount));
+		bytes_used += sizeof(l_discount);
+		memcpy (pPacket_body + bytes_used, &l_quantity, sizeof(l_quantity));
+		bytes_used += sizeof(l_quantity);
+		memcpy (pPacket_body + bytes_used, &l_extendedprice, sizeof(l_extendedprice));
+		bytes_used += sizeof(l_extendedprice);
+
+		elapsed_time = get_nsec() - start_time;
+		sum_time_parse += elapsed_time;
+		
+		VERBOSE2("l_shipdate === %.2f \r\n", l_shipdate);
+		VERBOSE2("l_discount === %.2f \r\n", l_discount);
+		VERBOSE2("l_quantity === %.2f \r\n", l_quantity);
+		VERBOSE2("l_extendedprice === %.2f \r\n", l_extendedprice);
+		
+		VERBOSE1("outside bytes_used = %u\r\n", bytes_used);
+
+		pkt_count++;
+
+		start_time = get_nsec();
+		
+		//fill one packet
+		if (pkt_count % 62 == 0) {
+			pkt_src = fill_one_packet (pPacket_body, 2048, pkt_src);
+			//VERBOSE2 ("PACKET Source Address Start at 0X%016lX\n", (uint64_t)pkt_src);
+			(*num_pkt)++;
+			memset (pPacket_body, 0 ,PACKET_BODY_MAX_LEN);
+			bytes_used = 0;
+		}
+
+		elapsed_time = get_nsec() - start_time;
+		sum_time_fill_packet += elapsed_time;
+		
+		start_time = get_nsec();
+#if 0
+		printf("l_shipdate === %.2f \r\n", l_shipdate);
+		printf("l_discount === %.2f \r\n", l_discount);
+		printf("l_quantity === %.2f \r\n", l_quantity);
+		printf("l_extendedprice === %.2f \r\n", l_extendedprice);
+
+		char pTime[100] = {0};
+		printf("pTime = %s  \r\n", pTime);
+		time_t testtime = l_shipdate + 3600*8;
+		printf("testtime === %.2f \r\n", (double)testtime);
+		struct tm* timeinfo;
+		timeinfo = gmtime(&testtime);
+		strftime(pTime, sizeof(pTime), "%Y-%m-%d", timeinfo);
+		printf("pTime = %s  \r\n", pTime);
+
+
+		printf("tmp_time year=%d mon=%d day=%d \r\n", tmp_time.tm_year, tmp_time.tm_mon, tmp_time.tm_mday);
+		printf("timeinfo year=%d mon=%d day=%d \r\n", timeinfo->tm_year, timeinfo->tm_mon, timeinfo->tm_mday);
+#endif 
+	
+	}
+
+	//fill last packet
+	if (bytes_used != 0) {
+	
+		//unsigned char* pkt_base_addr  = pkt_src;
+		
+		pkt_src = fill_one_packet (pPacket_body, (64+bytes_used), pkt_src);
+	
+#if 0
+		VERBOSE1("\r\n============================================packet============================================\r\n");
+
+		for (int i = 0; i < ((int)bytes_used + 64); i++) {
+			VERBOSE0("%02x ", pkt_base_addr[i]);
+			if ((i + 1) % 32 == 0){
+				VERBOSE0("\r\n");
+			}
+		}
+#endif
+		//VERBOSE2 ("PACKET Source Address Start at 0X%016lX\n", (uint64_t)pkt_src);
+		(*num_pkt)++;
+		memset (pPacket_body, 0 ,PACKET_BODY_MAX_LEN);
+		bytes_used = 0;
+	}
+
+	free_mem(pPacket_body);
+	free_mem(line);
+    fclose(fp);
+    
+	VERBOSE1(" pkt_count  = %lu\r\n", pkt_count);
+   
+	printf("**********sum packet read file io timer = %lu nsec \r\n", sum_time_io);
+	printf("**********sum packet parse timer = %lu nsec  \r\n", sum_time_parse);
+	printf("**********sum packet fill  timer = %lu nsec  \r\n", sum_time_fill_packet);
+    
+	return pkt_src_base;
 }
+
 
 //static int compare_results (size_t num_matched_pkt, void* stat_dest_base, int no_chk_offset)
 //{
@@ -832,18 +1381,9 @@ int main (int argc, char* argv[])
     unsigned long ioctl_data;
     void* patt_src_base = NULL;
     void* pkt_src_base = NULL;
-    void* pkt_src_base_0 = NULL;
-    void* pkt_src_base_1 = NULL;
-    void* pkt_src_base_2 = NULL;
-    void* pkt_src_base_3 = NULL;
-    void* stat_dest_base_0 = NULL;
-    void* stat_dest_base_1 = NULL;
-    void* stat_dest_base_2 = NULL;
-    void* stat_dest_base_3 = NULL;
-    size_t num_matched_pkt = 0;
-    size_t pkt_size = 0;
-    size_t patt_size = 0;
-    size_t pkt_size_for_sw = 0;
+	size_t num_pkt = 0;
+	size_t num_patt = 0;
+	size_t stat_size = 0;
     uint64_t start_time;
     uint64_t elapsed_time;
     //uint32_t reg_data;
@@ -945,23 +1485,85 @@ int main (int argc, char* argv[])
               (int) (cir & 0x1ff));
 
     VERBOSE0 ("======== COMPILE PATTERN FILE ========\n");
+	start_time = get_nsec();
     // Compile the regular expression
-    patt_src_base = sm_compile_file ("./pattern.txt", &patt_size);
+    patt_src_base = sm_compile_file ("./pattern.txt", &num_patt);
+	VERBOSE2("======== num_patt = %lu ========\n", num_patt);
+    elapsed_time = get_nsec() - start_time;
+    print_ntime (elapsed_time);
     VERBOSE0 ("======== COMPILE PATTERN FILE DONE ========\n");
 
     VERBOSE0 ("======== COMPILE PACKET FILE ========\n");
+	start_time = get_nsec();
     // Compile the packets
-    pkt_src_base = sm_scan_file ("./packet.txt", &pkt_size, &pkt_size_for_sw);
+	//pkt_src_base = sm_scan_file("./test.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test10.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test100.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test150.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test200.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test300.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test400.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test500.tbl", &num_pkt);	
+	
+	pkt_src_base = sm_scan_file("./err.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./testerr.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./testerr100.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./testerr300.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./testerr400.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./testerr500.tbl", &num_pkt);	
+	
+	//pkt_src_base = sm_scan_file("./test1k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test2k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test3k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test5k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test10k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test50k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test250k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test1m.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test1000000.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test1000000.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./lineitem.tbl", &num_pkt);	
+	
+	
+	//pkt_src_base = sm_scan_file("./test2k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test4k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test8k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test16k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test32k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test64k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test128k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test256k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test512k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test1024k.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test10240k.tbl", &num_pkt);	
+	
+	
+	//pkt_src_base = sm_scan_file("./test500_pkt.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test1k_pkt.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test5k_pkt.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test5k_pkt.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test10k_pkt.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test50k_pkt.tbl", &num_pkt);	
+	//pkt_src_base = sm_scan_file("./test100k_pkt.tbl", &num_pkt);	
+	
+	VERBOSE2("======== num_pkt = %lu ========\n", num_pkt);
+    elapsed_time = get_nsec() - start_time;
+    print_ntime (elapsed_time);
     VERBOSE0 ("======== COMPILE PACKET FILE DONE ========\n");
 
+	num_patt = num_patt * 2048;
+	num_pkt = num_pkt * 2048;
+
+#if 0
     VERBOSE0 ("======== SOFTWARE RUN ========\n");
     // The software run.
     start_time = get_usec();
     //regex_ref_run_match();
     elapsed_time = get_usec() - start_time;
-    VERBOSE0 ("Software run finished with size %d.\n", (int) pkt_size_for_sw);
-    print_time (elapsed_time, pkt_size_for_sw);
+    VERBOSE0 ("Software run finished.\n");
+    print_time (elapsed_time, 100);
     VERBOSE0 ("======== SOFTWARE DONE========\n");
+#endif
 
     VERBOSE0 ("Start to get action.\n");
     act = get_action (dn, attach_flags, 5 * timeout);
@@ -972,20 +1574,29 @@ int main (int argc, char* argv[])
 
     VERBOSE0 ("Finish get action.\n");
 
-    // Alloc state output buffer, aligned to 4K
-    //int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt();
-    int real_stat_size = (OUTPUT_STAT_WIDTH / 8) * ((pkt_size / 1024) * 2);
-    int stat_size = (real_stat_size % 4096 == 0) ? real_stat_size : real_stat_size + (4096 - (real_stat_size % 4096));
-
-    // At least 4K for output buffer.
-    if (stat_size == 0) {
-        stat_size = 4096;
-    }
-
     // Reset the hardware
     soft_reset (dn);
 
-    for (int i = 0; i < 100; i++) {
+    VERBOSE1 ("======== HARDWARE RUN ========\n");
+  
+    printf("==========*******start FPGA work*********==========\r\n");
+	start_time = get_nsec();
+	VERBOSE1 ("======== HARDWARE RUN #0 ========\n");
+	rc = sm_scan (dn, timeout,
+				  patt_src_base,
+				  pkt_src_base,
+				  NULL,
+				  NULL,
+				  num_patt,
+				  num_pkt,
+				  stat_size);
+	elapsed_time = get_nsec() - start_time;
+    print_ntime (elapsed_time);
+
+    printf("==========*******stop FPGA work*********==========\r\n");
+	VERBOSE1 ("Finish sm_scan with  matched packets.\n");
+#if 0
+	for (int i = 0; i < 100; i++) {
         pkt_src_base_0 = alloc_mem (64, pkt_size);
         memcpy (pkt_src_base_0, pkt_src_base, pkt_size);
         pkt_src_base_1 = alloc_mem (64, pkt_size);
@@ -1005,7 +1616,6 @@ int main (int argc, char* argv[])
         memset (stat_dest_base_3, 0, stat_size);
 
 
-        VERBOSE1 ("======== HARDWARE RUN ========\n");
         start_time = get_usec();
         VERBOSE1 ("======== HARDWARE RUN #0 ========\n");
         rc = sm_scan (dn, timeout,
@@ -1070,33 +1680,6 @@ int main (int argc, char* argv[])
 
         VERBOSE1 ("Finish sm_scan with %d matched packets.\n", (int)num_matched_pkt);
 
-        VERBOSE1 ("======== HARDWARE DONE========\n");
-
-        //// Wait for transaction to be done.
-        //int count = 0;
-
-        //do {
-        //    VERBOSE3 (" Draining %i! \n", count);
-        //    action_read (dn, ACTION_STATUS_L);
-        //    count++;
-        //} while (count < 2);
-
-        //reg_data = action_read (dn, ACTION_STATUS_H);
-        //VERBOSE0 ("After draining, number of matched packets: %d\n", reg_data);
-        //num_matched_pkt = reg_data;
-#if 0
-        if (verbose_level > 2) {
-            __hexdump (stdout, stat_dest_base_0, (OUTPUT_STAT_WIDTH / 8) * regex_ref_get_num_matched_pkt());
-        }
-#endif
-        //rc = compare_results (num_matched_pkt, stat_dest_base, no_chk_offset);
-
-        //if (rc) {
-        //    VERBOSE0 ("Miscompare detected between hardware and software ref model.\n");
-        //} else {
-        //    VERBOSE0 ("\nTest PASSED!\n\n");
-        //}
-
         VERBOSE0 ("Cleanup memories");
         start_time = get_usec();
         free_mem (pkt_src_base_0);
@@ -1111,6 +1694,10 @@ int main (int argc, char* argv[])
         print_time (elapsed_time, 0);
     }
 
+#endif
+
+    VERBOSE1 ("======== HARDWARE DONE========\n");
+   
     free_mem (pkt_src_base);
     free_mem (patt_src_base);
     snap_detach_action (act);
